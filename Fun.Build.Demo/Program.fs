@@ -4,9 +4,11 @@
 let checkEnvs =
     stage "Env checks" {
         timeout 5
-        parall true
+        paralle false
+        envArgs [ "test2", "test2" ]
         run "dotnet --list-sdks"
         run "dotnet --version"
+        run "powershell Get-Variable"
     }
 
 
@@ -44,6 +46,9 @@ pipeline "demo2中国" {
             cmdArg "--dev"
             branch "master"
         }
+        runWith (fun ctx -> async {
+            printfn "start dev: %s" ctx.Name
+        })
     }
     runIfOnlySpecified false
 }

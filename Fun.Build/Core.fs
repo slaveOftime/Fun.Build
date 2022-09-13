@@ -6,12 +6,19 @@ open Spectre.Console
 
 
 type StageContext(name: string) =
+    let envVars = System.Collections.Generic.Dictionary<string, string>()
+
     member val Name = name
+
     member val IsActive = fun () -> true with get, set
     member val IsParallel = fun () -> false with get, set
-    member val Timeout = TimeSpan.FromSeconds 0 with get, set
 
-    member val PipelineContext = Option<PipelineContext>.None with get, set
+    member val Timeout: TimeSpan voption = ValueNone with get, set
+    member val WorkingDir: string voption = ValueNone with get, set
+
+    member val EnvVars = envVars
+
+    member val PipelineContext = ValueOption<PipelineContext>.None with get, set
 
     member val Steps = System.Collections.Generic.List<Async<int>>()
 
@@ -34,7 +41,8 @@ type PipelineContext() =
     member val CmdArgs = cmdArgs
     member val EnvVars = envVars
 
-    member val Timeout = TimeSpan.FromSeconds 0 with get, set
+    member val Timeout: TimeSpan voption = ValueNone with get, set
+    member val WorkingDir: string voption = ValueNone with get, set
 
     member val Stages = System.Collections.Generic.List<StageContext>()
 
@@ -55,10 +63,10 @@ type PipelineContext() =
 
         for i, stage in this.Stages |> Seq.filter (fun x -> x.IsActive()) |> Seq.indexed do
             let timeout =
-                if stage.Timeout.TotalMilliseconds > 0. then
-                    stage.Timeout.TotalMilliseconds
-                else
-                    this.Timeout.TotalMilliseconds
+                match stage.Timeout, this.Timeout with
+                | ValueSome t, _
+                | _, ValueSome t -> int t.TotalMilliseconds
+                | _ -> 0
 
             AnsiConsole.Write(Rule())
             AnsiConsole.Write(Rule($"STAGE #{i} [bold teal]{stage.Name}[/] started").LeftAligned())
@@ -80,12 +88,12 @@ type PipelineContext() =
             try
                 if isParallel then
                     let steps = steps |> Async.Parallel
-                    if timeout > 0. then
-                        Async.RunSynchronously(steps, timeout = int timeout) |> ignore
+                    if timeout > 0 then
+                        Async.RunSynchronously(steps, timeout = timeout) |> ignore
                     else
                         Async.RunSynchronously(steps) |> ignore
-                else if timeout > 0. then
-                    steps |> Seq.iter (fun step -> Async.RunSynchronously(step, timeout = int timeout) |> ignore)
+                else if timeout > 0 then
+                    steps |> Seq.iter (fun step -> Async.RunSynchronously(step, timeout = timeout) |> ignore)
                 else
                     steps |> Seq.iter (Async.RunSynchronously >> ignore)
             with ex ->
