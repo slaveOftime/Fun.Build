@@ -13,7 +13,7 @@ let checkEnvs =
 pipeline "demo1" {
     timeout 10
     checkEnvs
-    runIfOnlySpecified false
+    runIfOnlySpecified
 }
 
 
@@ -21,18 +21,8 @@ pipeline "demo2中国" {
     timeout 12
     envArgs [ "build", "true" ]
     checkEnvs
-    stage "Build stuff" {
-        whenEnvVar "build" "true"
-        run "dotnet restore"
-        run "dotnet build"
-    }
     stage "Cleaning up" {
         whenCmdArg "--clean"
-        //whenAny {
-        //    cmdArg ""
-        //    envVar ""
-        //    branch "master"
-        //}
         run (
             async {
                 printfn "Start finished"
@@ -40,6 +30,20 @@ pipeline "demo2中国" {
                 printfn "finished"
             }
         )
+    }
+    stage "Build stuff" {
+        whenAll {
+            cmdArg "--build"
+            branch "master"
+        }
+        run "dotnet restore"
+        run "dotnet build"
+    }
+    stage "Start dev" {
+        whenAny {
+            cmdArg "--dev"
+            branch "master"
+        }
     }
     runIfOnlySpecified false
 }

@@ -59,6 +59,7 @@ type PipelineBuilder(name: string) =
             ctx
         )
 
+    /// Add or override environment variables
     [<CustomOperation("envArgs")>]
     member inline _.envArgs([<InlineIfLambda>] build: BuildPipeline, kvs: seq<string * string>) =
         BuildPipeline(fun ctx ->
@@ -67,10 +68,12 @@ type PipelineBuilder(name: string) =
             ctx
         )
 
+    /// Set command line args
     [<CustomOperation("cmdArgs")>]
     member inline _.cmdArgs([<InlineIfLambda>] build: BuildPipeline, args: seq<string>) =
         BuildPipeline(fun ctx ->
             let ctx = build.Invoke ctx
+            ctx.CmdArgs.Clear()
             ctx.CmdArgs.AddRange args
             ctx
         )

@@ -99,3 +99,7 @@ type PipelineContext() =
 
 
 type BuildPipeline = delegate of ctx: PipelineContext -> PipelineContext
+
+type BuildConditions = delegate of ctx: StageContext * conditions: (unit -> bool) list -> (unit -> bool) list
+
+type BuildStageIsActive = delegate of ctx: StageContext -> unit
