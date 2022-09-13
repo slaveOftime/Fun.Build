@@ -5,15 +5,19 @@ let checkEnvs =
     stage "Env checks" {
         timeout 5
         paralle false
-        envArgs [ "test2", "test2" ]
+        envArgs [ "test1", "test1-2"; "test3", "test3-123" ]
         run "dotnet --list-sdks"
         run "dotnet --version"
-        run "powershell Get-Variable"
+        run "powershell $Env:test1"
+        run "powershell $Env:test2"
+        run "powershell $Env:test3"
+        run "powershell $Env:build"
     }
 
 
 pipeline "demo1" {
     timeout 10
+    envArgs [ "build", "true" ]
     checkEnvs
     runIfOnlySpecified
 }
@@ -21,7 +25,7 @@ pipeline "demo1" {
 
 pipeline "demo2中国" {
     timeout 12
-    envArgs [ "build", "true" ]
+    envArgs [ "test1", "test1-1"; "build", "true" ]
     checkEnvs
     stage "Cleaning up" {
         whenCmdArg "--clean"
@@ -29,6 +33,7 @@ pipeline "demo2中国" {
             async {
                 printfn "Start finished"
                 do! Async.Sleep 1000
+                failwith "test"
                 printfn "finished"
             }
         )
@@ -46,9 +51,7 @@ pipeline "demo2中国" {
             cmdArg "--dev"
             branch "master"
         }
-        runWith (fun ctx -> async {
-            printfn "start dev: %s" ctx.Name
-        })
+        runWith (fun ctx -> async { printfn "start dev: %s" ctx.Name })
     }
     runIfOnlySpecified false
 }

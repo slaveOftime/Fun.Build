@@ -2,6 +2,7 @@
 
 open System
 open System.Text
+open System.Diagnostics
 open Spectre.Console
 
 
@@ -60,8 +61,15 @@ type PipelineContext() =
         AnsiConsole.MarkupLine $"[bold lime]Run PIPELINE {this.Name}[/]"
         AnsiConsole.WriteLine()
 
+        let sw = Stopwatch.StartNew()
 
-        for i, stage in this.Stages |> Seq.filter (fun x -> x.IsActive()) |> Seq.indexed do
+        let stages = this.Stages |> Seq.filter (fun x -> x.IsActive()) |> Seq.toList
+        let mutable i = 0
+        let mutable shouldStop = false
+
+        while i < stages.Length && not shouldStop do
+            let stage = stages[i]
+
             let timeout =
                 match stage.Timeout, this.Timeout with
                 | ValueSome t, _
@@ -97,13 +105,19 @@ type PipelineContext() =
                 else
                     steps |> Seq.iter (Async.RunSynchronously >> ignore)
             with ex ->
-                AnsiConsole.MarkupLine $"[red]{ex.Message}[/]"
+                AnsiConsole.MarkupLine $"[red]Run step failed: {ex.Message}[/]"
                 AnsiConsole.WriteLine()
+                shouldStop <- true
 
             AnsiConsole.Write(Rule($"STAGE #{i} [bold teal]{stage.Name}[/] finished").LeftAligned())
             AnsiConsole.Write(Rule())
             AnsiConsole.WriteLine()
             AnsiConsole.WriteLine()
+
+            i <- i + 1
+
+        AnsiConsole.MarkupLine $"[bold lime]Run PIPELINE {this.Name} finished in {sw.ElapsedMilliseconds} ms[/]"
+        AnsiConsole.WriteLine()
 
 
 type BuildPipeline = delegate of ctx: PipelineContext -> PipelineContext

@@ -16,6 +16,21 @@ type StageContext with
             ctx.PipelineContext |> ValueOption.bind (fun x -> x.WorkingDir)
 
 
+    member inline ctx.BuildEnvVars() =
+        let vars = System.Collections.Generic.Dictionary()
+
+        ctx.PipelineContext
+        |> ValueOption.iter (fun pipeline ->
+            for KeyValue (k, v) in pipeline.EnvVars do
+                vars[k] <- v
+        )
+
+        for KeyValue (k, v) in ctx.EnvVars do
+            vars[k] <- v
+
+        vars
+
+
     member inline ctx.TryGetEnvVar(key: string) =
         if ctx.EnvVars.ContainsKey key then
             ctx.EnvVars[key] |> ValueSome
@@ -44,17 +59,14 @@ type StageContext with
 
 
     member inline ctx.AddCommandStep(exe: string, args: string) =
-        let mutable command = Cli.Wrap(exe).WithArguments(args)
-
-        ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command <- command.WithWorkingDirectory x)
-
-        //ctx.PipelineContext |> Option.iter (fun pipeline -> command <- command.WithEnvironmentVariables(pipeline.EnvVars))
-        command <- command.WithEnvironmentVariables(ctx.EnvVars)
-
         ctx.Steps.Add(
             async {
+                let mutable command = Cli.Wrap(exe).WithArguments(args)
                 use output = Console.OpenStandardOutput()
 
+                ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command <- command.WithWorkingDirectory x)
+
+                command <- command.WithEnvironmentVariables(ctx.BuildEnvVars())
                 command <- command.WithStandardOutputPipe(PipeTarget.ToStream output).WithValidation(CommandResultValidation.None)
 
                 AnsiConsole.MarkupLine $"[green]{command.ToString()}[/]"
@@ -77,6 +89,7 @@ type StageContext with
             match ctx.TryGetCmdArg argKey with
             | Some v when argValue = "" || v = argValue -> true
             | _ -> false
+
 
     member ctx.WhenBranch(branch: string) =
         fun () ->
