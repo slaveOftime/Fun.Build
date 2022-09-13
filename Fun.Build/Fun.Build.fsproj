@@ -7,7 +7,8 @@
 
   <ItemGroup>
     <Compile Include="Core.fs" />
-    <Compile Include="Dsl.fs" />
+    <Compile Include="StageBuilder.fs" />
+    <Compile Include="PipelineBuilder.fs" />
   </ItemGroup>
 
   <ItemGroup>
