@@ -49,9 +49,19 @@ pipeline "demo2中国" {
     stage "Start dev" {
         whenAny {
             cmdArg "--dev"
-            branch "master"
+            //whenAll {
+            //    branch "master"
+            //}
         }
         runWith (fun ctx -> async { printfn "start dev: %s" ctx.Name })
     }
+    post [
+        stage "clean up" {
+            run "echo cleanup"
+            //fun _ -> async {
+            //    return 1
+            //}
+        }
+    ]
     runIfOnlySpecified false
 }

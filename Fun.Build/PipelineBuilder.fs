@@ -76,6 +76,15 @@ type PipelineBuilder(name: string) =
         )
 
 
+    [<CustomOperation("post")>]
+    member inline _.post([<InlineIfLambda>] build: BuildPipeline, stage: StageContext list) =
+        BuildPipeline(fun ctx ->
+            let ctx = build.Invoke ctx
+            ctx.PostStages.AddRange stage
+            ctx
+        )
+
+
     /// Run this pipeline now
     [<CustomOperation("runImmediate")>]
     member _.runImmediate(build: BuildPipeline) = build.Invoke(PipelineContext(Name = name)).Run()

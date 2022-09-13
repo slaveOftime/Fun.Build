@@ -46,24 +46,11 @@ type PipelineContext() =
     member val WorkingDir: string voption = ValueNone with get, set
 
     member val Stages = System.Collections.Generic.List<StageContext>()
+    member val PostStages = System.Collections.Generic.List<StageContext>()
 
 
-    member this.Run() =
-        Console.InputEncoding <- Encoding.UTF8
-        Console.OutputEncoding <- Encoding.UTF8
-
-        if String.IsNullOrEmpty this.Name |> not then
-            let title = FigletText this.Name
-            title.LeftAligned() |> ignore
-            title.Color <- Color.Red
-            AnsiConsole.Write title
-
-        AnsiConsole.MarkupLine $"[bold lime]Run PIPELINE {this.Name}[/]"
-        AnsiConsole.WriteLine()
-
-        let sw = Stopwatch.StartNew()
-
-        let stages = this.Stages |> Seq.filter (fun x -> x.IsActive()) |> Seq.toList
+    member this.RunStages(stages: StageContext seq) =
+        let stages = stages |> Seq.filter (fun x -> x.IsActive()) |> Seq.toList
         let mutable i = 0
         let mutable shouldStop = false
 
@@ -111,10 +98,38 @@ type PipelineContext() =
 
             AnsiConsole.Write(Rule($"STAGE #{i} [bold teal]{stage.Name}[/] finished").LeftAligned())
             AnsiConsole.Write(Rule())
-            AnsiConsole.WriteLine()
-            AnsiConsole.WriteLine()
 
             i <- i + 1
+
+
+    member this.Run() =
+        Console.InputEncoding <- Encoding.UTF8
+        Console.OutputEncoding <- Encoding.UTF8
+
+        if String.IsNullOrEmpty this.Name |> not then
+            let title = FigletText this.Name
+            title.LeftAligned() |> ignore
+            title.Color <- Color.Red
+            AnsiConsole.Write title
+
+        AnsiConsole.MarkupLine $"[bold lime]Run PIPELINE {this.Name}[/]"
+        AnsiConsole.WriteLine()
+
+        let sw = Stopwatch.StartNew()
+
+
+        AnsiConsole.MarkupLine $"[grey]Run stages[/]"
+        this.RunStages this.Stages
+        AnsiConsole.MarkupLine $"[grey]Run stages finished[/]"
+        AnsiConsole.WriteLine()
+        AnsiConsole.WriteLine()
+
+        AnsiConsole.MarkupLine $"[grey]Run post stages[/]"
+        this.RunStages this.PostStages
+        AnsiConsole.MarkupLine $"[grey]Run post stages finished[/]"
+        AnsiConsole.WriteLine()
+        AnsiConsole.WriteLine()
+
 
         AnsiConsole.MarkupLine $"[bold lime]Run PIPELINE {this.Name} finished in {sw.ElapsedMilliseconds} ms[/]"
         AnsiConsole.WriteLine()

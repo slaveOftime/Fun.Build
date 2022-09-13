@@ -151,6 +151,9 @@ type WhenAllBuilder() =
 
 type StageBuilder(name: string) =
 
+    member _.Run(ctx: StageContext) = ctx
+
+
     member _.Yield(_: unit) = StageContext name
 
     member inline _.Yield([<InlineIfLambda>] condition: BuildStageIsActive) = condition
