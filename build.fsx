@@ -1,4 +1,4 @@
-#r "nuget: Fun.Build, 0.0.3"
+#r "nuget: Fun.Build, 0.0.5"
 
 // for local dev only
 //#r "nuget: Cliwrap"
@@ -22,10 +22,11 @@ pipeline "Fun.Build" {
             branch "master"
             envVar "NUGET_API_KEY"
         }
-        run (fun ctx ->
-            $"""dotnet nuget push *.nupkg -s https://api.nuget.org/v3/index.json -k {ctx.GetEnvVar "NUGET_API_KEY"} --skip-duplicate"""
+        add (fun ctx ->
+            // use cmd so we can make sure sensitive information in FormatableString is encoded
+            cmd $"""dotnet nuget push *.nupkg -s https://api.nuget.org/v3/index.json -k {ctx.GetEnvVar "NUGET_API_KEY"} --skip-duplicate"""
         )
     }
-    post [ stage "Post stage" { run ignore } ]
+    post [ stage "Post stage" { run (fun _ -> printfn "Always do something when other stages are failed") } ]
     runIfOnlySpecified false
 }
