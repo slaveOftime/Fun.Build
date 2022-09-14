@@ -306,12 +306,12 @@ let ``Syntax check`` () =
     |> ignore
 
 
-[<Fact>]
-let ``check sensitive command`` () =
-    pipeline "check sensitive command" {
-        stage "" {
-            cmd $"powershell echo {123}"
-            add (fun _ -> cmd $"powershell echo {456}")
-        }
-        runImmediate
-    }
+//[<Fact>]
+//let ``check sensitive command`` () =
+//    pipeline "check sensitive command" {
+//        stage "" {
+//            cmd $"powershell echo {123}"
+//            add (fun _ -> cmd $"powershell echo {456}")
+//        }
+//        runImmediate
+//    }
