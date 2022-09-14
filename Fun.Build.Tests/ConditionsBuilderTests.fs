@@ -59,19 +59,25 @@ let ``whenAny should work`` () =
         envVar "test2"
     }
 
-    let pipeline = PipelineContext()
+    let pipeline = PipelineContext.Create ""
 
-    let stage = StageContext ""
-    stage.PipelineContext <- ValueSome pipeline
+    { StageContext.Create "" with
+        PipelineContext = ValueSome pipeline
+    }
+    |> condition.Invoke
+    |> Assert.False
 
-    Assert.False(condition.Invoke (stage) ())
+    { StageContext.Create "" with
+        PipelineContext = ValueSome { pipeline with CmdArgs = [ "test1" ] }
+    }
+    |> condition.Invoke
+    |> Assert.True
 
-    pipeline.CmdArgs.Add "test1"
-    Assert.True(condition.Invoke (stage) ())
-
-    pipeline.CmdArgs.Clear()
-    pipeline.EnvVars.Add("test2", "")
-    Assert.True(condition.Invoke (stage) ())
+    { StageContext.Create "" with
+        PipelineContext = ValueSome { pipeline with EnvVars = Map.ofList [ "test2", "" ] }
+    }
+    |> condition.Invoke
+    |> Assert.True
 
 
 [<Fact>]
@@ -81,25 +87,36 @@ let ``whenAll should work`` () =
         envVar "test2"
     }
 
-    let pipeline = PipelineContext()
+    let pipeline = PipelineContext.Create ""
 
-    let stage = StageContext ""
-    stage.PipelineContext <- ValueSome pipeline
+    { StageContext.Create "" with
+        PipelineContext = ValueSome pipeline
+    }
+    |> condition.Invoke
+    |> Assert.False
 
-    Assert.False(condition.Invoke (stage) ())
+    { StageContext.Create "" with
+        PipelineContext = ValueSome { pipeline with CmdArgs = [ "test1" ] }
+    }
+    |> condition.Invoke
+    |> Assert.False
 
-    pipeline.CmdArgs.Add "test1"
-    Assert.False(condition.Invoke (stage) ())
+    { StageContext.Create "" with
+        PipelineContext = ValueSome { pipeline with EnvVars = Map.ofList [ "test2", "" ] }
+    }
+    |> condition.Invoke
+    |> Assert.False
 
-    pipeline.CmdArgs.Clear()
-    pipeline.EnvVars.Add("test2", "")
-    Assert.False(condition.Invoke (stage) ())
-
-    pipeline.CmdArgs.Clear()
-    pipeline.EnvVars.Clear()
-    pipeline.CmdArgs.Add "test1"
-    pipeline.EnvVars.Add("test2", "")
-    Assert.True(condition.Invoke (stage) ())
+    { StageContext.Create "" with
+        PipelineContext =
+            ValueSome
+                { pipeline with
+                    CmdArgs = [ "test1" ]
+                    EnvVars = Map.ofList [ "test2", "" ]
+                }
+    }
+    |> condition.Invoke
+    |> Assert.True
 
 
 [<Fact>]
@@ -109,25 +126,36 @@ let ``whenNot should work`` () =
         envVar "test2"
     }
 
-    let pipeline = PipelineContext()
+    let pipeline = PipelineContext.Create ""
 
-    let stage = StageContext ""
-    stage.PipelineContext <- ValueSome pipeline
+    { StageContext.Create "" with
+        PipelineContext = ValueSome pipeline
+    }
+    |> condition.Invoke
+    |> Assert.True
 
-    Assert.True(condition.Invoke (stage) ())
+    { StageContext.Create "" with
+        PipelineContext = ValueSome { pipeline with CmdArgs = [ "test1" ] }
+    }
+    |> condition.Invoke
+    |> Assert.False
 
-    pipeline.CmdArgs.Add "test1"
-    Assert.False(condition.Invoke (stage) ())
+    { StageContext.Create "" with
+        PipelineContext = ValueSome { pipeline with EnvVars = Map.ofList [ "test2", "" ] }
+    }
+    |> condition.Invoke
+    |> Assert.False
 
-    pipeline.CmdArgs.Clear()
-    pipeline.EnvVars.Add("test2", "")
-    Assert.False(condition.Invoke (stage) ())
-
-    pipeline.CmdArgs.Clear()
-    pipeline.EnvVars.Clear()
-    pipeline.CmdArgs.Add "test1"
-    pipeline.EnvVars.Add("test2", "")
-    Assert.False(condition.Invoke (stage) ())
+    { StageContext.Create "" with
+        PipelineContext =
+            ValueSome
+                { pipeline with
+                    CmdArgs = [ "test1" ]
+                    EnvVars = Map.ofList [ "test2", "" ]
+                }
+    }
+    |> condition.Invoke
+    |> Assert.False
 
 
 [<Fact>]
@@ -140,20 +168,28 @@ let ``when compose should work`` () =
         }
     }
 
-    let pipeline = PipelineContext()
+    let pipeline = PipelineContext.Create ""
 
-    let stage = StageContext ""
-    stage.PipelineContext <- ValueSome pipeline
+    { StageContext.Create "" with
+        PipelineContext = ValueSome pipeline
+    }
+    |> condition.Invoke
+    |> Assert.False
 
-    Assert.False(condition.Invoke (stage) ())
+    { StageContext.Create "" with
+        PipelineContext = ValueSome { pipeline with CmdArgs = [ "test1" ] }
+    }
+    |> condition.Invoke
+    |> Assert.True
 
-    pipeline.CmdArgs.Add "test1"
-    Assert.True(condition.Invoke (stage) ())
+    { StageContext.Create "" with
+        PipelineContext = ValueSome { pipeline with CmdArgs = [ "test2" ] }
+    }
+    |> condition.Invoke
+    |> Assert.True
 
-    pipeline.CmdArgs.Clear()
-    pipeline.CmdArgs.Add("test2")
-    Assert.True(condition.Invoke (stage) ())
-
-    pipeline.CmdArgs.Clear()
-    pipeline.CmdArgs.Add("test3")
-    Assert.False(condition.Invoke (stage) ())
+    { StageContext.Create "" with
+        PipelineContext = ValueSome { pipeline with CmdArgs = [ "test3" ] }
+    }
+    |> condition.Invoke
+    |> Assert.False

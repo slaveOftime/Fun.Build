@@ -2,38 +2,45 @@
 
 open System
 open System.Text
+open System.Linq
 open System.Diagnostics
 open Spectre.Console
 open CliWrap
 
 
-type StageContext(name: string) =
-    let envVars = System.Collections.Generic.Dictionary<string, string>()
+type StageContext =
+    {
+        Name: string
+        IsActive: StageContext -> bool
+        IsParallel: bool
+        Timeout: TimeSpan voption
+        WorkingDir: string voption
+        EnvVars: Map<string, string>
+        PipelineContext: ValueOption<PipelineContext>
+        Steps: (StageContext -> Async<int>) list
+    }
 
-    member val Name = name
-
-    member val IsActive = fun () -> true with get, set
-    member val IsParallel = fun () -> false with get, set
-
-    member val Timeout: TimeSpan voption = ValueNone with get, set
-    member val WorkingDir: string voption = ValueNone with get, set
-
-    member val EnvVars = envVars
-
-    member val PipelineContext: ValueOption<PipelineContext> = ValueNone with get, set
-
-    member val Steps = System.Collections.Generic.List<Async<int>>()
+    static member Create(name: string) = {
+        Name = name
+        IsActive = fun _ -> true
+        IsParallel = false
+        Timeout = ValueNone
+        WorkingDir = ValueNone
+        EnvVars = Map.empty
+        PipelineContext = ValueNone
+        Steps = []
+    }
 
 
-    member inline ctx.GetWorkingDir() =
+    member ctx.GetWorkingDir() =
         if ctx.WorkingDir.IsSome then
             ctx.WorkingDir
         else
             ctx.PipelineContext |> ValueOption.bind (fun x -> x.WorkingDir)
 
 
-    member inline ctx.BuildEnvVars() =
-        let vars = System.Collections.Generic.Dictionary()
+    member ctx.BuildEnvVars() =
+        let vars = Collections.Generic.Dictionary()
 
         ctx.PipelineContext
         |> ValueOption.iter (fun pipeline ->
@@ -44,12 +51,12 @@ type StageContext(name: string) =
         for KeyValue (k, v) in ctx.EnvVars do
             vars[k] <- v
 
-        vars
+        vars |> Seq.map (fun (KeyValue (k, v)) -> k, v) |> Map.ofSeq
 
 
-    member inline ctx.TryGetEnvVar(key: string) =
+    member ctx.TryGetEnvVar(key: string) =
         if ctx.EnvVars.ContainsKey key then
-            ctx.EnvVars[key] |> ValueSome
+            ValueSome ctx.EnvVars[key]
         else
             ctx.PipelineContext
             |> ValueOption.bind (fun pipeline ->
@@ -63,21 +70,20 @@ type StageContext(name: string) =
     member inline ctx.GetEnvVar(key: string) = ctx.TryGetEnvVar key |> ValueOption.defaultValue ""
 
 
-    member inline ctx.TryGetCmdArg(key: string) =
+    member ctx.TryGetCmdArg(key: string) =
         match ctx.PipelineContext with
         | ValueNone -> None
         | ValueSome pipeline ->
-            let index = pipeline.CmdArgs.IndexOf key
-            if index > -1 then
-                if pipeline.CmdArgs.Count > index + 1 then
+            match pipeline.CmdArgs |> List.tryFindIndex ((=) key) with
+            | Some index ->
+                if List.length pipeline.CmdArgs > index + 1 then
                     Some pipeline.CmdArgs[index + 1]
                 else
                     Some ""
-            else
-                None
+            | _ -> None
 
 
-    member inline ctx.BuildCommand(commandStr: string, outputStream: IO.Stream) =
+    member ctx.BuildCommand(commandStr: string, outputStream: IO.Stream) =
         let index = commandStr.IndexOf " "
 
         let cmd, args =
@@ -96,61 +102,69 @@ type StageContext(name: string) =
         command <- command.WithStandardOutputPipe(PipeTarget.ToStream outputStream).WithValidation(CommandResultValidation.None)
         command
 
-    member inline ctx.AddCommandStep(commandStr: string) =
-        ctx.Steps.Add(
-            async {
-                use outputStream = Console.OpenStandardOutput()
-                let command = ctx.BuildCommand(commandStr, outputStream)
-                AnsiConsole.MarkupLine $"[green]{command.ToString()}[/]"
-                let! result = command.ExecuteAsync().Task |> Async.AwaitTask
-                return result.ExitCode
-            }
-        )
-
-        ctx
+    member ctx.AddCommandStep(commandStr: string) =
+        { ctx with
+            Steps =
+                ctx.Steps
+                @ [
+                    fun ctx -> async {
+                        use outputStream = Console.OpenStandardOutput()
+                        let command = ctx.BuildCommand(commandStr, outputStream)
+                        AnsiConsole.MarkupLine $"[green]{command.ToString()}[/]"
+                        let! result = command.ExecuteAsync().Task |> Async.AwaitTask
+                        return result.ExitCode
+                    }
+                ]
+        }
 
 
     member ctx.WhenEnvArg(envKey: string, envValue: string) =
-        fun () ->
-            match ctx.TryGetEnvVar envKey with
-            | ValueSome v when envValue = "" || v = envValue -> true
-            | _ -> false
+        match ctx.TryGetEnvVar envKey with
+        | ValueSome v when envValue = "" || v = envValue -> true
+        | _ -> false
 
     member ctx.WhenCmdArg(argKey: string, argValue: string) =
-        fun () ->
-            match ctx.TryGetCmdArg argKey with
-            | Some v when argValue = "" || v = argValue -> true
-            | _ -> false
+        match ctx.TryGetCmdArg argKey with
+        | Some v when argValue = "" || v = argValue -> true
+        | _ -> false
 
 
     member ctx.WhenBranch(branch: string) =
-        fun () ->
-            try
-                let mutable currentBranch = ""
+        try
+            let mutable currentBranch = ""
 
-                let mutable command =
-                    Cli
-                        .Wrap("git")
-                        .WithArguments("branch --show-current")
-                        .WithStandardOutputPipe(PipeTarget.ToDelegate(fun x -> currentBranch <- x))
-                        .WithValidation(CommandResultValidation.None)
+            let mutable command =
+                Cli
+                    .Wrap("git")
+                    .WithArguments("branch --show-current")
+                    .WithStandardOutputPipe(PipeTarget.ToDelegate(fun x -> currentBranch <- x))
+                    .WithValidation(CommandResultValidation.None)
 
-                ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command <- command.WithWorkingDirectory x)
+            ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command <- command.WithWorkingDirectory x)
 
-                command.ExecuteAsync().GetAwaiter().GetResult() |> ignore
+            command.ExecuteAsync().GetAwaiter().GetResult() |> ignore
 
-                currentBranch = branch
+            currentBranch = branch
 
-            with ex ->
-                AnsiConsole.MarkupLine $"[red]Run git to get branch info failed: {ex.Message}[/]"
-                false
+        with ex ->
+            AnsiConsole.MarkupLine $"[red]Run git to get branch info failed: {ex.Message}[/]"
+            false
 
 
-type PipelineContext() =
-    let cmdArgs = System.Collections.Generic.List<string>(Environment.GetCommandLineArgs())
-    let envVars = System.Collections.Generic.Dictionary<string, string>()
+type PipelineContext =
+    {
+        Name: string
+        CmdArgs: string list
+        EnvVars: Map<string, string>
+        Timeout: TimeSpan voption
+        WorkingDir: string voption
+        Stages: StageContext list
+        PostStages: StageContext list
+    }
 
-    do
+    static member Create(name: string) =
+        let envVars = System.Collections.Generic.Dictionary<string, string>()
+
         for key in Environment.GetEnvironmentVariables().Keys do
             let key = string key
             try
@@ -158,22 +172,26 @@ type PipelineContext() =
             with _ ->
                 envVars.Add(key, "")
 
-
-    member val Name = "" with get, set
-
-    member val CmdArgs: System.Collections.Generic.List<string> = cmdArgs
-    member val EnvVars: System.Collections.Generic.Dictionary<string, string> = envVars
-
-    member val Timeout: TimeSpan voption = ValueNone with get, set
-    member val WorkingDir: string voption = ValueNone with get, set
-
-    member val Stages = System.Collections.Generic.List<StageContext>()
-    member val PostStages = System.Collections.Generic.List<StageContext>()
+        {
+            Name = name
+            CmdArgs = Seq.toList (Environment.GetCommandLineArgs())
+            EnvVars = envVars |> Seq.map (fun (KeyValue (k, v)) -> k, v) |> Map.ofSeq
+            Timeout = ValueNone
+            WorkingDir = ValueNone
+            Stages = []
+            PostStages = []
+        }
 
 
     member this.RunStages(stages: StageContext seq, ?failfast: bool) =
         let failfast = defaultArg failfast true
-        let stages = stages |> Seq.filter (fun x -> x.IsActive()) |> Seq.toList
+
+        let stages =
+            stages
+            |> Seq.map (fun x -> { x with PipelineContext = ValueSome this })
+            |> Seq.filter (fun x -> x.IsActive x)
+            |> Seq.toList
+
         let mutable i = 0
         let mutable hasError = false
 
@@ -190,13 +208,13 @@ type PipelineContext() =
             AnsiConsole.Write(Rule($"STAGE #{i} [bold teal]{stage.Name}[/] started").LeftAligned())
             AnsiConsole.WriteLine()
 
-            let isParallel = stage.IsParallel()
+            let isParallel = stage.IsParallel
 
             let steps =
                 stage.Steps
                 |> Seq.map (fun step -> async {
                     AnsiConsole.MarkupLine $"""[grey]> start step{if isParallel then " in parallel -->" else ":"}[/]"""
-                    let! result = step
+                    let! result = step stage
                     AnsiConsole.MarkupLine $"""[gray]> finished run step{if isParallel then " in parallel." else "."}[/]"""
                     AnsiConsole.WriteLine()
                     if result <> 0 then
@@ -266,8 +284,8 @@ type PipelineContext() =
 
 type BuildPipeline = delegate of ctx: PipelineContext -> PipelineContext
 
-type BuildConditions = delegate of ctx: StageContext * conditions: (unit -> bool) list -> (unit -> bool) list
+type BuildConditions = delegate of conditions: (StageContext -> bool) list -> (StageContext -> bool) list
 
-type BuildStageIsActive = delegate of ctx: StageContext -> (unit -> bool)
+type BuildStageIsActive = delegate of ctx: StageContext -> bool
 
 type BuildStep = delegate of ctx: StageContext -> Async<int>

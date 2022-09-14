@@ -18,6 +18,10 @@ pipeline "Fun.Build" {
         run "dotnet --list-sdks"
         run (fun ctx -> printfn $"""GITHUB_ACTION: {ctx.GetEnvVar "GITHUB_ACTION"}""")
     }
+    stage "Lint" {
+        whenNot { envVar "GITHUB_ACTION" }
+        run "fantomas ."
+    }
     stage "Run unit tests" { run "dotnet test" }
     stage "Build packages" { run "dotnet pack -c Release Fun.Build/Fun.Build.fsproj -o ." }
     stage "Publish packages to nuget" {
