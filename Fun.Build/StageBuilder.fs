@@ -122,7 +122,18 @@ type StageBuilder(name: string) =
 
     /// Add a step to run command. This will not encrypt any sensitive information when print to console.
     [<CustomOperation("run")>]
-    member inline this.run(ctx: StageContext, step: StageContext -> string) = this.run (ctx, step ctx)
+    member inline this.run(ctx: StageContext, step: StageContext -> string) =
+        ctx.Steps.Add(
+            async {
+                let commandStr = step ctx
+                use outputStream = Console.OpenStandardOutput()
+                let command = ctx.BuildCommand(commandStr, outputStream)
+                AnsiConsole.MarkupLine $"[green]{commandStr}[/]"
+                let! result = command.ExecuteAsync().Task |> Async.AwaitTask
+                return result.ExitCode
+            }
+        )
+        ctx
 
     /// Add a step to run command. This will not encrypt any sensitive information when print to console.
     [<CustomOperation("run")>]
@@ -190,7 +201,7 @@ type StageBuilder(name: string) =
     /// Add a step to run.
     [<CustomOperation("run")>]
     member inline _.run(ctx: StageContext, step: StageContext -> Async<int>) =
-        ctx.Steps.Add(step ctx)
+        ctx.Steps.Add(async { return! step ctx })
         ctx
 
 
@@ -219,7 +230,7 @@ type StageBuilder(name: string) =
     /// Add a step to run.
     [<CustomOperation("run")>]
     member inline _.run(ctx: StageContext, step: StageContext -> Task<int>) =
-        ctx.Steps.Add(step ctx |> Async.AwaitTask)
+        ctx.Steps.Add(async { return! step ctx |> Async.AwaitTask })
         ctx
 
 
