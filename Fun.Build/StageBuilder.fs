@@ -3,150 +3,6 @@ module Fun.Build.StageBuilder
 
 open System
 open System.Threading.Tasks
-open Spectre.Console
-open CliWrap
-
-
-type StageContext with
-
-    member inline ctx.GetWorkingDir() =
-        if ctx.WorkingDir.IsSome then
-            ctx.WorkingDir
-        else
-            ctx.PipelineContext |> ValueOption.bind (fun x -> x.WorkingDir)
-
-
-    member inline ctx.BuildEnvVars() =
-        let vars = System.Collections.Generic.Dictionary()
-
-        ctx.PipelineContext
-        |> ValueOption.iter (fun pipeline ->
-            for KeyValue (k, v) in pipeline.EnvVars do
-                vars[k] <- v
-        )
-
-        for KeyValue (k, v) in ctx.EnvVars do
-            vars[k] <- v
-
-        vars
-
-
-    member inline ctx.TryGetEnvVar(key: string) =
-        if ctx.EnvVars.ContainsKey key then
-            ctx.EnvVars[key] |> ValueSome
-        else
-            ctx.PipelineContext
-            |> ValueOption.bind (fun pipeline ->
-                if pipeline.EnvVars.ContainsKey key then
-                    ValueSome pipeline.EnvVars[key]
-                else
-                    ValueNone
-            )
-
-
-    member inline ctx.TryGetCmdArg(key: string) =
-        match ctx.PipelineContext with
-        | ValueNone -> None
-        | ValueSome pipeline ->
-            let index = pipeline.CmdArgs.IndexOf key
-            if index > -1 then
-                if pipeline.CmdArgs.Count > index + 1 then
-                    Some pipeline.CmdArgs[index + 1]
-                else
-                    Some ""
-            else
-                None
-
-
-    member inline ctx.AddCommandStep(exe: string, args: string) =
-        ctx.Steps.Add(
-            async {
-                let mutable command = Cli.Wrap(exe).WithArguments(args)
-                use output = Console.OpenStandardOutput()
-
-                ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command <- command.WithWorkingDirectory x)
-
-                command <- command.WithEnvironmentVariables(ctx.BuildEnvVars())
-                command <- command.WithStandardOutputPipe(PipeTarget.ToStream output).WithValidation(CommandResultValidation.None)
-
-                AnsiConsole.MarkupLine $"[green]{command.ToString()}[/]"
-                let! result = command.ExecuteAsync().Task |> Async.AwaitTask
-                return result.ExitCode
-            }
-        )
-
-        ctx
-
-
-    member ctx.WhenEnvArg(envKey: string, envValue: string) =
-        fun () ->
-            match ctx.TryGetEnvVar envKey with
-            | ValueSome v when envValue = "" || v = envValue -> true
-            | _ -> false
-
-    member ctx.WhenCmdArg(argKey: string, argValue: string) =
-        fun () ->
-            match ctx.TryGetCmdArg argKey with
-            | Some v when argValue = "" || v = argValue -> true
-            | _ -> false
-
-
-    member ctx.WhenBranch(branch: string) =
-        fun () ->
-            try
-                let mutable currentBranch = ""
-
-                let mutable command =
-                    Cli
-                        .Wrap("git")
-                        .WithArguments("branch --show-current")
-                        .WithStandardOutputPipe(PipeTarget.ToDelegate(fun x -> currentBranch <- x))
-                        .WithValidation(CommandResultValidation.None)
-
-                ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command <- command.WithWorkingDirectory x)
-
-                command.ExecuteAsync().GetAwaiter().GetResult() |> ignore
-
-                currentBranch = branch
-
-            with ex ->
-                AnsiConsole.MarkupLine $"[red]Run git to get branch info failed: {ex.Message}[/]"
-                false
-
-
-type ConditionsBuilder() =
-
-    member inline _.Yield(_: unit) = BuildConditions(fun _ x -> x)
-
-    member inline _.Delay([<InlineIfLambda>] fn: unit -> BuildConditions) = BuildConditions(fun ctx conds -> fn().Invoke(ctx, conds))
-
-    [<CustomOperation("envVar")>]
-    member inline _.envVar([<InlineIfLambda>] builder: BuildConditions, envKey: string, ?envValue: string) =
-        BuildConditions(fun ctx conditions -> builder.Invoke(ctx, conditions) @ [ ctx.WhenEnvArg(envKey, defaultArg envValue "") ])
-
-    [<CustomOperation("cmdArg")>]
-    member inline _.cmdArg([<InlineIfLambda>] builder: BuildConditions, argKey: string, ?argValue: string) =
-        BuildConditions(fun ctx conditions -> builder.Invoke(ctx, conditions) @ [ ctx.WhenCmdArg(argKey, defaultArg argValue "") ])
-
-    [<CustomOperation("branch")>]
-    member inline _.branch([<InlineIfLambda>] builder: BuildConditions, branch: string) =
-        BuildConditions(fun ctx conditions -> builder.Invoke(ctx, conditions) @ [ ctx.WhenBranch(branch) ])
-
-
-type WhenAnyBuilder() =
-    inherit ConditionsBuilder()
-
-    member inline _.Run([<InlineIfLambda>] builder: BuildConditions) =
-        BuildStageIsActive(fun stage -> stage.IsActive <- fun () -> builder.Invoke(stage, []) |> Seq.exists (fun fn -> fn ()))
-
-
-type WhenAllBuilder() =
-    inherit ConditionsBuilder()
-
-    member inline _.Run([<InlineIfLambda>] builder: BuildConditions) =
-        BuildStageIsActive(fun stage ->
-            stage.IsActive <- fun () -> builder.Invoke(stage, []) |> Seq.map (fun fn -> fn ()) |> Seq.reduce (fun x y -> x && y)
-        )
 
 
 type StageBuilder(name: string) =
@@ -164,18 +20,22 @@ type StageBuilder(name: string) =
     member _.Delay(fn: unit -> BuildStageIsActive) =
         let ctx = StageContext name
         let condition = fn ()
-        condition.Invoke ctx
+        ctx.IsActive <- condition.Invoke ctx
         ctx
 
 
     member inline _.Combine(ctx: StageContext, [<InlineIfLambda>] condition: BuildStageIsActive) =
-        condition.Invoke ctx
+        ctx.IsActive <- condition.Invoke ctx
         ctx
 
     member inline this.Combine([<InlineIfLambda>] condition: BuildStageIsActive, ctx: StageContext) = this.Combine(ctx, condition)
 
 
     member inline _.For(_: StageContext, [<InlineIfLambda>] fn: unit -> StageContext) = fn ()
+
+    member inline _.For(ctx: StageContext, [<InlineIfLambda>] fn: unit -> BuildStageIsActive) =
+        ctx.IsActive <- fn().Invoke(ctx)
+        ctx
 
 
     /// Add or override environment variables
@@ -200,8 +60,8 @@ type StageBuilder(name: string) =
 
     /// Set if the steps in current stage should run in parallel
     [<CustomOperation("paralle")>]
-    member _.paralle(ctx: StageContext, value: bool) =
-        ctx.IsParallel <- fun () -> value
+    member _.paralle(ctx: StageContext, ?value: bool) =
+        ctx.IsParallel <- fun () -> defaultArg value true
         ctx
 
 
@@ -320,7 +180,3 @@ type StageBuilder(name: string) =
 
 /// Build a stage
 let stage = StageBuilder
-/// When any of the added conditions are satisified, the stage will be active
-let whenAny = WhenAnyBuilder()
-/// When all of the added conditions are satisified, the stage will be active
-let whenAll = WhenAllBuilder()
