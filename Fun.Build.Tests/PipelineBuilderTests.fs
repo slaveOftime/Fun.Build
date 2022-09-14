@@ -244,7 +244,7 @@ let ``parallel should work`` () =
         }
         runImmediate
     }
-    Assert.True(sw.ElapsedMilliseconds < 3000)
+    Assert.True(sw.ElapsedMilliseconds < 1500)
 
     sw.Restart()
     pipeline "" {
@@ -255,7 +255,7 @@ let ``parallel should work`` () =
         }
         runImmediate
     }
-    Assert.True(sw.ElapsedMilliseconds >= 2500)
+    Assert.True(sw.ElapsedMilliseconds >= 3000)
 
 
 [<Fact>]

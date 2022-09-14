@@ -20,7 +20,7 @@ pipeline "Fun.Build" {
     }
     stage "Lint" {
         whenNot { envVar "GITHUB_ACTION" }
-        run "fantomas ."
+        run "fantomas . -r"
     }
     stage "Run unit tests" { run "dotnet test" }
     stage "Build packages" { run "dotnet pack -c Release Fun.Build/Fun.Build.fsproj -o ." }

@@ -32,7 +32,7 @@ type PipelineBuilder(name: string) =
         BuildPipeline(fun ctx -> fn().Invoke(build.Invoke ctx))
 
     member inline _.For([<InlineIfLambda>] build: BuildPipeline, [<InlineIfLambda>] fn: unit -> StageContext) =
-        BuildPipeline(fun ctx -> { ctx with Stages = ctx.Stages @ [ fn () ] })
+        BuildPipeline(fun ctx -> { build.Invoke ctx with Stages = ctx.Stages @ [ fn () ] })
 
     /// Set default timeout for all stages, stage can also set timeout to override this. Unit is seconds.
     [<CustomOperation("timeout")>]

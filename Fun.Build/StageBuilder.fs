@@ -8,289 +8,358 @@ open Spectre.Console
 
 type StageBuilder(name: string) =
 
-    member _.Run(ctx: StageContext) = ctx
+    member _.Run(build: BuildStage) = build.Invoke(StageContext.Create name)
 
 
-    member _.Yield(_: unit) = StageContext.Create name
+    member inline _.Yield(_: unit) = BuildStage id
 
     member inline _.Yield([<InlineIfLambda>] condition: BuildStageIsActive) = condition
     member inline _.Yield([<InlineIfLambda>] builder: BuildStep) = builder
 
 
-    member inline _.Delay(fn: unit -> StageContext) = fn ()
+    member inline _.Delay([<InlineIfLambda>] fn: unit -> BuildStage) = BuildStage(fun ctx -> fn().Invoke(ctx))
 
-    member _.Delay(fn: unit -> BuildStageIsActive) =
-        let ctx = StageContext.Create name
-        { ctx with IsActive = fn().Invoke }
+    member inline _.Delay([<InlineIfLambda>] fn: unit -> BuildStageIsActive) = BuildStage(fun ctx -> { ctx with IsActive = fn().Invoke })
 
-    member _.Delay(fn: unit -> BuildStep) =
-        let ctx = StageContext.Create name
-        { ctx with Steps = [ fn().Invoke ] }
+    member inline _.Delay([<InlineIfLambda>] fn: unit -> BuildStep) = BuildStage(fun ctx -> { ctx with Steps = [ fn().Invoke ] })
 
 
-    member inline _.Combine(ctx: StageContext, [<InlineIfLambda>] condition: BuildStageIsActive) = { ctx with IsActive = condition.Invoke }
+    member inline _.Combine(build: BuildStage, [<InlineIfLambda>] condition: BuildStageIsActive) =
+        BuildStage(fun ctx -> { build.Invoke ctx with IsActive = condition.Invoke })
 
-    member inline this.Combine([<InlineIfLambda>] condition: BuildStageIsActive, ctx: StageContext) = this.Combine(ctx, condition)
-
-
-    member inline _.Combine(ctx: StageContext, [<InlineIfLambda>] builder: BuildStep) = { ctx with Steps = ctx.Steps @ [ builder.Invoke ] }
-
-    member inline this.Combine([<InlineIfLambda>] builder: BuildStep, ctx: StageContext) = this.Combine(ctx, builder)
+    member inline this.Combine([<InlineIfLambda>] condition: BuildStageIsActive, [<InlineIfLambda>] build: BuildStage) =
+        this.Combine(build, condition)
 
 
-    member inline _.For(_: StageContext, [<InlineIfLambda>] fn: unit -> StageContext) = fn ()
+    member inline _.Combine([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] builder: BuildStep) =
+        BuildStage(fun ctx ->
+            { build.Invoke ctx with
+                Steps = ctx.Steps @ [ builder.Invoke ]
+            }
+        )
 
-    member inline _.For(ctx: StageContext, [<InlineIfLambda>] fn: unit -> BuildStageIsActive) = { ctx with IsActive = fn().Invoke }
+    member inline this.Combine([<InlineIfLambda>] builder: BuildStep, [<InlineIfLambda>] build: BuildStage) = this.Combine(build, builder)
 
-    member inline _.For(ctx: StageContext, [<InlineIfLambda>] fn: unit -> BuildStep) = { ctx with Steps = ctx.Steps @ [ fn().Invoke ] }
+
+    member inline _.For([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] fn: unit -> BuildStage) =
+        BuildStage(fun ctx -> fn().Invoke(build.Invoke(ctx)))
+
+    member inline _.For([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] fn: unit -> BuildStageIsActive) =
+        BuildStage(fun ctx -> { build.Invoke ctx with IsActive = fn().Invoke })
+
+    member inline _.For([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] fn: unit -> BuildStep) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with Steps = ctx.Steps @ [ fn().Invoke ] }
+        )
 
 
     /// Add or override environment variables
     [<CustomOperation("envArgs")>]
-    member inline _.envArgs(ctx: StageContext, kvs: seq<string * string>) =
-        { ctx with
-            EnvVars = kvs |> Seq.fold (fun state (k, v) -> Map.add k v state) ctx.EnvVars
-        }
+    member inline _.envArgs([<InlineIfLambda>] build: BuildStage, kvs: seq<string * string>) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with
+                EnvVars = kvs |> Seq.fold (fun state (k, v) -> Map.add k v state) ctx.EnvVars
+            }
+        )
 
     /// Set timeout for every step under the current stage.
     /// Unit is second.
     [<CustomOperation("timeout")>]
-    member _.timeout(ctx: StageContext, seconds: int) =
-        { ctx with
-            Timeout = ValueSome(TimeSpan.FromSeconds seconds)
-        }
+    member inline _.timeout(build: BuildStage, seconds: int) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with
+                Timeout = ValueSome(TimeSpan.FromSeconds seconds)
+            }
+        )
 
     /// Set timeout for every step under the current stage.
     /// Unit is second.
     [<CustomOperation("timeout")>]
-    member _.timeout(ctx: StageContext, time: TimeSpan) = { ctx with Timeout = ValueSome time }
+    member inline _.timeout(build: BuildStage, time: TimeSpan) = BuildStage(fun ctx -> { build.Invoke ctx with Timeout = ValueSome time })
 
-    /// Set if the steps in current stage should run in parallel
+    /// Set if the steps in current stage should run in parallel, default value is true.
     [<CustomOperation("paralle")>]
-    member _.paralle(ctx: StageContext, ?value: bool) = { ctx with IsParallel = defaultArg value true }
+    member inline _.paralle(build: BuildStage, ?value: bool) = BuildStage(fun ctx -> { build.Invoke ctx with IsParallel = defaultArg value true })
 
 
     /// Add a step.
     [<CustomOperation("add")>]
-    member inline _.add(ctx: StageContext, [<InlineIfLambda>] build: BuildStep) = { ctx with Steps = ctx.Steps @ [ build.Invoke ] }
+    member inline _.add([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] buildStep: BuildStep) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with Steps = ctx.Steps @ [ buildStep.Invoke ] }
+        )
 
     /// Add a step.
     [<CustomOperation("add")>]
-    member inline _.add(ctx: StageContext, [<InlineIfLambda>] build: StageContext -> BuildStep) =
-        { ctx with
-            Steps =
-                ctx.Steps
-                @ [
-                    fun ctx -> async {
-                        let builder = build ctx
-                        return! builder.Invoke(ctx)
-                    }
-                ]
-        }
+    member inline _.add([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] buildStep: StageContext -> BuildStep) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with
+                Steps =
+                    ctx.Steps
+                    @ [
+                        fun ctx -> async {
+                            let builder = buildStep ctx
+                            return! builder.Invoke(ctx)
+                        }
+                    ]
+            }
+        )
 
     /// Add a step.
     [<CustomOperation("add")>]
-    member inline _.add(ctx: StageContext, [<InlineIfLambda>] build: StageContext -> Async<BuildStep>) =
-        { ctx with
-            Steps =
-                ctx.Steps
-                @ [
-                    fun ctx -> async {
-                        let! builder = build ctx
-                        return! builder.Invoke(ctx)
-                    }
-                ]
-        }
+    member inline _.add([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] buildStep: StageContext -> Async<BuildStep>) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with
+                Steps =
+                    ctx.Steps
+                    @ [
+                        fun ctx -> async {
+                            let! builder = buildStep ctx
+                            return! builder.Invoke(ctx)
+                        }
+                    ]
+            }
+        )
 
 
     /// Add a step to run command. This will not encrypt any sensitive information when print to console.
     [<CustomOperation("run")>]
-    member inline _.run(ctx: StageContext, exe: string, args: string) = ctx.AddCommandStep(exe + " " + args)
+    member inline _.run([<InlineIfLambda>] build: BuildStage, exe: string, args: string) =
+        BuildStage(fun ctx -> build.Invoke(ctx).AddCommandStep(exe + " " + args))
 
     /// Add a step to run command. This will not encrypt any sensitive information when print to console.
     [<CustomOperation("run")>]
-    member inline _.run(ctx: StageContext, command: string) = ctx.AddCommandStep(command)
+    member inline _.run([<InlineIfLambda>] build: BuildStage, command: string) = BuildStage(fun ctx -> build.Invoke(ctx).AddCommandStep(command))
 
     /// Add a step to run command. This will not encrypt any sensitive information when print to console.
     [<CustomOperation("run")>]
-    member inline _.run(ctx: StageContext, step: StageContext -> string) =
-        { ctx with
-            Steps =
-                ctx.Steps
-                @ [
-                    fun ctx -> async {
-                        let commandStr = step ctx
-                        use outputStream = Console.OpenStandardOutput()
-                        let command = ctx.BuildCommand(commandStr, outputStream)
-                        AnsiConsole.MarkupLine $"[green]{commandStr}[/]"
-                        let! result = command.ExecuteAsync().Task |> Async.AwaitTask
-                        return result.ExitCode
-                    }
-                ]
-        }
+    member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] step: StageContext -> string) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with
+                Steps =
+                    ctx.Steps
+                    @ [
+                        fun ctx -> async {
+                            let commandStr = step ctx
+                            use outputStream = Console.OpenStandardOutput()
+                            let command = ctx.BuildCommand(commandStr, outputStream)
+                            AnsiConsole.MarkupLine $"[green]{commandStr}[/]"
+                            let! result = command.ExecuteAsync().Task |> Async.AwaitTask
+                            return result.ExitCode
+                        }
+                    ]
+            }
+        )
 
     /// Add a step to run command. This will not encrypt any sensitive information when print to console.
     [<CustomOperation("run")>]
-    member inline _.run(ctx: StageContext, step: StageContext -> Async<string>) =
-        { ctx with
-            Steps =
-                ctx.Steps
-                @ [
-                    fun ctx -> async {
-                        let! commandStr = step ctx
-                        use outputStream = Console.OpenStandardOutput()
-                        let command = ctx.BuildCommand(commandStr, outputStream)
-                        AnsiConsole.MarkupLine $"[green]{commandStr}[/]"
-                        let! result = command.ExecuteAsync().Task |> Async.AwaitTask
-                        return result.ExitCode
-                    }
-                ]
-        }
+    member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] step: StageContext -> Async<string>) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with
+                Steps =
+                    ctx.Steps
+                    @ [
+                        fun ctx -> async {
+                            let! commandStr = step ctx
+                            use outputStream = Console.OpenStandardOutput()
+                            let command = ctx.BuildCommand(commandStr, outputStream)
+                            AnsiConsole.MarkupLine $"[green]{commandStr}[/]"
+                            let! result = command.ExecuteAsync().Task |> Async.AwaitTask
+                            return result.ExitCode
+                        }
+                    ]
+            }
+        )
 
 
     /// Add a step to run a async.
     [<CustomOperation("run")>]
-    member inline _.run(ctx: StageContext, step: Async<unit>) =
-        { ctx with
-            Steps =
-                ctx.Steps
-                @ [
-                    fun ctx -> async {
-                        do! step
-                        return 0
-                    }
-                ]
-        }
+    member inline _.run([<InlineIfLambda>] build: BuildStage, step: Async<unit>) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with
+                Steps =
+                    ctx.Steps
+                    @ [
+                        fun _ -> async {
+                            do! step
+                            return 0
+                        }
+                    ]
+            }
+        )
 
     /// Add a step to run a async with exit code returned.
     [<CustomOperation("run")>]
-    member inline _.run(ctx: StageContext, step: Async<int>) =
-        { ctx with
-            Steps =
-                ctx.Steps
-                @ [
-                    fun _ -> step
-                ]
-        }
+    member inline _.run([<InlineIfLambda>] build: BuildStage, step: Async<int>) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with
+                Steps =
+                    ctx.Steps
+                    @ [
+                        fun _ -> step
+                    ]
+            }
+        )
 
 
     /// Add a step to run.
     [<CustomOperation("run")>]
-    member inline _.run(ctx: StageContext, step: StageContext -> unit) =
-        { ctx with
-            Steps =
-                ctx.Steps
-                @ [
-                    fun ctx -> async {
-                        step ctx
-                        return 0
-                    }
-                ]
-        }
+    member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] step: StageContext -> unit) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with
+                Steps =
+                    ctx.Steps
+                    @ [
+                        fun ctx -> async {
+                            step ctx
+                            return 0
+                        }
+                    ]
+            }
+        )
 
     /// Add a step to run and return an exist code.
     [<CustomOperation("run")>]
-    member inline _.run(ctx: StageContext, step: StageContext -> int) =
-        { ctx with
-            Steps =
-                ctx.Steps
-                @ [
-                    fun _ -> async { return step ctx }
-                ]
-        }
+    member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] step: StageContext -> int) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with
+                Steps =
+                    ctx.Steps
+                    @ [
+                        fun _ -> async { return step ctx }
+                    ]
+            }
+        )
 
 
     /// Add a step to run.
     [<CustomOperation("run")>]
-    member inline _.run(ctx: StageContext, step: StageContext -> Async<unit>) =
-        { ctx with
-            Steps =
-                ctx.Steps
-                @ [
-                    fun ctx -> async {
-                        do! step ctx
-                        return 0
-                    }
-                ]
-        }
+    member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] step: StageContext -> Async<unit>) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with
+                Steps =
+                    ctx.Steps
+                    @ [
+                        fun ctx -> async {
+                            do! step ctx
+                            return 0
+                        }
+                    ]
+            }
+        )
 
     /// Add a step to run.
     [<CustomOperation("run")>]
-    member inline _.run(ctx: StageContext, step: StageContext -> Async<int>) =
-        { ctx with
-            Steps =
-                ctx.Steps
-                @ [
-                    fun _ -> async { return! step ctx }
-                ]
-        }
+    member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] step: StageContext -> Async<int>) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with
+                Steps =
+                    ctx.Steps
+                    @ [
+                        fun _ -> async { return! step ctx }
+                    ]
+            }
+        )
 
 
     /// Add a step to run.
     [<CustomOperation("run")>]
-    member inline _.run(ctx: StageContext, step: StageContext -> Task) =
-        { ctx with
-            Steps =
-                ctx.Steps
-                @ [
-                    fun ctx -> async {
-                        do! step ctx |> Async.AwaitTask
-                        return 0
-                    }
-                ]
-        }
+    member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] step: StageContext -> Task) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with
+                Steps =
+                    ctx.Steps
+                    @ [
+                        fun ctx -> async {
+                            do! step ctx |> Async.AwaitTask
+                            return 0
+                        }
+                    ]
+            }
+        )
 
     /// Add a step to run.
     [<CustomOperation("run")>]
-    member inline _.run(ctx: StageContext, step: StageContext -> Task<unit>) =
-        { ctx with
-            Steps =
-                ctx.Steps
-                @ [
-                    fun ctx -> async {
-                        do! step ctx |> Async.AwaitTask
-                        return 0
-                    }
-                ]
-        }
+    member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] step: StageContext -> Task<unit>) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with
+                Steps =
+                    ctx.Steps
+                    @ [
+                        fun ctx -> async {
+                            do! step ctx |> Async.AwaitTask
+                            return 0
+                        }
+                    ]
+            }
+        )
 
     /// Add a step to run.
     [<CustomOperation("run")>]
-    member inline _.run(ctx: StageContext, step: StageContext -> Task<int>) =
-        { ctx with
-            Steps =
-                ctx.Steps
-                @ [
-                    fun _ -> async { return! step ctx |> Async.AwaitTask }
-                ]
-        }
+    member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] step: StageContext -> Task<int>) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with
+                Steps =
+                    ctx.Steps
+                    @ [
+                        fun _ -> async { return! step ctx |> Async.AwaitTask }
+                    ]
+            }
+        )
 
 
     /// Set if stage is active, or should run.
     [<CustomOperation("when'")>]
-    member inline _.when'(ctx: StageContext, value: bool) = { ctx with IsActive = fun _ -> value }
+    member inline _.when'([<InlineIfLambda>] build: BuildStage, value: bool) =
+        BuildStage(fun ctx -> { build.Invoke ctx with IsActive = fun _ -> value })
 
 
     /// Set if stage is active, or should run by check the environment variable.
     [<CustomOperation("whenEnvVar")>]
-    member inline _.whenEnvVar(ctx: StageContext, envKey: string, ?envValue: string) =
-        { ctx with
-            IsActive = fun ctx -> ctx.WhenEnvArg(envKey, defaultArg envValue "")
-        }
+    member inline _.whenEnvVar([<InlineIfLambda>] build: BuildStage, envKey: string, ?envValue: string) =
+        BuildStage(fun ctx ->
+            { build.Invoke ctx with
+                IsActive = fun ctx -> ctx.WhenEnvArg(envKey, defaultArg envValue "")
+            }
+        )
 
     /// Set if stage is active, or should run by check the command line args.
     [<CustomOperation("whenCmdArg")>]
-    member inline _.whenCmdArg(ctx: StageContext, argKey: string, ?argValue: string) =
-        { ctx with
-            IsActive = fun ctx -> ctx.WhenCmdArg(argKey, defaultArg argValue "")
-        }
+    member inline _.whenCmdArg([<InlineIfLambda>] build: BuildStage, argKey: string, ?argValue: string) =
+        BuildStage(fun ctx ->
+            { build.Invoke ctx with
+                IsActive = fun ctx -> ctx.WhenCmdArg(argKey, defaultArg argValue "")
+            }
+        )
 
     /// Set if stage is active, or should run by check the git branch name.
     [<CustomOperation("whenBranch")>]
-    member inline _.whenBranch(ctx: StageContext, branch: string) = { ctx with IsActive = fun ctx -> ctx.WhenBranch branch }
+    member inline _.whenBranch([<InlineIfLambda>] build: BuildStage, branch: string) =
+        BuildStage(fun ctx ->
+            { build.Invoke ctx with
+                IsActive = fun ctx -> ctx.WhenBranch branch
+            }
+        )
 
 
-/// Build a stage
+/// Build a stage with multiple steps which will run in sequence by default.
 let inline stage name = StageBuilder name
 
 /// Create a command with a formattable string which will encode the arguments as * when print to console.
