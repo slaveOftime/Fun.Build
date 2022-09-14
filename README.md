@@ -1,5 +1,7 @@
 # Fun.Build
 
+<p style="color: red;">Current it is under development, use it carefully</p>
+
 This is a project mainly used for CICD, you can use it in a fsharp project or as a script. You can check the **build.fsx** under the root folder to check how the Fun.Build project itself is built and published to nuget.
 
 The basic idea is you have **pipeline** which can contain multiple stages.  
@@ -51,7 +53,7 @@ pipeline "Fun.Build" {
         }
     ]
     // You can have multiple pipelines, sometimes you only want to run it only if the command specified the pipeline name.
-    // If this is set to false, then it will always run if you do not specify which pipeline to run.
+    // If this is set to false, then it will always run if you do not specify which pipeline to run. By default it is true. 
     // To specify you can do this: dotnet fsi build.fsx -p Fun.Build
     runIfOnlySpecified false
 }

@@ -1,4 +1,4 @@
-#r "nuget: Fun.Build, 0.0.7"
+#r "nuget: Fun.Build, 0.0.8"
 #r "nuget: Fake.IO.FileSystem, 5.20.4"
 
 // for local dev only
