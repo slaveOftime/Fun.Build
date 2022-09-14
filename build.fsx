@@ -14,6 +14,7 @@ pipeline "Fun.Build" {
         run "dotnet --version"
         run "dotnet --list-sdks"
         run (fun ctx -> printfn $"""GITHUB_ACTION: {ctx.GetEnvVar "GITHUB_ACTION"}""")
+        run (fun ctx -> printfn $"""TEST_123: {ctx.GetEnvVar "TEST_123"}""")
     }
     stage "Run unit tests" { run "dotnet test" }
     stage "Build packages" { run "dotnet pack -c Release Fun.Build/Fun.Build.fsproj -o ." }
