@@ -50,7 +50,16 @@ type WhenAllBuilder() =
         BuildStageIsActive(fun stage -> fun () -> builder.Invoke(stage, []) |> Seq.map (fun fn -> fn ()) |> Seq.reduce (fun x y -> x && y))
 
 
+type WhenNotBuilder() =
+    inherit ConditionsBuilder()
+
+    member inline _.Run([<InlineIfLambda>] builder: BuildConditions) =
+        BuildStageIsActive(fun stage -> fun () -> builder.Invoke(stage, []) |> Seq.map (fun fn -> not(fn ())) |> Seq.reduce (fun x y -> x && y))
+
+
 /// When any of the added conditions are satisified, the stage will be active
 let whenAny = WhenAnyBuilder()
 /// When all of the added conditions are satisified, the stage will be active
 let whenAll = WhenAllBuilder()
+/// When all of the added conditions are not satisified, the stage will be active
+let whenNot = WhenNotBuilder()

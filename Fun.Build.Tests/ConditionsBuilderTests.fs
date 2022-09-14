@@ -102,12 +102,42 @@ let ``whenAll should work`` () =
     Assert.True(condition.Invoke (stage) ())
 
 
+[<Fact>]
+let ``whenNot should work`` () =
+    let condition = whenNot {
+        cmdArg "test1"
+        envVar "test2"
+    }
+
+    let pipeline = PipelineContext()
+
+    let stage = StageContext ""
+    stage.PipelineContext <- ValueSome pipeline
+
+    Assert.True(condition.Invoke (stage) ())
+
+    pipeline.CmdArgs.Add "test1"
+    Assert.False(condition.Invoke (stage) ())
+
+    pipeline.CmdArgs.Clear()
+    pipeline.EnvVars.Add("test2", "")
+    Assert.False(condition.Invoke (stage) ())
+
+    pipeline.CmdArgs.Clear()
+    pipeline.EnvVars.Clear()
+    pipeline.CmdArgs.Add "test1"
+    pipeline.EnvVars.Add("test2", "")
+    Assert.False(condition.Invoke (stage) ())
+
 
 [<Fact>]
 let ``when compose should work`` () =
     let condition = whenAny {
         cmdArg "test1"
-        whenAll { envVar "test2" }
+        whenAll {
+            cmdArg "test2"
+            whenNot { cmdArg "test3" }
+        }
     }
 
     let pipeline = PipelineContext()
@@ -121,5 +151,9 @@ let ``when compose should work`` () =
     Assert.True(condition.Invoke (stage) ())
 
     pipeline.CmdArgs.Clear()
-    pipeline.EnvVars.Add("test2", "")
+    pipeline.CmdArgs.Add("test2")
     Assert.True(condition.Invoke (stage) ())
+
+    pipeline.CmdArgs.Clear()
+    pipeline.CmdArgs.Add("test3")
+    Assert.False(condition.Invoke (stage) ())
