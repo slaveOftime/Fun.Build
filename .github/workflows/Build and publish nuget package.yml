@@ -24,5 +24,4 @@ jobs:
     - name: Use Fun.Build
       env:
         NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-        TEST_123: 123
       run: dotnet fsi ./build.fsx

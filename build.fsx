@@ -14,7 +14,6 @@ pipeline "Fun.Build" {
         run "dotnet --version"
         run "dotnet --list-sdks"
         run (fun ctx -> printfn $"""GITHUB_ACTION: {ctx.GetEnvVar "GITHUB_ACTION"}""")
-        run (fun ctx -> printfn $"""TEST_123: {ctx.GetEnvVar "TEST_123"}""")
     }
     stage "Run unit tests" { run "dotnet test" }
     stage "Build packages" { run "dotnet pack -c Release Fun.Build/Fun.Build.fsproj -o ." }
@@ -25,6 +24,7 @@ pipeline "Fun.Build" {
         }
         add (fun ctx ->
             // use cmd so we can make sure sensitive information in FormatableString is encoded
+            printfn "token length: %d" (ctx.GetEnvVar "NUGET_API_KEY").Length
             cmd $"""dotnet nuget push *.nupkg -s https://api.nuget.org/v3/index.json -k {ctx.GetEnvVar "NUGET_API_KEY"} --skip-duplicate"""
         )
     }
