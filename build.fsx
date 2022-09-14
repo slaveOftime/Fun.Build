@@ -1,4 +1,4 @@
-#r "nuget: Fun.Build, 0.0.5"
+#r "nuget: Fun.Build, 0.0.7"
 
 // for local dev only
 //#r "nuget: Cliwrap"
