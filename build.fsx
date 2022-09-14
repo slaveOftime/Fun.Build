@@ -1,4 +1,5 @@
 #r "nuget: Fun.Build, 0.0.7"
+#r "nuget: Fake.IO.FileSystem, 5.20.4"
 
 // for local dev only
 //#r "nuget: Cliwrap"
@@ -6,6 +7,8 @@
 //#r "Fun.Build/bin/Debug/netstandard2.0/Fun.Build.dll"
 
 open Fun.Build
+open Fake.IO
+open Fake.IO.Globbing.Operators
 
 
 pipeline "Fun.Build" {
@@ -24,10 +27,14 @@ pipeline "Fun.Build" {
         }
         add (fun ctx ->
             // use cmd so we can make sure sensitive information in FormatableString is encoded
-            printfn "token length: %d" (ctx.GetEnvVar "NUGET_API_KEY").Length
             cmd $"""dotnet nuget push *.nupkg -s https://api.nuget.org/v3/index.json -k {ctx.GetEnvVar "NUGET_API_KEY"} --skip-duplicate"""
         )
     }
-    post [ stage "Post stage" { run (fun _ -> printfn "Always do something when other stages are failed") } ]
+    post [
+        stage "Post stage" {
+            whenNot { envVar "GITHUB_ACTION" }
+            run (fun _ -> File.deleteAll !! "*.nupkg")
+        }
+    ]
     runIfOnlySpecified false
 }
