@@ -1,8 +1,10 @@
 # Fun.Build
 
-This is a project mainly used for CICD, you can use it in a fsharp project or as a script. You can check the **build.fsx** under the root folder to check how the Fun.Build project itself is build and published to nuget.
+This is a project mainly used for CICD, you can use it in a fsharp project or as a script. You can check the **build.fsx** under the root folder to check how the Fun.Build project itself is built and published to nuget.
 
-The basic idea is you have pipeline which can contain multiple stage, every stage can contain multiple steps. In the stage you can set it to run in parallel or run under some conditions (when envVar, cmdArg, branch etc.).
+The basic idea is you have **pipeline** which can contain multiple stages.  
+Every **stage** can contain multiple steps. In the stage you can set it to run in parallel or run under some conditions (when envVar, cmdArg, branch etc.).  
+Every **step** is just a **async< int >**, int is for the exit code. 
 
 
 ## For what
@@ -10,6 +12,7 @@ The basic idea is you have pipeline which can contain multiple stage, every stag
 - Simple and straight forward DSL
 - Type safety and extendable DSL
 - Build and compose complex pipelines
+- Test your pipelines locally
 
 
 ## Example:
@@ -30,6 +33,7 @@ pipeline "Fun.Build" {
     stage "Run unit tests" { run "dotnet test" }
     stage "Build packages" { run "dotnet pack -c Release Fun.Build/Fun.Build.fsproj -o ." }
     stage "Publish packages to nuget" {
+        // whenAny, whenNot, whenAll. They can also be composed.
         whenAll { // Means only all conditions are matched then the current stage can be active
             branch "master" // Check current branch is master
             envVar "NUGET_API_KEY" // Check has env variable
