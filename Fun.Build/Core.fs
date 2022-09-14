@@ -175,9 +175,9 @@ type PipelineContext() =
         let failfast = defaultArg failfast true
         let stages = stages |> Seq.filter (fun x -> x.IsActive()) |> Seq.toList
         let mutable i = 0
-        let mutable shouldStop = false
+        let mutable hasError = false
 
-        while i < stages.Length && (not failfast || not shouldStop) do
+        while i < stages.Length && (not failfast || not hasError) do
             let stage = stages[i]
 
             let timeout =
@@ -219,12 +219,14 @@ type PipelineContext() =
                 AnsiConsole.MarkupLine $"[red]> Run step failed: {ex.Message}[/]"
                 AnsiConsole.WriteException ex
                 AnsiConsole.WriteLine()
-                shouldStop <- true
+                hasError <- true
 
             AnsiConsole.Write(Rule($"STAGE #{i} [bold teal]{stage.Name}[/] finished").LeftAligned())
             AnsiConsole.Write(Rule())
 
             i <- i + 1
+
+        hasError
 
 
     member this.Run() =
@@ -244,13 +246,13 @@ type PipelineContext() =
 
 
         AnsiConsole.MarkupLine $"[grey]Run stages[/]"
-        this.RunStages(this.Stages, failfast = true)
+        let hasFailedStage = this.RunStages(this.Stages, failfast = true)
         AnsiConsole.MarkupLine $"[grey]Run stages finished[/]"
         AnsiConsole.WriteLine()
         AnsiConsole.WriteLine()
 
         AnsiConsole.MarkupLine $"[grey]Run post stages[/]"
-        this.RunStages(this.PostStages, failfast = false)
+        let hasFailedPostStage = this.RunStages(this.PostStages, failfast = false)
         AnsiConsole.MarkupLine $"[grey]Run post stages finished[/]"
         AnsiConsole.WriteLine()
         AnsiConsole.WriteLine()
@@ -258,6 +260,8 @@ type PipelineContext() =
 
         AnsiConsole.MarkupLine $"[bold lime]Run PIPELINE {this.Name} finished in {sw.ElapsedMilliseconds} ms[/]"
         AnsiConsole.WriteLine()
+
+        if hasFailedStage || hasFailedPostStage then failwith "Pipeline is failed."
 
 
 type BuildPipeline = delegate of ctx: PipelineContext -> PipelineContext

@@ -110,52 +110,64 @@ let ``pipeline should world with mutiple stages with different conditions`` () =
 
 [<Fact>]
 let ``post stage should always run when other stage is failed`` () =
-    shouldBeCalled (fun call ->
-        pipeline "" {
-            stage "" {
-                run (fun _ ->
-                    failwith "test"
-                    ()
-                )
-            }
-            post [ stage "" { run call } ]
-            runImmediate
-        }
-    )
-
-    shouldBeCalled (fun call ->
-        pipeline "" {
-            stage "" { run (fun _ -> -1) }
-            post [ stage "" { run call } ]
-            runImmediate
-        }
-    )
-
-
-
-[<Fact>]
-let ``all post stages should always run when some post stages are failed`` () =
-    shouldBeCalled (fun call ->
-        pipeline "" {
-            post [
+    Assert.Throws<exn>(fun _ ->
+        shouldBeCalled (fun call ->
+            pipeline "" {
                 stage "" {
                     run (fun _ ->
                         failwith "test"
                         ()
                     )
                 }
-                stage "" { run call }
-            ]
-            runImmediate
-        }
+                post [ stage "" { run call } ]
+                runImmediate
+            }
+        )
     )
+    |> ignore
 
-    shouldBeCalled (fun call ->
-        pipeline "" {
-            post [ stage "" { run (fun _ -> -1) }; stage "" { run call } ]
-            runImmediate
-        }
+    Assert.Throws<exn>(fun _ ->
+        shouldBeCalled (fun call ->
+            pipeline "" {
+                stage "" { run (fun _ -> -1) }
+                post [ stage "" { run call } ]
+                runImmediate
+            }
+        )
     )
+    |> ignore
+
+
+
+[<Fact>]
+let ``all post stages should always run when some post stages are failed`` () =
+    Assert.Throws<exn>(fun _ ->
+        shouldBeCalled (fun call ->
+            pipeline "" {
+                post [
+                    stage "" {
+                        run (fun _ ->
+                            failwith "test"
+                            ()
+                        )
+                    }
+                    stage "" { run call }
+                ]
+                runImmediate
+            }
+        )
+    )
+    |> ignore
+
+    Assert.Throws<exn>(fun _ ->
+        shouldBeCalled (fun call ->
+            pipeline "" {
+                post [ stage "" { run (fun _ -> -1) }; stage "" { run call } ]
+                runImmediate
+            }
+        )
+    )
+    |> ignore
 
 
 [<Fact>]
@@ -175,20 +187,23 @@ let ``timeout should work`` () =
         }
     )
 
-    shouldNotBeCalled (fun call ->
-        pipeline "" {
-            timeout 1
-            stage "" {
-                run (
-                    async {
-                        do! Async.Sleep 2000
-                        call ()
-                    }
-                )
+    Assert.Throws<exn>(fun _ ->
+        shouldNotBeCalled (fun call ->
+            pipeline "" {
+                timeout 1
+                stage "" {
+                    run (
+                        async {
+                            do! Async.Sleep 2000
+                            call ()
+                        }
+                    )
+                }
+                runImmediate
             }
-            runImmediate
-        }
+        )
     )
+    |> ignore
 
 
 [<Fact>]
