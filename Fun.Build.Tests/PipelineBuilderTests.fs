@@ -3,6 +3,7 @@
 open Xunit
 open Fun.Build
 open System.Diagnostics
+open System.Threading.Tasks
 
 
 [<Fact>]
@@ -219,27 +220,27 @@ let ``parallel should work`` () =
             paralle
             run (Async.Sleep 1000)
             run (Async.Sleep 1000)
-            run (Async.Sleep 1000)
+            run (fun _ -> Task.Delay 1000)
         }
         runImmediate
     }
     Assert.True(sw.ElapsedMilliseconds < 3000)
 
-    let sw = Stopwatch.StartNew()
+    sw.Restart()
     pipeline "" {
         stage "" {
             run (Async.Sleep 1000)
             run (Async.Sleep 1000)
-            run (Async.Sleep 1000)
+            run (fun _ -> Task.Delay 1000)
         }
         runImmediate
     }
-    Assert.True(sw.ElapsedMilliseconds > 3000)
+    Assert.True(sw.ElapsedMilliseconds >= 3000)
 
 
 [<Fact>]
 let ``Syntax check`` () =
-    let stage1 = stage "" {  run ignore }
+    let stage1 = stage "" { run ignore }
 
     pipeline "" { stage "" { whenCmdArg "" } } |> ignore
 
@@ -258,6 +259,23 @@ let ``Syntax check`` () =
                     cmdArg "" ""
                 }
             }
+        }
+    }
+    |> ignore
+
+    pipeline "" {
+        stage "" {
+            run ""
+            run "" ""
+            run (fun _ -> "")
+            run (fun _ -> ())
+            run (fun _ -> 0)
+            run (fun _ -> async { () })
+            run (fun _ -> async { return 0 })
+            run (fun _ -> task { () })
+            run (fun _ -> task { return 0 })
+            run (fun _ -> Task.Delay 10)
+            run (Async.Sleep 10)
         }
     }
     |> ignore

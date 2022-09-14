@@ -59,6 +59,9 @@ type StageContext(name: string) =
                     ValueNone
             )
 
+    // If not find then return ""
+    member inline ctx.GetEnvVar(key: string) = ctx.TryGetEnvVar key |> ValueOption.defaultValue ""
+
 
     member inline ctx.TryGetCmdArg(key: string) =
         match ctx.PipelineContext with
@@ -74,17 +77,30 @@ type StageContext(name: string) =
                 None
 
 
-    member inline ctx.AddCommandStep(exe: string, args: string) =
+    member inline ctx.BuildCommand(commandStr: string) =
+        let index = commandStr.IndexOf " "
+
+        let cmd, args =
+            if index > 0 then
+                let cmd = commandStr.Substring(0, index)
+                let args = commandStr.Substring(index + 1)
+                cmd, args
+            else
+                commandStr, ""
+
+        let mutable command = Cli.Wrap(cmd).WithArguments(args)
+        use output = Console.OpenStandardOutput()
+
+        ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command <- command.WithWorkingDirectory x)
+
+        command <- command.WithEnvironmentVariables(ctx.BuildEnvVars())
+        command <- command.WithStandardOutputPipe(PipeTarget.ToStream output).WithValidation(CommandResultValidation.None)
+        command
+
+    member inline ctx.AddCommandStep(commandStr: string) =
         ctx.Steps.Add(
             async {
-                let mutable command = Cli.Wrap(exe).WithArguments(args)
-                use output = Console.OpenStandardOutput()
-
-                ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command <- command.WithWorkingDirectory x)
-
-                command <- command.WithEnvironmentVariables(ctx.BuildEnvVars())
-                command <- command.WithStandardOutputPipe(PipeTarget.ToStream output).WithValidation(CommandResultValidation.None)
-
+                let command = ctx.BuildCommand(commandStr)
                 AnsiConsole.MarkupLine $"[green]{command.ToString()}[/]"
                 let! result = command.ExecuteAsync().Task |> Async.AwaitTask
                 return result.ExitCode
@@ -183,7 +199,8 @@ type PipelineContext() =
                     let! result = step
                     AnsiConsole.MarkupLine $"""[gray]finished run step{if isParallel then " in parallel." else "."}[/]"""
                     AnsiConsole.WriteLine()
-                    if result <> 0 then failwith "Run step failed."
+                    if result <> 0 then
+                        failwith $"Step finished without a success exist code. {result}"
                 }
                 )
 

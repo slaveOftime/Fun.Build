@@ -3,6 +3,7 @@ module Fun.Build.StageBuilder
 
 open System
 open System.Threading.Tasks
+open Spectre.Console
 
 
 type StageBuilder(name: string) =
@@ -65,42 +66,34 @@ type StageBuilder(name: string) =
         ctx
 
 
-    /// Add a step to run.
+    /// Add a step to run command.
     [<CustomOperation("run")>]
-    member inline _.run(ctx: StageContext, exe: string, args: string) = ctx.AddCommandStep(exe, args)
+    member inline _.run(ctx: StageContext, exe: string, args: string) = ctx.AddCommandStep(exe + " " + args)
 
-    /// Add a step to run.
+    /// Add a step to run command.
     [<CustomOperation("run")>]
-    member inline _.run(ctx: StageContext, command: string) =
-        let index = command.IndexOf " "
+    member inline _.run(ctx: StageContext, command: string) = ctx.AddCommandStep(command)
 
-        if index > 0 then
-            let cmd = command.Substring(0, index)
-            let args = command.Substring(index + 1)
-            ctx.AddCommandStep(cmd, args)
-        else
-            ctx.AddCommandStep(command, "")
-
-
-    /// Add a step to run.
+    /// Add a step to run command.
     [<CustomOperation("run")>]
-    member inline _.run(ctx: StageContext, step: Task) =
+    member inline this.run(ctx: StageContext, step: StageContext -> string) = this.run (ctx, step ctx)
+
+    /// Add a step to run command.
+    [<CustomOperation("run")>]
+    member inline _.run(ctx: StageContext, step: StageContext -> Async<string>) =
         ctx.Steps.Add(
             async {
-                do! Async.AwaitTask step
-                return 0
+                let! commandStr = step ctx
+                let command = ctx.BuildCommand(commandStr)
+                AnsiConsole.MarkupLine $"[green]{commandStr}[/]"
+                let! result = command.ExecuteAsync().Task |> Async.AwaitTask
+                return result.ExitCode
             }
         )
         ctx
 
-    /// Add a step to run.
-    [<CustomOperation("run")>]
-    member inline _.run(ctx: StageContext, step: Task<int>) =
-        ctx.Steps.Add(Async.AwaitTask step)
-        ctx
 
-
-    /// Add a step to run.
+    /// Add a step to run a async.
     [<CustomOperation("run")>]
     member inline _.run(ctx: StageContext, step: Async<unit>) =
         ctx.Steps.Add(
@@ -111,7 +104,7 @@ type StageBuilder(name: string) =
         )
         ctx
 
-    /// Add a step to run.
+    /// Add a step to run a async with exit code returned.
     [<CustomOperation("run")>]
     member inline _.run(ctx: StageContext, step: Async<int>) =
         ctx.Steps.Add step
@@ -120,10 +113,28 @@ type StageBuilder(name: string) =
 
     /// Add a step to run.
     [<CustomOperation("run")>]
-    member inline _.run(ctx: StageContext, step: unit -> unit) =
+    member inline _.run(ctx: StageContext, step: StageContext -> unit) =
         ctx.Steps.Add(
             async {
-                step ()
+                step ctx
+                return 0
+            }
+        )
+        ctx
+
+    /// Add a step to run and return an exist code.
+    [<CustomOperation("run")>]
+    member inline _.run(ctx: StageContext, step: StageContext -> int) =
+        ctx.Steps.Add(async { return step ctx })
+        ctx
+
+
+    /// Add a step to run.
+    [<CustomOperation("run")>]
+    member inline _.run(ctx: StageContext, step: StageContext -> Async<unit>) =
+        ctx.Steps.Add(
+            async {
+                do! step ctx
                 return 0
             }
         )
@@ -131,26 +142,37 @@ type StageBuilder(name: string) =
 
     /// Add a step to run.
     [<CustomOperation("run")>]
-    member inline _.run(ctx: StageContext, step: unit -> int) =
-        ctx.Steps.Add(async { return step () })
+    member inline _.run(ctx: StageContext, step: StageContext -> Async<int>) =
+        ctx.Steps.Add(step ctx)
         ctx
 
 
     /// Add a step to run.
-    [<CustomOperation("runWith")>]
-    member inline _.runWith(ctx: StageContext, step: StageContext -> Async<int>) =
-        ctx.Steps.Add(async { return! step ctx })
-        ctx
-
-    /// Add a step to run.
-    [<CustomOperation("runWith")>]
-    member inline _.runWith(ctx: StageContext, step: StageContext -> Async<unit>) =
+    [<CustomOperation("run")>]
+    member inline _.run(ctx: StageContext, step: StageContext -> Task) =
         ctx.Steps.Add(
             async {
-                do! step ctx
+                do! step ctx |> Async.AwaitTask
                 return 0
             }
         )
+        ctx
+
+    /// Add a step to run.
+    [<CustomOperation("run")>]
+    member inline _.run(ctx: StageContext, step: StageContext -> Task<unit>) =
+        ctx.Steps.Add(
+            async {
+                do! step ctx |> Async.AwaitTask
+                return 0
+            }
+        )
+        ctx
+
+    /// Add a step to run.
+    [<CustomOperation("run")>]
+    member inline _.run(ctx: StageContext, step: StageContext -> Task<int>) =
+        ctx.Steps.Add(step ctx |> Async.AwaitTask)
         ctx
 
 
