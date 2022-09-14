@@ -92,7 +92,12 @@ type StageBuilder(name: string) =
     /// Add a step.
     [<CustomOperation("add")>]
     member inline _.add(ctx: StageContext, [<InlineIfLambda>] build: StageContext -> BuildStep) =
-        ctx.Steps.Add((build ctx).Invoke(ctx))
+        ctx.Steps.Add(
+            async {
+                let builder = build ctx
+                return! builder.Invoke(ctx)
+            }
+        )
         ctx
 
     /// Add a step.
