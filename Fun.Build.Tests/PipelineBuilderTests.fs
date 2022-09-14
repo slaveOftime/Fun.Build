@@ -98,6 +98,11 @@ let ``pipeline should world with mutiple stages with different conditions`` () =
         pipeline "" {
             stage "" { run ignore }
             stage "" { run call }
+            stage "" {
+                paralle
+                run "dotnet --version"
+                run "dotnet --list-sdks"
+            }
             runImmediate
         }
     )

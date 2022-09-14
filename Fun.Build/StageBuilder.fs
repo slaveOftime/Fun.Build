@@ -84,7 +84,8 @@ type StageBuilder(name: string) =
         ctx.Steps.Add(
             async {
                 let! commandStr = step ctx
-                let command = ctx.BuildCommand(commandStr)
+                use outputStream = Console.OpenStandardOutput()
+                let command = ctx.BuildCommand(commandStr, outputStream)
                 AnsiConsole.MarkupLine $"[green]{commandStr}[/]"
                 let! result = command.ExecuteAsync().Task |> Async.AwaitTask
                 return result.ExitCode

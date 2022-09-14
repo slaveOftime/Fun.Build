@@ -77,7 +77,7 @@ type StageContext(name: string) =
                 None
 
 
-    member inline ctx.BuildCommand(commandStr: string) =
+    member inline ctx.BuildCommand(commandStr: string, outputStream: IO.Stream) =
         let index = commandStr.IndexOf " "
 
         let cmd, args =
@@ -89,18 +89,18 @@ type StageContext(name: string) =
                 commandStr, ""
 
         let mutable command = Cli.Wrap(cmd).WithArguments(args)
-        use output = Console.OpenStandardOutput()
 
         ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command <- command.WithWorkingDirectory x)
 
         command <- command.WithEnvironmentVariables(ctx.BuildEnvVars())
-        command <- command.WithStandardOutputPipe(PipeTarget.ToStream output).WithValidation(CommandResultValidation.None)
+        command <- command.WithStandardOutputPipe(PipeTarget.ToStream outputStream).WithValidation(CommandResultValidation.None)
         command
 
     member inline ctx.AddCommandStep(commandStr: string) =
         ctx.Steps.Add(
             async {
-                let command = ctx.BuildCommand(commandStr)
+                use outputStream = Console.OpenStandardOutput()
+                let command = ctx.BuildCommand(commandStr, outputStream)
                 AnsiConsole.MarkupLine $"[green]{command.ToString()}[/]"
                 let! result = command.ExecuteAsync().Task |> Async.AwaitTask
                 return result.ExitCode
