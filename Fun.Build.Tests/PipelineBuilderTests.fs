@@ -281,6 +281,22 @@ let ``Syntax check`` () =
             run (fun _ -> task { return 0 })
             run (fun _ -> Task.Delay 10)
             run (Async.Sleep 10)
+            add (cmd $"")
+            add (fun _ -> async { return cmd $"" })
+            cmd $""
+            add (fun _ -> async { return cmd $"" })
+            run (Async.Sleep 10)
         }
     }
     |> ignore
+
+
+[<Fact>]
+let ``check sensitive command`` () =
+    pipeline "check sensitive command" {
+        stage "" {
+            cmd $"powershell echo {123}"
+            add (fun _ -> cmd $"powershell echo {456}")
+        }
+        runImmediate
+    }

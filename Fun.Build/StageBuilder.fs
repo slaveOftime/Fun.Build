@@ -14,6 +14,7 @@ type StageBuilder(name: string) =
     member _.Yield(_: unit) = StageContext name
 
     member inline _.Yield([<InlineIfLambda>] condition: BuildStageIsActive) = condition
+    member inline _.Yield([<InlineIfLambda>] builder: BuildStep) = builder
 
 
     member inline _.Delay(fn: unit -> StageContext) = fn ()
@@ -24,6 +25,11 @@ type StageBuilder(name: string) =
         ctx.IsActive <- condition.Invoke ctx
         ctx
 
+    member _.Delay(fn: unit -> BuildStep) =
+        let ctx = StageContext name
+        ctx.Steps.Add(fn().Invoke(ctx))
+        ctx
+
 
     member inline _.Combine(ctx: StageContext, [<InlineIfLambda>] condition: BuildStageIsActive) =
         ctx.IsActive <- condition.Invoke ctx
@@ -32,10 +38,21 @@ type StageBuilder(name: string) =
     member inline this.Combine([<InlineIfLambda>] condition: BuildStageIsActive, ctx: StageContext) = this.Combine(ctx, condition)
 
 
+    member inline _.Combine(ctx: StageContext, [<InlineIfLambda>] builder: BuildStep) =
+        ctx.Steps.Add(builder.Invoke ctx)
+        ctx
+
+    member inline this.Combine([<InlineIfLambda>] builder: BuildStep, ctx: StageContext) = this.Combine(ctx, builder)
+
+
     member inline _.For(_: StageContext, [<InlineIfLambda>] fn: unit -> StageContext) = fn ()
 
     member inline _.For(ctx: StageContext, [<InlineIfLambda>] fn: unit -> BuildStageIsActive) =
         ctx.IsActive <- fn().Invoke(ctx)
+        ctx
+
+    member inline _.For(ctx: StageContext, [<InlineIfLambda>] fn: unit -> BuildStep) =
+        ctx.Steps.Add(fn().Invoke ctx)
         ctx
 
 
@@ -66,19 +83,43 @@ type StageBuilder(name: string) =
         ctx
 
 
-    /// Add a step to run command.
+    /// Add a step.
+    [<CustomOperation("add")>]
+    member inline _.add(ctx: StageContext, [<InlineIfLambda>] build: BuildStep) =
+        ctx.Steps.Add(build.Invoke(ctx))
+        ctx
+
+    /// Add a step.
+    [<CustomOperation("add")>]
+    member inline _.add(ctx: StageContext, [<InlineIfLambda>] build: StageContext -> BuildStep) =
+        ctx.Steps.Add((build ctx).Invoke(ctx))
+        ctx
+
+    /// Add a step.
+    [<CustomOperation("add")>]
+    member inline _.add(ctx: StageContext, [<InlineIfLambda>] build: StageContext -> Async<BuildStep>) =
+        ctx.Steps.Add(
+            async {
+                let! builder = build ctx
+                return! builder.Invoke(ctx)
+            }
+        )
+        ctx
+
+
+    /// Add a step to run command. This will not encrypt any sensitive information when print to console.
     [<CustomOperation("run")>]
     member inline _.run(ctx: StageContext, exe: string, args: string) = ctx.AddCommandStep(exe + " " + args)
 
-    /// Add a step to run command.
+    /// Add a step to run command. This will not encrypt any sensitive information when print to console.
     [<CustomOperation("run")>]
     member inline _.run(ctx: StageContext, command: string) = ctx.AddCommandStep(command)
 
-    /// Add a step to run command.
+    /// Add a step to run command. This will not encrypt any sensitive information when print to console.
     [<CustomOperation("run")>]
     member inline this.run(ctx: StageContext, step: StageContext -> string) = this.run (ctx, step ctx)
 
-    /// Add a step to run command.
+    /// Add a step to run command. This will not encrypt any sensitive information when print to console.
     [<CustomOperation("run")>]
     member inline _.run(ctx: StageContext, step: StageContext -> Async<string>) =
         ctx.Steps.Add(
@@ -203,3 +244,16 @@ type StageBuilder(name: string) =
 
 /// Build a stage
 let stage = StageBuilder
+
+/// Create a command with a formattable string which will encode the arguments as * when print to console.
+let inline cmd (commandStr: FormattableString) =
+    BuildStep(fun ctx -> async {
+        use outputStream = Console.OpenStandardOutput()
+        let command = ctx.BuildCommand(commandStr.ToString(), outputStream)
+        let args: obj[] = Array.create commandStr.ArgumentCount "*"
+        let encryptiedStr = String.Format(commandStr.Format, args)
+        AnsiConsole.MarkupLine $"[green]{encryptiedStr}[/]"
+        let! result = command.ExecuteAsync().Task |> Async.AwaitTask
+        return result.ExitCode
+    }
+    )
