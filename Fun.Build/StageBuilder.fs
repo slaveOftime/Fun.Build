@@ -60,7 +60,7 @@ type StageBuilder(name: string) =
     /// Set timeout for every step under the current stage.
     /// Unit is second.
     [<CustomOperation("timeout")>]
-    member inline _.timeout(build: BuildStage, seconds: int) =
+    member inline _.timeout([<InlineIfLambda>] build: BuildStage, seconds: int) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
             { ctx with
@@ -71,13 +71,14 @@ type StageBuilder(name: string) =
     /// Set timeout for every step under the current stage.
     /// Unit is second.
     [<CustomOperation("timeout")>]
-    member inline _.timeout(build: BuildStage, time: TimeSpan) = BuildStage(fun ctx -> { build.Invoke ctx with Timeout = ValueSome time })
+    member inline _.timeout([<InlineIfLambda>] build: BuildStage, time: TimeSpan) =
+        BuildStage(fun ctx -> { build.Invoke ctx with Timeout = ValueSome time })
 
 
     /// Set timeout for every step under the current stage.
     /// Unit is second.
     [<CustomOperation("timeoutForStep")>]
-    member inline _.timeoutForStep(build: BuildStage, seconds: int) =
+    member inline _.timeoutForStep([<InlineIfLambda>] build: BuildStage, seconds: int) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
             { ctx with
@@ -88,13 +89,19 @@ type StageBuilder(name: string) =
     /// Set timeout for every step under the current stage.
     /// Unit is second.
     [<CustomOperation("timeoutForStep")>]
-    member inline _.timeoutForStep(build: BuildStage, time: TimeSpan) =
+    member inline _.timeoutForStep([<InlineIfLambda>] build: BuildStage, time: TimeSpan) =
         BuildStage(fun ctx -> { build.Invoke ctx with TimeoutForStep = ValueSome time })
 
 
     /// Set if the steps in current stage should run in parallel, default value is true.
     [<CustomOperation("paralle")>]
-    member inline _.paralle(build: BuildStage, ?value: bool) = BuildStage(fun ctx -> { build.Invoke ctx with IsParallel = defaultArg value true })
+    member inline _.paralle([<InlineIfLambda>] build: BuildStage, ?value: bool) =
+        BuildStage(fun ctx -> { build.Invoke ctx with IsParallel = defaultArg value true })
+
+    /// Set workding dir for all steps under the stage. 
+    [<CustomOperation("workingDir")>]
+    member inline _.workingDir([<InlineIfLambda>] build: BuildStage, dir: string) =
+        BuildStage(fun ctx -> { build.Invoke ctx with WorkingDir = ValueSome dir })
 
 
     /// Add a step.

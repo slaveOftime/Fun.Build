@@ -117,6 +117,11 @@ type PipelineBuilder(name: string) =
             { ctx with CmdArgs = args }
         )
 
+    /// Set workding dir for all steps under the stage.
+    [<CustomOperation("workingDir")>]
+    member inline _.workingDir([<InlineIfLambda>] build: BuildPipeline, dir: string) =
+        BuildPipeline(fun ctx -> { build.Invoke ctx with WorkingDir = ValueSome dir })
+
 
     [<CustomOperation("post")>]
     member inline _.post([<InlineIfLambda>] build: BuildPipeline, stages: StageContext list) =
