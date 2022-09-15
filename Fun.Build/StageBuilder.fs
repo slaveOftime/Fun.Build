@@ -21,31 +21,24 @@ type StageBuilder(name: string) =
 
     member inline _.Delay([<InlineIfLambda>] fn: unit -> BuildStageIsActive) = BuildStage(fun ctx -> { ctx with IsActive = fn().Invoke })
 
-    member inline _.Delay([<InlineIfLambda>] fn: unit -> BuildStep) = BuildStage(fun ctx -> { ctx with Steps = [ fn().Invoke ] })
+    member inline _.Delay([<InlineIfLambda>] fn: unit -> BuildStep) = BuildStage(fun ctx -> { ctx with Steps = ctx.Steps @ [ fn().Invoke ] })
 
 
-    member inline _.Combine(build: BuildStage, [<InlineIfLambda>] condition: BuildStageIsActive) =
-        BuildStage(fun ctx -> { build.Invoke ctx with IsActive = condition.Invoke })
+    member inline _.Combine([<InlineIfLambda>] condition: BuildStageIsActive, [<InlineIfLambda>] build: BuildStage) =
+        BuildStage(fun ctx -> build.Invoke { ctx with IsActive = condition.Invoke })
 
-    member inline this.Combine([<InlineIfLambda>] condition: BuildStageIsActive, [<InlineIfLambda>] build: BuildStage) =
-        this.Combine(build, condition)
-
-
-    member inline _.Combine([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] builder: BuildStep) =
-        BuildStage(fun ctx ->
-            { build.Invoke ctx with
-                Steps = ctx.Steps @ [ builder.Invoke ]
-            }
-        )
-
-    member inline this.Combine([<InlineIfLambda>] builder: BuildStep, [<InlineIfLambda>] build: BuildStage) = this.Combine(build, builder)
+    member inline _.Combine([<InlineIfLambda>] builder: BuildStep, [<InlineIfLambda>] build: BuildStage) =
+        BuildStage(fun ctx -> build.Invoke { ctx with Steps = ctx.Steps @ [ builder.Invoke ] })
 
 
     member inline _.For([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] fn: unit -> BuildStage) =
         BuildStage(fun ctx -> fn().Invoke(build.Invoke(ctx)))
 
     member inline _.For([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] fn: unit -> BuildStageIsActive) =
-        BuildStage(fun ctx -> { build.Invoke ctx with IsActive = fn().Invoke })
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with IsActive = fn().Invoke }
+        )
 
     member inline _.For([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] fn: unit -> BuildStep) =
         BuildStage(fun ctx ->

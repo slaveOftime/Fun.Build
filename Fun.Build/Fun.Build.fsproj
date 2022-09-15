@@ -9,7 +9,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<Compile Include="Core.fs" />
+		<Compile Include="Types.fs" />
 		<Compile Include="StageContextExtensions.fs" />
 		<Compile Include="PipelineContextExtensions.fs" />
 		<Compile Include="ConditionsBuilder.fs" />

@@ -3,10 +3,8 @@ module Fun.Build.PipelineContextExtensions
 
 open System
 open System.Text
-open System.Linq
 open System.Diagnostics
 open Spectre.Console
-open CliWrap
 
 
 type PipelineContext with
