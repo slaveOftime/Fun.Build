@@ -98,7 +98,7 @@ type StageBuilder(name: string) =
     member inline _.paralle([<InlineIfLambda>] build: BuildStage, ?value: bool) =
         BuildStage(fun ctx -> { build.Invoke ctx with IsParallel = defaultArg value true })
 
-    /// Set workding dir for all steps under the stage. 
+    /// Set workding dir for all steps under the stage.
     [<CustomOperation("workingDir")>]
     member inline _.workingDir([<InlineIfLambda>] build: BuildStage, dir: string) =
         BuildStage(fun ctx -> { build.Invoke ctx with WorkingDir = ValueSome dir })
@@ -342,6 +342,28 @@ type StageBuilder(name: string) =
                     ]
             }
         )
+
+
+    /// Add a step to run.
+    [<CustomOperation("echo")>]
+    member inline _.echo([<InlineIfLambda>] build: BuildStage, msg: StageContext -> string) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with
+                Steps =
+                    ctx.Steps
+                    @ [
+                        fun ctx -> async {
+                            printfn "%s" (msg ctx)
+                            return 0
+                        }
+                    ]
+            }
+        )
+
+    /// Add a step to run.
+    [<CustomOperation("echo")>]
+    member inline this.echo([<InlineIfLambda>] build: BuildStage, msg: string) = this.echo (build, (fun _ -> msg))
 
 
     /// Set if stage is active, or should run.

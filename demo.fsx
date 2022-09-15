@@ -55,6 +55,8 @@ pipeline "Fun.Build" {
     }
     post [ // Post stages are optional. It will run even other normal stages are failed.
         stage "Post stage" {
+            echo "You are finished 😂"
+            echo (fun ctx -> sprintf "You are finished here: %A" (ctx.GetWorkingDir()))
             run (fun _ -> async {
                 return 0 // do something
             })
