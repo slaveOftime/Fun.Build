@@ -1,6 +1,9 @@
-#r "nuget: Fun.Build, 0.0.9"
+#r "nuget: Cliwrap"
+#r "nuget: Spectre.Console"
+#r "Fun.Build/bin/Debug/netstandard2.0/Fun.Build.dll"
 
 open Fun.Build
+
 
 pipeline "Fun.Build" {
     timeout 30 // You can set overall timeout for the pipeline
@@ -49,8 +52,7 @@ pipeline "Fun.Build" {
         stage "Post stage" {
             run (fun _ -> async {
                 return 0 // do something
-            }
-            )
+            })
         }
     ]
     // You can have multiple pipelines, sometimes you only want to run it only if the command specified the pipeline name.

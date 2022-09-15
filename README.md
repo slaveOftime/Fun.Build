@@ -35,11 +35,11 @@ pipeline "Fun.Build" {
         timeoutForStep 30 // You can set default timeout for step under the stage
         envVars [ "envKey", "envValue" ] // You can add or override environment variables
         // Use cmd, so we can encrypt sensitive argument for formatable string
-        cmd $"dotnet --version" 
+        cmd $"dotnet --version"
         add (fun ctx -> cmd $"""dotnet {"--version"}""")
         add (fun ctx -> async { return cmd $"""dotnet {"--version"}""" })
         // You can run command directly with a string
-        run "dotnet --version" 
+        run "dotnet --version"
         run (fun ctx -> "dotnet --version")
         run (fun ctx -> async { return "dotnet --version" })
         // You can run async functions
@@ -50,7 +50,7 @@ pipeline "Fun.Build" {
         run (fun ctx -> ())
         run (fun ctx -> 0) // return an exit code to indicate if it successful
         // You can also use the low level api
-        BuildStep (fun ctx -> async { return 0 })
+        BuildStep(fun ctx -> async { return 0 })
     }
     stage "Demo2" {
         // whenAny, whenNot, whenAll. They can also be composed.
@@ -75,10 +75,10 @@ pipeline "Fun.Build" {
         }
     ]
     // You can have multiple pipelines, sometimes you only want to run it only if the command specified the pipeline name.
-    // If this is set to false, then it will always run if you do not specify which pipeline to run. By default it is true. 
+    // If this is set to false, then it will always run if you do not specify which pipeline to run. By default it is true.
     // To specify you can do this: dotnet fsi build.fsx -p Fun.Build
     runIfOnlySpecified false
-    // You can also run it directly
-    // runImmediate
+// You can also run it directly
+// runImmediate
 }
 ```

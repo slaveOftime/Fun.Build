@@ -13,6 +13,7 @@
     <Compile Include="ConditionsBuilderTests.fs" />
     <Compile Include="PipelineBuilderTests.fs" />
     <Compile Include="TimeoutTests.fs" />
+    <Compile Include="SequenceTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
