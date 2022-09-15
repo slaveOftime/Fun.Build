@@ -20,7 +20,7 @@ Every **step** is just a **async< int >**, int is for the exit code.
 ## Example:
 
 ```fsharp
-#r "nuget: Fun.Build, 0.1.0"
+#r "nuget: Fun.Build, 0.1.1"
 
 open Fun.Build
 
@@ -30,6 +30,7 @@ pipeline "Fun.Build" {
     timeoutForStage 10 // You can set default timeout for every stage
     envVars [ "envKey", "envValue" ] // You can add or override environment variables
     cmdArgs [ "arg1"; "arg2" ] // You can reset the command args
+    workingDir __SOURCE_DIRECTORY__
     stage "Demo1" {
         timeout 30 // You can set default timeout for the stage
         timeoutForStep 30 // You can set default timeout for step under the stage
@@ -67,8 +68,14 @@ pipeline "Fun.Build" {
         run "dotnet --version"
         run "dotnet --version"
     }
+    stage "Demo3" {
+        workingDir @"C:\Users"
+        run "powershell pwd"
+    }
     post [ // Post stages are optional. It will run even other normal stages are failed.
         stage "Post stage" {
+            echo "You are finished 😂"
+            echo (fun ctx -> sprintf "You are finished here: %A" (ctx.GetWorkingDir()))
             run (fun _ -> async {
                 return 0 // do something
             })
