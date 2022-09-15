@@ -7,7 +7,13 @@ open System
 type PipelineBuilder(name: string) =
 
     member inline _.Run(_: unit) = ()
-    member _.Run(build: BuildPipeline) = build.Invoke(PipelineContext.Create name)
+
+    member _.Run(build: BuildPipeline) =
+        let ctx = build.Invoke(PipelineContext.Create name)
+        { ctx with
+            Stages = ctx.Stages |> List.map (fun x -> { x with PipelineContext = ValueSome ctx })
+            PostStages = ctx.PostStages |> List.map (fun x -> { x with PipelineContext = ValueSome ctx })
+        }
 
     member inline _.Yield(_: unit) = BuildPipeline id
 
@@ -91,8 +97,8 @@ type PipelineBuilder(name: string) =
 
 
     /// Add or override environment variables
-    [<CustomOperation("envArgs")>]
-    member inline _.envArgs([<InlineIfLambda>] build: BuildPipeline, kvs: seq<string * string>) =
+    [<CustomOperation("envVars")>]
+    member inline _.envVars([<InlineIfLambda>] build: BuildPipeline, kvs: seq<string * string>) =
         BuildPipeline(fun ctx ->
             let ctx = build.Invoke ctx
             { ctx with

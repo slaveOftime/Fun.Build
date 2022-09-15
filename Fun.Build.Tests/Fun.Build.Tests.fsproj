@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <Compile Include="Utils.fs" />
+    <Compile Include="StageContextExtensions.fs" />
     <Compile Include="ConditionsBuilderTests.fs" />
     <Compile Include="PipelineBuilderTests.fs" />
     <Compile Include="TimeoutTests.fs" />

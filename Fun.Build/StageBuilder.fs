@@ -55,8 +55,8 @@ type StageBuilder(name: string) =
 
 
     /// Add or override environment variables
-    [<CustomOperation("envArgs")>]
-    member inline _.envArgs([<InlineIfLambda>] build: BuildStage, kvs: seq<string * string>) =
+    [<CustomOperation("envVars")>]
+    member inline _.envVars([<InlineIfLambda>] build: BuildStage, kvs: seq<string * string>) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
             { ctx with

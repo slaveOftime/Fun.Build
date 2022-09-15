@@ -35,7 +35,7 @@ let ``pipeline should world with mutiple stages with different conditions`` () =
 
     shouldBeCalled (fun call ->
         pipeline "" {
-            envArgs [ "test2", "" ]
+            envVars [ "test2", "" ]
             stage "" {
                 whenEnvVar "test2"
                 run call
@@ -74,7 +74,7 @@ let ``pipeline should world with mutiple stages with different conditions`` () =
     shouldBeCalled (fun call ->
         pipeline "" {
             cmdArgs [ "test1" ]
-            envArgs [ "test2", "" ]
+            envVars [ "test2", "" ]
             stage "" {
                 timeout 1000
                 whenAll {
@@ -232,7 +232,7 @@ let ``Syntax check`` () =
 
     pipeline "" {
         cmdArgs [ "" ]
-        envArgs [ "", "" ]
+        envVars [ "", "" ]
         stage1
         stage "" { run ignore }
         stage "" {

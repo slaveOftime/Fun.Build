@@ -82,15 +82,25 @@ type StageContext with
 
     member ctx.TryGetCmdArg(key: string) =
         match ctx.PipelineContext with
-        | ValueNone -> None
+        | ValueNone -> ValueNone
         | ValueSome pipeline ->
             match pipeline.CmdArgs |> List.tryFindIndex ((=) key) with
             | Some index ->
                 if List.length pipeline.CmdArgs > index + 1 then
-                    Some pipeline.CmdArgs[index + 1]
+                    ValueSome pipeline.CmdArgs[index + 1]
                 else
-                    Some ""
-            | _ -> None
+                    ValueSome ""
+            | _ -> ValueNone
+
+    member inline ctx.GetCmdArg(key) = ctx.TryGetCmdArg key |> ValueOption.defaultValue ""
+
+
+    member inline ctx.TryGetCmdArgOrEnvVar(key: string) =
+        match ctx.TryGetCmdArg(key) with
+        | ValueSome x -> ValueSome x
+        | _ -> ctx.TryGetEnvVar(key)
+
+    member inline ctx.GetCmdArgOrEnvVar(key) = ctx.TryGetCmdArgOrEnvVar key |> ValueOption.defaultValue ""
 
 
     member ctx.BuildCommand(commandStr: string, outputStream: IO.Stream) =
@@ -135,7 +145,7 @@ type StageContext with
 
     member ctx.WhenCmdArg(argKey: string, argValue: string) =
         match ctx.TryGetCmdArg argKey with
-        | Some v when argValue = "" || v = argValue -> true
+        | ValueSome v when argValue = "" || v = argValue -> true
         | _ -> false
 
 

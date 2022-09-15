@@ -42,7 +42,7 @@ let ``whenEnvVar should work`` () =
 
     shouldBeCalled (fun call ->
         pipeline "" {
-            envArgs [ "test1", "" ]
+            envVars [ "test1", "" ]
             stage "" {
                 whenEnvVar "test1"
                 run call

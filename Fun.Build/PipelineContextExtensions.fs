@@ -34,6 +34,16 @@ type PipelineContext with
         }
 
 
+    /// Return the first stage which its name as specified. It will first search the normal stages, then it will search post stages.
+    member this.FindStageByName(name: string) =
+        match this.Stages |> List.tryFind (fun x -> x.Name = name) with
+        | Some x -> ValueSome x
+        | _ ->
+            match this.PostStages |> List.tryFind (fun x -> x.Name = name) with
+            | Some x -> ValueSome x
+            | _ -> ValueNone
+
+
     member this.RunStages(stages: StageContext seq, externalCancelToken: Threading.CancellationToken, ?failfast: bool) =
         let failfast = defaultArg failfast true
 
@@ -51,7 +61,7 @@ type PipelineContext with
 
             let timeoutForStep = stage.GetTimeoutForStep()
             let timeoutForStage = stage.GetTimeoutForStage()
-            
+
             use cts = new Threading.CancellationTokenSource(timeoutForStage)
             use linkedCTS = Threading.CancellationTokenSource.CreateLinkedTokenSource(cts.Token, externalCancelToken)
 
@@ -98,7 +108,7 @@ type PipelineContext with
                 AnsiConsole.WriteLine()
                 hasError <- true
 
-            AnsiConsole.Write(Rule($"STAGE #{i} [bold teal]{stage.Name}[/] finished").LeftAligned())
+            AnsiConsole.Write(Rule($"""STAGE #{i} [bold {if hasError then "red" else "teal"}]{stage.Name}[/] finished""").LeftAligned())
             AnsiConsole.Write(Rule())
 
             i <- i + 1
@@ -144,8 +154,9 @@ type PipelineContext with
         AnsiConsole.WriteLine()
         AnsiConsole.WriteLine()
 
+        let hasError = hasFailedStage || hasFailedPostStage
 
-        AnsiConsole.MarkupLine $"[bold lime]Run PIPELINE {this.Name} finished in {sw.ElapsedMilliseconds} ms[/]"
+        AnsiConsole.MarkupLine $"""[bold {if hasError then "red" else "lime"}]Run PIPELINE {this.Name} finished in {sw.ElapsedMilliseconds} ms[/]"""
         AnsiConsole.WriteLine()
 
-        if hasFailedStage || hasFailedPostStage then failwith "Pipeline is failed."
+        if hasError then failwith "Pipeline is failed."
