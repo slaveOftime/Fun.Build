@@ -265,6 +265,7 @@ let ``Syntax check`` () =
             cmd $""
             add (fun _ -> async { return cmd $"" })
             run (Async.Sleep 10)
+            BuildStep(fun ctx -> async { return 0 })
         }
     }
     |> ignore

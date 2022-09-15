@@ -78,9 +78,9 @@ type PipelineContext with
                 stage.Steps
                 |> Seq.map (fun step ->
                     let ts = async {
-                        AnsiConsole.MarkupLine $"""[grey]> start step{if isParallel then " in parallel -->" else ":"}[/]"""
+                        AnsiConsole.MarkupLine $"""[grey]> step started{if isParallel then " in parallel -->" else ":"}[/]"""
                         let! result = step stage
-                        AnsiConsole.MarkupLine $"""[gray]> finished run step{if isParallel then " in parallel." else "."}[/]"""
+                        AnsiConsole.MarkupLine $"""[gray]> step finished{if isParallel then " in parallel." else "."}[/]"""
                         AnsiConsole.WriteLine()
                         if result <> 0 then
                             failwith $"Step finished without a success exist code. {result}"
@@ -103,7 +103,7 @@ type PipelineContext with
                         }
                 Async.RunSynchronously(ts, cancellationToken = linkedCTS.Token)
             with ex ->
-                AnsiConsole.MarkupLine $"[red]> Run step failed: {ex.Message}[/]"
+                AnsiConsole.MarkupLine $"[red]> step failed: {ex.Message}[/]"
                 AnsiConsole.WriteException ex
                 AnsiConsole.WriteLine()
                 hasError <- true

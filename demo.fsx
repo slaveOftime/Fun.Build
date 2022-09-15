@@ -1,26 +1,4 @@
-# Fun.Build
-
-<p style="color: red;">Current it is under development, use it carefully</p>
-
-This is a project mainly used for CICD, you can use it in a fsharp project or as a script. You can check the **build.fsx** under the root folder to check how the Fun.Build project itself is built and published to nuget.
-
-The basic idea is you have **pipeline** which can contain multiple stages.  
-Every **stage** can contain multiple steps. In the stage you can set it to run in parallel or run under some conditions (when envVar, cmdArg, branch etc.).  
-Every **step** is just a **async< int >**, int is for the exit code. 
-
-
-## For what
-
-- Simple and straight forward DSL
-- Type safety and extendable DSL
-- Build and compose complex pipelines
-- Test your pipelines locally
-
-
-## Example:
-
-```fsharp
-#r "nuget: Fun.Build, 0.1.0"
+#r "nuget: Fun.Build, 0.0.9"
 
 open Fun.Build
 
@@ -35,11 +13,11 @@ pipeline "Fun.Build" {
         timeoutForStep 30 // You can set default timeout for step under the stage
         envVars [ "envKey", "envValue" ] // You can add or override environment variables
         // Use cmd, so we can encrypt sensitive argument for formatable string
-        cmd $"dotnet --version" 
+        cmd $"dotnet --version"
         add (fun ctx -> cmd $"""dotnet {"--version"}""")
         add (fun ctx -> async { return cmd $"""dotnet {"--version"}""" })
         // You can run command directly with a string
-        run "dotnet --version" 
+        run "dotnet --version"
         run (fun ctx -> "dotnet --version")
         run (fun ctx -> async { return "dotnet --version" })
         // You can run async functions
@@ -50,7 +28,7 @@ pipeline "Fun.Build" {
         run (fun ctx -> ())
         run (fun ctx -> 0) // return an exit code to indicate if it successful
         // You can also use the low level api
-        BuildStep (fun ctx -> async { return 0 })
+        BuildStep(fun ctx -> async { return 0 })
     }
     stage "Demo2" {
         // whenAny, whenNot, whenAll. They can also be composed.
@@ -71,14 +49,14 @@ pipeline "Fun.Build" {
         stage "Post stage" {
             run (fun _ -> async {
                 return 0 // do something
-            })
+            }
+            )
         }
     ]
     // You can have multiple pipelines, sometimes you only want to run it only if the command specified the pipeline name.
-    // If this is set to false, then it will always run if you do not specify which pipeline to run. By default it is true. 
+    // If this is set to false, then it will always run if you do not specify which pipeline to run. By default it is true.
     // To specify you can do this: dotnet fsi build.fsx -p Fun.Build
     runIfOnlySpecified false
-    // You can also run it directly
-    // runImmediate
+// You can also run it directly
+// runImmediate
 }
-```
