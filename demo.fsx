@@ -59,6 +59,6 @@ pipeline "Fun.Build" {
     // If this is set to false, then it will always run if you do not specify which pipeline to run. By default it is true.
     // To specify you can do this: dotnet fsi build.fsx -p Fun.Build
     runIfOnlySpecified false
-// You can also run it directly
-// runImmediate
+    // You can also run it directly
+    // runImmediate
 }

@@ -1,19 +1,15 @@
-#r "nuget: Fun.Build, 0.0.8"
-#r "nuget: Fake.IO.FileSystem, 5.20.4"
+#r "nuget: Fun.Build, 0.1.0"
+#r "nuget: Fake.IO.FileSystem, 5.23.0"
 
-// for local dev only
-//#r "nuget: Cliwrap"
-//#r "nuget: Spectre.Console"
-//#r "Fun.Build/bin/Debug/netstandard2.0/Fun.Build.dll"
-
-open Fun.Build
 open Fake.IO
 open Fake.IO.Globbing.Operators
+open Fun.Build
 
 
 pipeline "Fun.Build" {
-    timeout 30
+    timeout 60
     stage "Check environment" {
+        paralle
         run "dotnet --version"
         run "dotnet --list-sdks"
         run (fun ctx -> printfn $"""GITHUB_ACTION: {ctx.GetEnvVar "GITHUB_ACTION"}""")
@@ -27,11 +23,14 @@ pipeline "Fun.Build" {
     stage "Publish packages to nuget" {
         whenAll {
             branch "master"
-            envVar "NUGET_API_KEY"
+            whenAny {
+                envVar "NUGET_API_KEY"
+                cmdArg "NUGET_API_KEY"
+            }
         }
         add (fun ctx ->
-            // use cmd so we can make sure sensitive information in FormatableString is encoded
-            cmd $"""dotnet nuget push *.nupkg -s https://api.nuget.org/v3/index.json -k {ctx.GetEnvVar "NUGET_API_KEY"} --skip-duplicate"""
+            let key = ctx.GetCmdArgOrEnvVar "NUGET_API_KEY"
+            cmd $"""dotnet nuget push *.nupkg -s https://api.nuget.org/v3/index.json --skip-duplicate -k {key}"""
         )
     }
     post [
