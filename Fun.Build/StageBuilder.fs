@@ -80,6 +80,25 @@ type StageBuilder(name: string) =
     [<CustomOperation("timeout")>]
     member inline _.timeout(build: BuildStage, time: TimeSpan) = BuildStage(fun ctx -> { build.Invoke ctx with Timeout = ValueSome time })
 
+
+    /// Set timeout for every step under the current stage.
+    /// Unit is second.
+    [<CustomOperation("timeoutForStep")>]
+    member inline _.timeoutForStep(build: BuildStage, seconds: int) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with
+                TimeoutForStep = ValueSome(TimeSpan.FromSeconds seconds)
+            }
+        )
+
+    /// Set timeout for every step under the current stage.
+    /// Unit is second.
+    [<CustomOperation("timeoutForStep")>]
+    member inline _.timeoutForStep(build: BuildStage, time: TimeSpan) =
+        BuildStage(fun ctx -> { build.Invoke ctx with TimeoutForStep = ValueSome time })
+
+
     /// Set if the steps in current stage should run in parallel, default value is true.
     [<CustomOperation("paralle")>]
     member inline _.paralle(build: BuildStage, ?value: bool) = BuildStage(fun ctx -> { build.Invoke ctx with IsParallel = defaultArg value true })

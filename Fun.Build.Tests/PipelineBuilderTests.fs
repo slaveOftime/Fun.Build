@@ -171,42 +171,6 @@ let ``all post stages should always run when some post stages are failed`` () =
 
 
 [<Fact>]
-let ``timeout should work`` () =
-    shouldBeCalled (fun call ->
-        pipeline "" {
-            timeout 1
-            stage "" {
-                run (
-                    async {
-                        do! Async.Sleep 100
-                        call ()
-                    }
-                )
-            }
-            runImmediate
-        }
-    )
-
-    Assert.Throws<exn>(fun _ ->
-        shouldNotBeCalled (fun call ->
-            pipeline "" {
-                timeout 1
-                stage "" {
-                    run (
-                        async {
-                            do! Async.Sleep 2000
-                            call ()
-                        }
-                    )
-                }
-                runImmediate
-            }
-        )
-    )
-    |> ignore
-
-
-[<Fact>]
 let ``runIfOnlySpecified should work`` () =
     shouldBeCalled (fun call ->
         pipeline "demo" {

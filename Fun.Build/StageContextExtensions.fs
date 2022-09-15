@@ -16,6 +16,7 @@ type StageContext with
         IsActive = fun _ -> true
         IsParallel = false
         Timeout = ValueNone
+        TimeoutForStep = ValueNone
         WorkingDir = ValueNone
         EnvVars = Map.empty
         PipelineContext = ValueNone
@@ -28,6 +29,24 @@ type StageContext with
             ctx.WorkingDir
         else
             ctx.PipelineContext |> ValueOption.bind (fun x -> x.WorkingDir)
+
+    member ctx.GetTimeoutForStage() =
+        match ctx.Timeout with
+        | ValueSome x -> int x.TotalMilliseconds
+        | _ ->
+            ctx.PipelineContext
+            |> ValueOption.bind (fun x -> x.TimeoutForStage)
+            |> ValueOption.map (fun x -> int x.TotalMilliseconds)
+            |> ValueOption.defaultValue -1
+
+    member ctx.GetTimeoutForStep() =
+        match ctx.TimeoutForStep with
+        | ValueSome x -> int x.TotalMilliseconds
+        | _ ->
+            ctx.PipelineContext
+            |> ValueOption.bind (fun x -> x.TimeoutForStep)
+            |> ValueOption.map (fun x -> int x.TotalMilliseconds)
+            |> ValueOption.defaultValue -1
 
 
     member ctx.BuildEnvVars() =

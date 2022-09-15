@@ -52,6 +52,44 @@ type PipelineBuilder(name: string) =
             { ctx with Timeout = ValueSome time }
         )
 
+
+    /// Set default timeout for all stages, stage can also set timeout to override this. Unit is seconds.
+    [<CustomOperation("timeoutForStage")>]
+    member inline _.timeoutForStage([<InlineIfLambda>] build: BuildPipeline, seconds: int) =
+        BuildPipeline(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with
+                TimeoutForStage = ValueSome(TimeSpan.FromSeconds seconds)
+            }
+        )
+
+    /// Set default timeout for all stages, stage can also set timeout to override this.
+    [<CustomOperation("timeoutForStage")>]
+    member inline _.timeoutForStage([<InlineIfLambda>] build: BuildPipeline, time: TimeSpan) =
+        BuildPipeline(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with TimeoutForStage = ValueSome time }
+        )
+
+
+    /// Set default timeout for all stages, stage can also set timeout to override this. Unit is seconds.
+    [<CustomOperation("timeoutForStep")>]
+    member inline _.timeoutForStep([<InlineIfLambda>] build: BuildPipeline, seconds: int) =
+        BuildPipeline(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with
+                TimeoutForStep = ValueSome(TimeSpan.FromSeconds seconds)
+            }
+        )
+    /// Set default timeout for all stages, stage can also set timeout to override this.
+    [<CustomOperation("timeoutForStep")>]
+    member inline _.timeoutForStep([<InlineIfLambda>] build: BuildPipeline, time: TimeSpan) =
+        BuildPipeline(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with TimeoutForStep = ValueSome time }
+        )
+
+
     /// Add or override environment variables
     [<CustomOperation("envArgs")>]
     member inline _.envArgs([<InlineIfLambda>] build: BuildPipeline, kvs: seq<string * string>) =

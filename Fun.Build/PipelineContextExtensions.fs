@@ -26,13 +26,15 @@ type PipelineContext with
             CmdArgs = Seq.toList (Environment.GetCommandLineArgs())
             EnvVars = envVars |> Seq.map (fun (KeyValue (k, v)) -> k, v) |> Map.ofSeq
             Timeout = ValueNone
+            TimeoutForStep = ValueNone
+            TimeoutForStage = ValueNone
             WorkingDir = ValueNone
             Stages = []
             PostStages = []
         }
 
 
-    member this.RunStages(stages: StageContext seq, ?failfast: bool) =
+    member this.RunStages(stages: StageContext seq, externalCancelToken: Threading.CancellationToken, ?failfast: bool) =
         let failfast = defaultArg failfast true
 
         let stages =
@@ -47,41 +49,49 @@ type PipelineContext with
         while i < stages.Length && (not failfast || not hasError) do
             let stage = stages[i]
 
-            let timeout =
-                match stage.Timeout, this.Timeout with
-                | ValueSome t, _
-                | _, ValueSome t -> int t.TotalMilliseconds
-                | _ -> 0
+            let timeoutForStep = stage.GetTimeoutForStep()
+            let timeoutForStage = stage.GetTimeoutForStage()
+            
+            use cts = new Threading.CancellationTokenSource(timeoutForStage)
+            use linkedCTS = Threading.CancellationTokenSource.CreateLinkedTokenSource(cts.Token, externalCancelToken)
 
             AnsiConsole.Write(Rule())
-            AnsiConsole.Write(Rule($"STAGE #{i} [bold teal]{stage.Name}[/] started").LeftAligned())
+            AnsiConsole.Write(
+                Rule($"STAGE #{i} [bold teal]{stage.Name}[/] started. Stage timeout: {timeoutForStage}ms. Step timeout: {timeoutForStep}ms.")
+                    .LeftAligned()
+            )
             AnsiConsole.WriteLine()
 
             let isParallel = stage.IsParallel
 
             let steps =
                 stage.Steps
-                |> Seq.map (fun step -> async {
-                    AnsiConsole.MarkupLine $"""[grey]> start step{if isParallel then " in parallel -->" else ":"}[/]"""
-                    let! result = step stage
-                    AnsiConsole.MarkupLine $"""[gray]> finished run step{if isParallel then " in parallel." else "."}[/]"""
-                    AnsiConsole.WriteLine()
-                    if result <> 0 then
-                        failwith $"Step finished without a success exist code. {result}"
-                }
+                |> Seq.map (fun step ->
+                    let ts = async {
+                        AnsiConsole.MarkupLine $"""[grey]> start step{if isParallel then " in parallel -->" else ":"}[/]"""
+                        let! result = step stage
+                        AnsiConsole.MarkupLine $"""[gray]> finished run step{if isParallel then " in parallel." else "."}[/]"""
+                        AnsiConsole.WriteLine()
+                        if result <> 0 then
+                            failwith $"Step finished without a success exist code. {result}"
+                    }
+                    Async.StartChild(ts, timeoutForStep)
                 )
 
             try
-                if isParallel then
-                    let steps = steps |> Async.Parallel
-                    if timeout > 0 then
-                        Async.RunSynchronously(steps, timeout = timeout) |> ignore
+                let ts =
+                    if isParallel then
+                        async {
+                            let! completers = steps |> Async.Parallel
+                            do! Async.Parallel completers |> Async.Ignore
+                        }
                     else
-                        Async.RunSynchronously(steps) |> ignore
-                else if timeout > 0 then
-                    steps |> Seq.iter (fun step -> Async.RunSynchronously(step, timeout = timeout) |> ignore)
-                else
-                    steps |> Seq.iter (Async.RunSynchronously >> ignore)
+                        async {
+                            for step in steps do
+                                let! completer = step
+                                do! completer
+                        }
+                Async.RunSynchronously(ts, cancellationToken = linkedCTS.Token)
             with ex ->
                 AnsiConsole.MarkupLine $"[red]> Run step failed: {ex.Message}[/]"
                 AnsiConsole.WriteException ex
@@ -106,20 +116,30 @@ type PipelineContext with
             title.Color <- Color.Red
             AnsiConsole.Write title
 
-        AnsiConsole.MarkupLine $"[bold lime]Run PIPELINE {this.Name}[/]"
+        let timeoutForPipeline = this.Timeout |> ValueOption.map (fun x -> int x.TotalMilliseconds) |> ValueOption.defaultValue -1
+
+        AnsiConsole.MarkupLine $"[bold lime]Run PIPELINE {this.Name}[/]. Total timeout: {timeoutForPipeline}ms."
         AnsiConsole.WriteLine()
 
-        let sw = Stopwatch.StartNew()
 
+        let sw = Stopwatch.StartNew()
+        use cts = new Threading.CancellationTokenSource(timeoutForPipeline)
+
+        Console.CancelKeyPress.Add(fun _ ->
+            AnsiConsole.WriteLine()
+            AnsiConsole.MarkupLine "Pipeline is cancelled by console."
+            AnsiConsole.WriteLine()
+            cts.Cancel()
+        )
 
         AnsiConsole.MarkupLine $"[grey]Run stages[/]"
-        let hasFailedStage = this.RunStages(this.Stages, failfast = true)
+        let hasFailedStage = this.RunStages(this.Stages, cts.Token, failfast = true)
         AnsiConsole.MarkupLine $"[grey]Run stages finished[/]"
         AnsiConsole.WriteLine()
         AnsiConsole.WriteLine()
 
         AnsiConsole.MarkupLine $"[grey]Run post stages[/]"
-        let hasFailedPostStage = this.RunStages(this.PostStages, failfast = false)
+        let hasFailedPostStage = this.RunStages(this.PostStages, cts.Token, failfast = false)
         AnsiConsole.MarkupLine $"[grey]Run post stages finished[/]"
         AnsiConsole.WriteLine()
         AnsiConsole.WriteLine()
