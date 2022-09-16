@@ -118,16 +118,8 @@ type StageBuilder(name: string) =
 
 
     /// Add a step.
-    [<CustomOperation("add")>]
-    member inline _.add([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] buildStep: BuildStep) =
-        BuildStage(fun ctx ->
-            let ctx = build.Invoke ctx
-            { ctx with Steps = ctx.Steps @ [ StepFn buildStep.Invoke ] }
-        )
-
-    /// Add a step.
-    [<CustomOperation("add")>]
-    member inline _.add([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] buildStep: StageContext -> BuildStep) =
+    [<CustomOperation("run")>]
+    member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] buildStep: StageContext -> BuildStep) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
             { ctx with
@@ -136,24 +128,6 @@ type StageBuilder(name: string) =
                     @ [
                         StepFn(fun ctx -> async {
                             let builder = buildStep ctx
-                            return! builder.Invoke(ctx)
-                        }
-                        )
-                    ]
-            }
-        )
-
-    /// Add a step.
-    [<CustomOperation("add")>]
-    member inline _.add([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] buildStep: StageContext -> Async<BuildStep>) =
-        BuildStage(fun ctx ->
-            let ctx = build.Invoke ctx
-            { ctx with
-                Steps =
-                    ctx.Steps
-                    @ [
-                        StepFn(fun ctx -> async {
-                            let! builder = buildStep ctx
                             return! builder.Invoke(ctx)
                         }
                         )
@@ -408,9 +382,11 @@ type StageBuilder(name: string) =
 /// Build a stage with multiple steps which will run in sequence by default.
 let inline stage name = StageBuilder name
 
+let inline step x = BuildStep x
+
 /// Create a command with a formattable string which will encode the arguments as * when print to console.
 let inline cmd (commandStr: FormattableString) =
-    BuildStep(fun ctx -> async {
+    step (fun ctx -> async {
         use outputStream = Console.OpenStandardOutput()
         let command = ctx.BuildCommand(commandStr.ToString(), outputStream)
         let args: obj[] = Array.create commandStr.ArgumentCount "*"

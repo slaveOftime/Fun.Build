@@ -24,7 +24,6 @@ Every **step** is just a **async< int >**, int is for the exit code.
 
 open Fun.Build
 
-
 pipeline "Fun.Build" {
     timeout 30 // You can set overall timeout for the pipeline
     timeoutForStep 10 // You can set default timeout for every step in every stage
@@ -38,8 +37,7 @@ pipeline "Fun.Build" {
         envVars [ "envKey", "envValue" ] // You can add or override environment variables
         // Use cmd, so we can encrypt sensitive argument for formatable string
         cmd $"dotnet --version"
-        add (fun ctx -> cmd $"""dotnet {"--version"}""")
-        add (fun ctx -> async { return cmd $"""dotnet {"--version"}""" })
+        run (fun ctx -> cmd $"""dotnet {"--version"}""")
         // You can run command directly with a string
         run "dotnet --version"
         run (fun ctx -> "dotnet --version")
@@ -52,6 +50,7 @@ pipeline "Fun.Build" {
         run (fun ctx -> ())
         run (fun ctx -> 0) // return an exit code to indicate if it successful
         // You can also use the low level api
+        step (fun ctx -> async { return 0 })
         BuildStep(fun ctx -> async { return 0 })
     }
     stage "Demo2" {
