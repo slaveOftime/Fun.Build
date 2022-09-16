@@ -105,3 +105,100 @@ let ``timeoutForStep should work`` () =
             }
         )
     )
+
+
+
+[<Fact>]
+let ``nested stage timeout should work`` () =
+    Assert.Throws<exn>(fun _ ->
+        shouldNotBeCalled (fun call ->
+            pipeline "timeout" {
+                timeout 1
+                stage "" {
+                    stage "" {
+                        run (Async.Sleep 500)
+                        run (Async.Sleep 1100)
+                        run call
+                    }
+                }
+                runImmediate
+            }
+        )
+    )
+    |> ignore
+
+    Assert.Throws<exn>(fun _ ->
+        shouldNotBeCalled (fun call ->
+            pipeline "timeout" {
+                timeout 1
+                stage "" {
+                    timeout 2
+                    stage "" {
+                        run (Async.Sleep 500)
+                        run (Async.Sleep 1100)
+                        run call
+                    }
+                }
+                runImmediate
+            }
+        )
+    )
+    |> ignore
+
+
+[<Fact>]
+let ``nested stage timeoutForStep should work`` () =
+    Assert.Throws<exn>(fun _ ->
+        pipeline "timeoutForStep" {
+            timeoutForStep 1
+            stage "" { stage "" { run (Async.Sleep 1100) } }
+            runImmediate
+        }
+    )
+    |> ignore
+
+    Assert.Throws<exn>(fun _ ->
+        shouldBeCalled (fun call ->
+            pipeline "timeoutForStep" {
+                timeoutForStep 1
+                stage "" {
+                    stage "" {
+                        timeoutForStep 2
+                        run (Async.Sleep 1100)
+                        run call
+                    }
+                }
+                runImmediate
+            }
+        )
+    )
+    |> ignore
+
+
+[<Fact>]
+let ``nested stage timeoutForStage should work`` () =
+    Assert.Throws<exn>(fun _ ->
+        pipeline "timeoutForStage" {
+            timeoutForStage 1
+            stage "" { stage "" { run (Async.Sleep 1100) } }
+            runImmediate
+        }
+    )
+    |> ignore
+
+    Assert.Throws<exn>(fun _ ->
+        shouldBeCalled (fun call ->
+            pipeline "timeoutForStage" {
+                timeoutForStage 1
+                stage "" {
+                    stage "" {
+                        timeout 2
+                        run (Async.Sleep 1100)
+                        run call
+                    }
+                }
+                runImmediate
+            }
+        )
+    )
+    |> ignore

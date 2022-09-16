@@ -3,6 +3,16 @@
 open System
 
 
+[<Struct>]
+type Step =
+    | StepFn of fn: (StageContext -> Async<int>)
+    | StepOfStage of stage: StageContext
+
+[<Struct; RequireQualifiedAccess>]
+type StageParent =
+    | Stage of stage: StageContext
+    | Pipeline of pipeline: PipelineContext
+
 type StageContext = {
     Name: string
     IsActive: StageContext -> bool
@@ -11,8 +21,8 @@ type StageContext = {
     TimeoutForStep: TimeSpan voption
     WorkingDir: string voption
     EnvVars: Map<string, string>
-    PipelineContext: ValueOption<PipelineContext>
-    Steps: (StageContext -> Async<int>) list
+    ParentContext: StageParent voption
+    Steps: Step list
 }
 
 

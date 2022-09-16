@@ -4,7 +4,6 @@
 
 open Fun.Build
 
-
 pipeline "Fun.Build" {
     timeout 30 // You can set overall timeout for the pipeline
     timeoutForStep 10 // You can set default timeout for every step in every stage
@@ -18,8 +17,7 @@ pipeline "Fun.Build" {
         envVars [ "envKey", "envValue" ] // You can add or override environment variables
         // Use cmd, so we can encrypt sensitive argument for formatable string
         cmd $"dotnet --version"
-        add (fun ctx -> cmd $"""dotnet {"--version"}""")
-        add (fun ctx -> async { return cmd $"""dotnet {"--version"}""" })
+        run (fun ctx -> cmd $"""dotnet {"--version"}""")
         // You can run command directly with a string
         run "dotnet --version"
         run (fun ctx -> "dotnet --version")
@@ -32,6 +30,7 @@ pipeline "Fun.Build" {
         run (fun ctx -> ())
         run (fun ctx -> 0) // return an exit code to indicate if it successful
         // You can also use the low level api
+        step (fun ctx -> async { return 0 })
         BuildStep(fun ctx -> async { return 0 })
     }
     stage "Demo2" {
@@ -52,6 +51,13 @@ pipeline "Fun.Build" {
     stage "Demo3" {
         workingDir @"C:\Users"
         run "powershell pwd"
+        // You can also nest stages, the stage will be treated as a single stage for parent stage.
+        stage "Demo nested" {
+            echo "cool nested"
+            stage "Deeper" {
+                echo "cooller"
+            }
+        }
     }
     post [ // Post stages are optional. It will run even other normal stages are failed.
         stage "Post stage" {
