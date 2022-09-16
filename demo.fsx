@@ -4,7 +4,6 @@
 
 open Fun.Build
 
-
 pipeline "Fun.Build" {
     timeout 30 // You can set overall timeout for the pipeline
     timeoutForStep 10 // You can set default timeout for every step in every stage
