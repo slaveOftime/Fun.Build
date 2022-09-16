@@ -3,6 +3,12 @@
 open System
 
 
+[<Struct>]
+type Step =
+    | StepFn of fn: (StageContext -> Async<int>)
+    | StepOfStage of stage: StageContext
+
+
 type StageContext = {
     Name: string
     IsActive: StageContext -> bool
@@ -12,7 +18,7 @@ type StageContext = {
     WorkingDir: string voption
     EnvVars: Map<string, string>
     PipelineContext: ValueOption<PipelineContext>
-    Steps: (StageContext -> Async<int>) list
+    Steps: Step list
 }
 
 

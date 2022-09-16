@@ -2,9 +2,6 @@
 module Fun.Build.StageContextExtensions
 
 open System
-open System.Text
-open System.Linq
-open System.Diagnostics
 open Spectre.Console
 open CliWrap
 
@@ -127,13 +124,14 @@ type StageContext with
             Steps =
                 ctx.Steps
                 @ [
-                    fun ctx -> async {
+                    StepFn(fun ctx -> async {
                         use outputStream = Console.OpenStandardOutput()
                         let command = ctx.BuildCommand(commandStr, outputStream)
                         AnsiConsole.MarkupLine $"[green]{command.ToString()}[/]"
                         let! result = command.ExecuteAsync().Task |> Async.AwaitTask
                         return result.ExitCode
                     }
+                    )
                 ]
         }
 
@@ -169,3 +167,77 @@ type StageContext with
         with ex ->
             AnsiConsole.MarkupLine $"[red]Run git to get branch info failed: {ex.Message}[/]"
             false
+
+
+    /// Run the stage. If index is not provided then it will be treated as sub-stage.
+    member stage.Run(index: int voption, cancelToken: Threading.CancellationToken) =
+        let mutable exitCode = 0
+
+        let isParallel = stage.IsParallel
+        let timeoutForStep = stage.GetTimeoutForStep()
+        let timeoutForStage = stage.GetTimeoutForStage()
+
+        use cts = new Threading.CancellationTokenSource(timeoutForStage)
+        use linkedCTS = Threading.CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancelToken)
+
+
+        AnsiConsole.Write(Rule())
+        AnsiConsole.Write(
+            match index with
+            | ValueSome i ->
+                Rule($"STAGE #{i} [bold teal]{stage.Name}[/] started. Stage timeout: {timeoutForStage}ms. Step timeout: {timeoutForStep}ms.")
+                    .LeftAligned()
+            | _ ->
+                Rule($"> step started: sub-stage {stage.Name}. Stage timeout: {timeoutForStage}ms. Step timeout: {timeoutForStep}ms.")
+                    .LeftAligned()
+        )
+        AnsiConsole.WriteLine()
+
+
+        let steps =
+            stage.Steps
+            |> Seq.map (fun step ->
+                let ts = async {
+                    AnsiConsole.MarkupLine $"""[grey]> step started{if isParallel then " in parallel -->" else ":"}[/]"""
+                    let! result =
+                        match step with
+                        | StepFn fn -> fn stage
+                        | StepOfStage subStage -> async { return subStage.Run(ValueNone, linkedCTS.Token) }
+
+                    AnsiConsole.MarkupLine $"""[gray]> step finished{if isParallel then " in parallel." else "."}[/]"""
+                    AnsiConsole.WriteLine()
+                    if result <> 0 then
+                        failwith $"Step finished without a success exist code. {result}"
+                }
+                Async.StartChild(ts, timeoutForStep)
+            )
+
+        try
+            let ts =
+                if isParallel then
+                    async {
+                        let! completers = steps |> Async.Parallel
+                        do! Async.Parallel completers |> Async.Ignore
+                    }
+                else
+                    async {
+                        for step in steps do
+                            let! completer = step
+                            do! completer
+                    }
+            Async.RunSynchronously(ts, cancellationToken = linkedCTS.Token)
+
+        with ex ->
+            AnsiConsole.MarkupLine $"[red]> step failed: {ex.Message}[/]"
+            AnsiConsole.WriteException ex
+            AnsiConsole.WriteLine()
+            exitCode <- -1
+
+        AnsiConsole.Write(
+            match index with
+            | ValueSome i -> Rule($"""STAGE #{i} [bold {if exitCode <> 0 then "red" else "teal"}]{stage.Name}[/] finished""").LeftAligned()
+            | _ -> Rule($"""> step finished: sub-stage [bold {if exitCode <> 0 then "red" else "teal"}]{stage.Name}[/].""").LeftAligned()
+        )
+        AnsiConsole.Write(Rule())
+
+        exitCode
