@@ -105,3 +105,33 @@ let ``steps should run in sequence`` () =
         runImmediate
     }
     Assert.Equal<int>([ 1; 2; 3 ], calls)
+
+
+
+[<Fact>]
+let ``nested stages should run in sequence`` () =
+    let calls = System.Collections.Generic.List<int>()
+
+    pipeline "" {
+        stage "" { run (fun _ -> calls.Add 1) }
+        stage "" {
+            run (fun _ -> calls.Add 2)
+            stage "" {
+                stage "" { run (fun _ -> calls.Add 3) }
+                run (fun _ -> calls.Add 4)
+            }
+        }
+        stage "" {
+            stage "" { run (fun _ -> calls.Add 5) }
+            stage "" { run (fun _ -> calls.Add 6) }
+            stage "" { run (fun _ -> calls.Add 7) }
+        }
+        stage "" {
+            stage "" {
+                whenCmdArg "test"
+                run (fun _ -> calls.Add 8)
+            }
+        }
+        runImmediate
+    }
+    Assert.Equal<int>([ 1; 2; 3; 4; 5; 6; 7 ], calls)

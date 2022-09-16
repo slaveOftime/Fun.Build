@@ -45,7 +45,14 @@ type PipelineContext with
     member this.RunStages(stages: StageContext seq, cancelToken: Threading.CancellationToken, ?failfast: bool) =
         let failfast = defaultArg failfast true
 
-        let stages = stages |> Seq.map (fun x -> { x with PipelineContext = ValueSome this }) |> Seq.toList
+        let stages =
+            stages
+            |> Seq.map (fun x ->
+                { x with
+                    ParentContext = ValueSome(StageParent.Pipeline this)
+                }
+            )
+            |> Seq.toList
 
         let mutable i = 0
         let mutable hasError = false
@@ -55,7 +62,7 @@ type PipelineContext with
             let isActive = stage.IsActive stage
 
             if isActive then
-                hasError <- stage.Run(ValueSome i, cancelToken) <> 0
+                hasError <- stage.Run(ValueSome i, cancelToken) <> 0 || hasError
             else
                 AnsiConsole.Write(Rule())
                 AnsiConsole.MarkupLine "STAGE #{i} [bold grey]{stage.Name}[/] is inactive"

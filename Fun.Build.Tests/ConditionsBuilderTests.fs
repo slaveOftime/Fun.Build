@@ -62,19 +62,19 @@ let ``whenAny should work`` () =
     let pipeline = PipelineContext.Create ""
 
     { StageContext.Create "" with
-        PipelineContext = ValueSome pipeline
+        ParentContext = pipeline |> StageParent.Pipeline |> ValueSome
     }
     |> condition.Invoke
     |> Assert.False
 
     { StageContext.Create "" with
-        PipelineContext = ValueSome { pipeline with CmdArgs = [ "test1" ] }
+        ParentContext = { pipeline with CmdArgs = [ "test1" ] } |> StageParent.Pipeline |> ValueSome
     }
     |> condition.Invoke
     |> Assert.True
 
     { StageContext.Create "" with
-        PipelineContext = ValueSome { pipeline with EnvVars = Map.ofList [ "test2", "" ] }
+        ParentContext = { pipeline with EnvVars = Map.ofList [ "test2", "" ] } |> StageParent.Pipeline |> ValueSome
     }
     |> condition.Invoke
     |> Assert.True
@@ -90,30 +90,31 @@ let ``whenAll should work`` () =
     let pipeline = PipelineContext.Create ""
 
     { StageContext.Create "" with
-        PipelineContext = ValueSome pipeline
+        ParentContext = pipeline |> StageParent.Pipeline |> ValueSome
     }
     |> condition.Invoke
     |> Assert.False
 
     { StageContext.Create "" with
-        PipelineContext = ValueSome { pipeline with CmdArgs = [ "test1" ] }
+        ParentContext = { pipeline with CmdArgs = [ "test1" ] } |> StageParent.Pipeline |> ValueSome
     }
     |> condition.Invoke
     |> Assert.False
 
     { StageContext.Create "" with
-        PipelineContext = ValueSome { pipeline with EnvVars = Map.ofList [ "test2", "" ] }
+        ParentContext = { pipeline with EnvVars = Map.ofList [ "test2", "" ] } |> StageParent.Pipeline |> ValueSome
     }
     |> condition.Invoke
     |> Assert.False
 
     { StageContext.Create "" with
-        PipelineContext =
-            ValueSome
-                { pipeline with
-                    CmdArgs = [ "test1" ]
-                    EnvVars = Map.ofList [ "test2", "" ]
-                }
+        ParentContext =
+            { pipeline with
+                CmdArgs = [ "test1" ]
+                EnvVars = Map.ofList [ "test2", "" ]
+            }
+            |> StageParent.Pipeline
+            |> ValueSome
     }
     |> condition.Invoke
     |> Assert.True
@@ -129,30 +130,31 @@ let ``whenNot should work`` () =
     let pipeline = PipelineContext.Create ""
 
     { StageContext.Create "" with
-        PipelineContext = ValueSome pipeline
+        ParentContext = pipeline |> StageParent.Pipeline |> ValueSome
     }
     |> condition.Invoke
     |> Assert.True
 
     { StageContext.Create "" with
-        PipelineContext = ValueSome { pipeline with CmdArgs = [ "test1" ] }
+        ParentContext = { pipeline with CmdArgs = [ "test1" ] } |> StageParent.Pipeline |> ValueSome
     }
     |> condition.Invoke
     |> Assert.False
 
     { StageContext.Create "" with
-        PipelineContext = ValueSome { pipeline with EnvVars = Map.ofList [ "test2", "" ] }
+        ParentContext = { pipeline with EnvVars = Map.ofList [ "test2", "" ] } |> StageParent.Pipeline |> ValueSome
     }
     |> condition.Invoke
     |> Assert.False
 
     { StageContext.Create "" with
-        PipelineContext =
-            ValueSome
-                { pipeline with
-                    CmdArgs = [ "test1" ]
-                    EnvVars = Map.ofList [ "test2", "" ]
-                }
+        ParentContext =
+            { pipeline with
+                CmdArgs = [ "test1" ]
+                EnvVars = Map.ofList [ "test2", "" ]
+            }
+            |> StageParent.Pipeline
+            |> ValueSome
     }
     |> condition.Invoke
     |> Assert.False
@@ -171,25 +173,25 @@ let ``when compose should work`` () =
     let pipeline = PipelineContext.Create ""
 
     { StageContext.Create "" with
-        PipelineContext = ValueSome pipeline
+        ParentContext = pipeline |> StageParent.Pipeline |> ValueSome
     }
     |> condition.Invoke
     |> Assert.False
 
     { StageContext.Create "" with
-        PipelineContext = ValueSome { pipeline with CmdArgs = [ "test1" ] }
+        ParentContext = { pipeline with CmdArgs = [ "test1" ] } |> StageParent.Pipeline |> ValueSome
     }
     |> condition.Invoke
     |> Assert.True
 
     { StageContext.Create "" with
-        PipelineContext = ValueSome { pipeline with CmdArgs = [ "test2" ] }
+        ParentContext = { pipeline with CmdArgs = [ "test2" ] } |> StageParent.Pipeline |> ValueSome
     }
     |> condition.Invoke
     |> Assert.True
 
     { StageContext.Create "" with
-        PipelineContext = ValueSome { pipeline with CmdArgs = [ "test3" ] }
+        ParentContext = { pipeline with CmdArgs = [ "test3" ] } |> StageParent.Pipeline |> ValueSome
     }
     |> condition.Invoke
     |> Assert.False

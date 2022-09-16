@@ -5,10 +5,11 @@
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<TrimMode>link</TrimMode>
 		<IsTrimmable>true</IsTrimmable>
-		<Version>0.1.1</Version>
+		<Version>0.1.2</Version>
 	</PropertyGroup>
 
 	<ItemGroup>
+		<Compile Include="Utils.fs" />
 		<Compile Include="Types.fs" />
 		<Compile Include="StageContextExtensions.fs" />
 		<Compile Include="PipelineContextExtensions.fs" />

@@ -8,6 +8,10 @@ type Step =
     | StepFn of fn: (StageContext -> Async<int>)
     | StepOfStage of stage: StageContext
 
+[<Struct; RequireQualifiedAccess>]
+type StageParent =
+    | Stage of stage: StageContext
+    | Pipeline of pipeline: PipelineContext
 
 type StageContext = {
     Name: string
@@ -17,7 +21,7 @@ type StageContext = {
     TimeoutForStep: TimeSpan voption
     WorkingDir: string voption
     EnvVars: Map<string, string>
-    PipelineContext: ValueOption<PipelineContext>
+    ParentContext: StageParent voption
     Steps: Step list
 }
 

@@ -11,8 +11,20 @@ type PipelineBuilder(name: string) =
     member _.Run(build: BuildPipeline) =
         let ctx = build.Invoke(PipelineContext.Create name)
         { ctx with
-            Stages = ctx.Stages |> List.map (fun x -> { x with PipelineContext = ValueSome ctx })
-            PostStages = ctx.PostStages |> List.map (fun x -> { x with PipelineContext = ValueSome ctx })
+            Stages =
+                ctx.Stages
+                |> List.map (fun x ->
+                    { x with
+                        ParentContext = ValueSome(StageParent.Pipeline ctx)
+                    }
+                )
+            PostStages =
+                ctx.PostStages
+                |> List.map (fun x ->
+                    { x with
+                        ParentContext = ValueSome(StageParent.Pipeline ctx)
+                    }
+                )
         }
 
     member inline _.Yield(_: unit) = BuildPipeline id

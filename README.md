@@ -20,9 +20,10 @@ Every **step** is just a **async< int >**, int is for the exit code.
 ## Example:
 
 ```fsharp
-#r "nuget: Fun.Build, 0.1.1"
+#r "nuget: Fun.Build, 0.1.2"
 
 open Fun.Build
+
 
 pipeline "Fun.Build" {
     timeout 30 // You can set overall timeout for the pipeline
@@ -71,6 +72,13 @@ pipeline "Fun.Build" {
     stage "Demo3" {
         workingDir @"C:\Users"
         run "powershell pwd"
+        // You can also nest stages, the stage will be treated as a single stage for parent stage.
+        stage "Demo nested" {
+            echo "cool nested"
+            stage "Deeper" {
+                echo "cooller"
+            }
+        }
     }
     post [ // Post stages are optional. It will run even other normal stages are failed.
         stage "Post stage" {

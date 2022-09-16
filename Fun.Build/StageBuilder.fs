@@ -15,6 +15,7 @@ type StageBuilder(name: string) =
 
     member inline _.Yield([<InlineIfLambda>] condition: BuildStageIsActive) = condition
     member inline _.Yield([<InlineIfLambda>] builder: BuildStep) = builder
+    member inline _.Yield(stage: StageContext) = stage
 
 
     member inline _.Delay([<InlineIfLambda>] fn: unit -> BuildStage) = BuildStage(fun ctx -> fn().Invoke(ctx))
@@ -23,12 +24,18 @@ type StageBuilder(name: string) =
 
     member inline _.Delay([<InlineIfLambda>] fn: unit -> BuildStep) = BuildStage(fun ctx -> { ctx with Steps = ctx.Steps @ [ StepFn(fn().Invoke) ] })
 
+    member inline _.Delay([<InlineIfLambda>] fn: unit -> StageContext) =
+        BuildStage(fun ctx -> { ctx with Steps = ctx.Steps @ [ StepOfStage(fn ()) ] })
+
 
     member inline _.Combine([<InlineIfLambda>] condition: BuildStageIsActive, [<InlineIfLambda>] build: BuildStage) =
         BuildStage(fun ctx -> build.Invoke { ctx with IsActive = condition.Invoke })
 
     member inline _.Combine([<InlineIfLambda>] builder: BuildStep, [<InlineIfLambda>] build: BuildStage) =
         BuildStage(fun ctx -> build.Invoke { ctx with Steps = ctx.Steps @ [ StepFn builder.Invoke ] })
+
+    member inline _.Combine(stage: StageContext, [<InlineIfLambda>] build: BuildStage) =
+        BuildStage(fun ctx -> build.Invoke { ctx with Steps = ctx.Steps @ [ StepOfStage stage ] })
 
 
     member inline _.For([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] fn: unit -> BuildStage) =
@@ -44,6 +51,12 @@ type StageBuilder(name: string) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
             { ctx with Steps = ctx.Steps @ [ StepFn(fn().Invoke) ] }
+        )
+
+    member inline _.For([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] fn: unit -> StageContext) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with Steps = ctx.Steps @ [ StepOfStage(fn ()) ] }
         )
 
 
