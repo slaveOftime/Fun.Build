@@ -2,6 +2,7 @@
 module Fun.Build.StageBuilder
 
 open System
+open System.Diagnostics
 open System.Threading.Tasks
 open Spectre.Console
 
@@ -139,55 +140,21 @@ type StageBuilder(name: string) =
     /// Add a step to run command. This will not encrypt any sensitive information when print to console.
     [<CustomOperation("run")>]
     member inline _.run([<InlineIfLambda>] build: BuildStage, exe: string, args: string) =
-        BuildStage(fun ctx -> build.Invoke(ctx).AddCommandStep(exe + " " + args))
+        BuildStage(fun ctx -> build.Invoke(ctx).AddCommandStep(fun _ -> async { return exe + " " + args }))
 
     /// Add a step to run command. This will not encrypt any sensitive information when print to console.
     [<CustomOperation("run")>]
-    member inline _.run([<InlineIfLambda>] build: BuildStage, command: string) = BuildStage(fun ctx -> build.Invoke(ctx).AddCommandStep(command))
+    member inline _.run([<InlineIfLambda>] build: BuildStage, command: string) =
+        BuildStage(fun ctx -> build.Invoke(ctx).AddCommandStep(fun _ -> async { return command }))
 
     /// Add a step to run command. This will not encrypt any sensitive information when print to console.
     [<CustomOperation("run")>]
-    member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] step: StageContext -> string) =
-        BuildStage(fun ctx ->
-            let ctx = build.Invoke ctx
-            { ctx with
-                Steps =
-                    ctx.Steps
-                    @ [
-                        StepFn(fun ctx -> async {
-                            let commandStr = step ctx
-                            use outputStream = Console.OpenStandardOutput()
-                            let command = ctx.BuildCommand(commandStr, outputStream)
-                            AnsiConsole.MarkupLine $"[green]{commandStr}[/]"
-                            let! result = command.ExecuteAsync().Task |> Async.AwaitTask
-                            return result.ExitCode
-                        }
-                        )
-                    ]
-            }
-        )
+    member _.run(build: BuildStage, step: StageContext -> string) =
+        BuildStage(fun ctx -> build.Invoke(ctx).AddCommandStep(fun ctx -> async { return step ctx }))
 
     /// Add a step to run command. This will not encrypt any sensitive information when print to console.
     [<CustomOperation("run")>]
-    member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] step: StageContext -> Async<string>) =
-        BuildStage(fun ctx ->
-            let ctx = build.Invoke ctx
-            { ctx with
-                Steps =
-                    ctx.Steps
-                    @ [
-                        StepFn(fun ctx -> async {
-                            let! commandStr = step ctx
-                            use outputStream = Console.OpenStandardOutput()
-                            let command = ctx.BuildCommand(commandStr, outputStream)
-                            AnsiConsole.MarkupLine $"[green]{commandStr}[/]"
-                            let! result = command.ExecuteAsync().Task |> Async.AwaitTask
-                            return result.ExitCode
-                        }
-                        )
-                    ]
-            }
-        )
+    member _.run(build: BuildStage, step: StageContext -> Async<string>) = BuildStage(fun ctx -> build.Invoke(ctx).AddCommandStep(step))
 
 
     /// Add a step to run a async.
@@ -387,12 +354,16 @@ let inline step x = BuildStep x
 /// Create a command with a formattable string which will encode the arguments as * when print to console.
 let inline cmd (commandStr: FormattableString) =
     step (fun ctx -> async {
-        use outputStream = Console.OpenStandardOutput()
-        let command = ctx.BuildCommand(commandStr.ToString(), outputStream)
+        let command = ctx.BuildCommand(commandStr.ToString())
         let args: obj[] = Array.create commandStr.ArgumentCount "*"
         let encryptiedStr = String.Format(commandStr.Format, args)
         AnsiConsole.MarkupLine $"[green]{encryptiedStr}[/]"
-        let! result = command.ExecuteAsync().Task |> Async.AwaitTask
+        let result = Process.Start command
+
+        let! ct = Async.CancellationToken
+        use! cd = Async.OnCancel(fun _ -> result.Close())
+
+        result.WaitForExit()
         return result.ExitCode
     }
     )

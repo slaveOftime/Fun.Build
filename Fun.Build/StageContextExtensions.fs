@@ -2,9 +2,9 @@
 module Fun.Build.StageContextExtensions
 
 open System
-open Spectre.Console
-open CliWrap
+open System.Text
 open System.Diagnostics
+open Spectre.Console
 
 
 type StageContext with
@@ -135,7 +135,7 @@ type StageContext with
     member inline ctx.GetCmdArgOrEnvVar(key) = ctx.TryGetCmdArgOrEnvVar key |> ValueOption.defaultValue ""
 
 
-    member ctx.BuildCommand(commandStr: string, outputStream: IO.Stream) =
+    member ctx.BuildCommand(commandStr: string) =
         let index = commandStr.IndexOf " "
 
         let cmd, args =
@@ -146,24 +146,33 @@ type StageContext with
             else
                 commandStr, ""
 
-        let mutable command = Cli.Wrap(cmd).WithArguments(args)
+        let command = ProcessStartInfo(cmd, args)
 
-        ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command <- command.WithWorkingDirectory x)
 
-        command <- command.WithEnvironmentVariables(ctx.BuildEnvVars())
-        command <- command.WithStandardOutputPipe(PipeTarget.ToStream outputStream).WithValidation(CommandResultValidation.None)
+        ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command.WorkingDirectory <- x)
+
+        ctx.BuildEnvVars() |> Map.iter (fun k v -> command.Environment[ k ] <- v)
+
+        command.StandardOutputEncoding <- Encoding.UTF8
+        command.RedirectStandardOutput <- true
         command
 
-    member ctx.AddCommandStep(commandStr: string) =
+
+    member ctx.AddCommandStep(commandStrFn: StageContext -> Async<string>) =
         { ctx with
             Steps =
                 ctx.Steps
                 @ [
                     StepFn(fun ctx -> async {
-                        use outputStream = Console.OpenStandardOutput()
-                        let command = ctx.BuildCommand(commandStr, outputStream)
-                        AnsiConsole.MarkupLine $"[green]{command.ToString()}[/]"
-                        let! result = command.ExecuteAsync().Task |> Async.AwaitTask
+                        let! commandStr = commandStrFn ctx
+                        let command = ctx.BuildCommand(commandStr)
+                        AnsiConsole.MarkupLine $"[green]{commandStr}[/]"
+                        let result = Process.Start command
+
+                        let! ct = Async.CancellationToken
+                        use! cd = Async.OnCancel(fun _ -> result.Close())
+
+                        result.WaitForExit()
                         return result.ExitCode
                     }
                     )
@@ -184,21 +193,12 @@ type StageContext with
 
     member ctx.WhenBranch(branch: string) =
         try
-            let mutable currentBranch = ""
+            let command = ctx.BuildCommand("git branch --show-current")
+            ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command.WorkingDirectory <- x)
 
-            let mutable command =
-                Cli
-                    .Wrap("git")
-                    .WithArguments("branch --show-current")
-                    .WithStandardOutputPipe(PipeTarget.ToDelegate(fun x -> currentBranch <- x))
-                    .WithValidation(CommandResultValidation.None)
-
-            ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command <- command.WithWorkingDirectory x)
-
-            command.ExecuteAsync().GetAwaiter().GetResult() |> ignore
-
-            currentBranch = branch
-
+            let result = Process.Start command
+            result.WaitForExit()
+            result.StandardOutput.ReadLine() = branch
         with ex ->
             AnsiConsole.MarkupLine $"[red]Run git to get branch info failed: {ex.Message}[/]"
             false
