@@ -350,24 +350,3 @@ type StageBuilder(name: string) =
 let inline stage name = StageBuilder name
 
 let inline step x = BuildStep x
-
-/// Create a command with a formattable string which will encode the arguments as * when print to console.
-let inline cmd (commandStr: FormattableString) =
-    step (fun ctx -> async {
-        let command = ctx.BuildCommand(commandStr.ToString())
-        let args: obj[] = Array.create commandStr.ArgumentCount "*"
-        let encryptiedStr = String.Format(commandStr.Format, args)
-
-        AnsiConsole.MarkupLine $"[green]{encryptiedStr}[/]"
-
-        let result = Process.Start command
-
-        use! cd =
-            Async.OnCancel(fun _ ->
-                AnsiConsole.MarkupLine $"[yellow]{commandStr}[/] is cancelled or timeouted and the process will be killed."
-                result.Kill()
-            )
-
-        result.WaitForExit()
-        return result.ExitCode
-    })
