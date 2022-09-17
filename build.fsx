@@ -1,4 +1,4 @@
-#r "nuget: Fun.Build, 0.1.0"
+#r "nuget: Fun.Build, 0.1.2"
 #r "nuget: Fake.IO.FileSystem, 5.23.0"
 
 open Fake.IO
@@ -28,7 +28,7 @@ pipeline "Fun.Build" {
                 cmdArg "NUGET_API_KEY"
             }
         }
-        add (fun ctx ->
+        run (fun ctx ->
             let key = ctx.GetCmdArgOrEnvVar "NUGET_API_KEY"
             cmd $"""dotnet nuget push *.nupkg -s https://api.nuget.org/v3/index.json --skip-duplicate -k {key}"""
         )

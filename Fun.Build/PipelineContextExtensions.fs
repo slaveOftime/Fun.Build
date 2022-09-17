@@ -95,7 +95,7 @@ type PipelineContext with
         Console.CancelKeyPress.Add(fun e ->
             cts.Cancel()
             e.Cancel <- true
-            
+
             AnsiConsole.WriteLine()
             AnsiConsole.MarkupLine "[yellow]Pipeline is cancelled by console.[/]"
             AnsiConsole.WriteLine()
