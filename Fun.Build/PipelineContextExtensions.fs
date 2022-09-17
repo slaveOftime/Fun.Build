@@ -92,11 +92,14 @@ type PipelineContext with
         let sw = Stopwatch.StartNew()
         use cts = new Threading.CancellationTokenSource(timeoutForPipeline)
 
-        Console.CancelKeyPress.Add(fun _ ->
+        Console.CancelKeyPress.Add(fun e ->
             AnsiConsole.WriteLine()
-            AnsiConsole.MarkupLine "Pipeline is cancelled by console."
+            AnsiConsole.MarkupLine "[yellow]Pipeline is cancelled by console.[/]"
             AnsiConsole.WriteLine()
+
             cts.Cancel()
+
+            e.Cancel <- true
         )
 
         AnsiConsole.MarkupLine $"[grey]Run stages[/]"
@@ -111,9 +114,22 @@ type PipelineContext with
         AnsiConsole.WriteLine()
         AnsiConsole.WriteLine()
 
+
         let hasError = hasFailedStage || hasFailedPostStage
 
-        AnsiConsole.MarkupLine $"""[bold {if hasError then "red" else "lime"}]Run PIPELINE {this.Name} finished in {sw.ElapsedMilliseconds} ms[/]"""
+        let color =
+            if hasError then "red"
+            else if cts.IsCancellationRequested then "yellow"
+            else "lime"
+
+        let exitText = if cts.IsCancellationRequested then "canncelled" else "finished"
+
+
+        AnsiConsole.MarkupLine $"""PIPELINE [bold {color}]{this.Name}[/] is {exitText} in {sw.ElapsedMilliseconds} ms"""
         AnsiConsole.WriteLine()
 
-        if hasError then failwith "Pipeline is failed."
+
+        if cts.IsCancellationRequested then
+            raise (PipelineCancelledException "Cancelled by console")
+
+        if hasError then raise (PipelineFailedException "Pipeline is failed")

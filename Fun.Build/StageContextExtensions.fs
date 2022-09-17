@@ -7,6 +7,9 @@ open System.Diagnostics
 open Spectre.Console
 
 
+let private parallelStepLock = obj ()
+
+
 type StageContext with
 
     static member Create(name: string) = {
@@ -166,11 +169,16 @@ type StageContext with
                     StepFn(fun ctx -> async {
                         let! commandStr = commandStrFn ctx
                         let command = ctx.BuildCommand(commandStr)
-                        AnsiConsole.MarkupLine $"[green]{commandStr}[/]"
-                        let result = Process.Start command
 
-                        let! ct = Async.CancellationToken
-                        use! cd = Async.OnCancel(fun _ -> result.Close())
+                        AnsiConsole.MarkupLine $"[green]{commandStr}[/]"
+
+                        use result = Process.Start command
+
+                        use! cd =
+                            Async.OnCancel(fun _ ->
+                                AnsiConsole.MarkupLine $"[yellow]{commandStr}[/] is cancelled or timeouted."
+                                result.Kill()
+                            )
 
                         result.WaitForExit()
                         return result.ExitCode
@@ -220,6 +228,9 @@ type StageContext with
             use cts = new Threading.CancellationTokenSource(timeoutForStage)
             use linkedCTS = Threading.CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancelToken)
 
+            use stepCTS = new Threading.CancellationTokenSource(timeoutForStep)
+            use linkedStepCTS = Threading.CancellationTokenSource.CreateLinkedTokenSource(stepCTS.Token, linkedCTS.Token)
+
 
             AnsiConsole.Write(Rule())
             AnsiConsole.Write(
@@ -234,50 +245,64 @@ type StageContext with
 
             let steps =
                 stage.Steps
-                |> Seq.map (fun step ->
-                    let ts = async {
-                        let sw = Stopwatch.StartNew()
-                        AnsiConsole.MarkupLine $"""[grey]> step started{if isParallel then " in parallel -->" else ":"}[/]"""
-                        let! result =
-                            match step with
-                            | StepFn fn -> fn stage
-                            | StepOfStage subStage -> async {
-                                let subStage =
-                                    { subStage with
-                                        ParentContext = ValueSome(StageParent.Stage stage)
-                                    }
-                                return subStage.Run(ValueNone, linkedCTS.Token)
-                              }
+                |> Seq.map (fun step -> async {
+                    let sw = Stopwatch.StartNew()
+                    AnsiConsole.MarkupLine $"""[grey]> step started{if isParallel then " in parallel -->" else ":"}[/]"""
+                    let! result =
+                        match step with
+                        | StepFn fn -> fn stage
+                        | StepOfStage subStage -> async {
+                            let subStage =
+                                { subStage with
+                                    ParentContext = ValueSome(StageParent.Stage stage)
+                                }
+                            return subStage.Run(ValueNone, linkedStepCTS.Token)
+                          }
 
-                        AnsiConsole.MarkupLine
-                            $"""[gray]> step finished{if isParallel then " in parallel." else "."} {sw.ElapsedMilliseconds}ms.[/]"""
-                        AnsiConsole.WriteLine()
-                        if result <> 0 then
-                            failwith $"Step finished without a success exist code. {result}"
-                    }
-                    Async.StartChild(ts, timeoutForStep)
+                    AnsiConsole.MarkupLine $"""[gray]> step finished{if isParallel then " in parallel." else "."} {sw.ElapsedMilliseconds}ms.[/]"""
+                    AnsiConsole.WriteLine()
+                    if result <> 0 then
+                        failwith $"Step finished without a success exist code. {result}"
+                }
                 )
 
             try
                 let ts =
                     if isParallel then
                         async {
-                            let! completers = steps |> Async.Parallel
-                            do! Async.Parallel completers |> Async.Ignore
+                            let mutable count = 0
+
+                            for ts in steps do
+                                Async.Start(
+                                    async {
+                                        do! ts
+                                        // TODO should find a better way to do parallel and pass cancellation token down
+                                        lock parallelStepLock (fun _ -> count <- count + 1)
+                                    },
+                                    linkedStepCTS.Token
+                                )
+
+                            while count < Seq.length steps do
+                                do! Async.Sleep 10
                         }
                     else
                         async {
                             for step in steps do
-                                let! completer = step
+                                let! completer = Async.StartChild(step, timeoutForStep)
                                 do! completer
                         }
+
                 Async.RunSynchronously(ts, cancellationToken = linkedCTS.Token)
 
             with ex ->
-                AnsiConsole.MarkupLine $"[red]> step failed: {ex.Message}[/]"
-                AnsiConsole.WriteException ex
-                AnsiConsole.WriteLine()
                 exitCode <- -1
+                if linkedCTS.Token.IsCancellationRequested then
+                    AnsiConsole.MarkupLine $"[yellow]Stage is ancelled or timeouted.[/]"
+                    AnsiConsole.WriteLine()
+                else
+                    AnsiConsole.MarkupLine $"[red]> step failed: {ex.Message}[/]"
+                    AnsiConsole.WriteException ex
+                    AnsiConsole.WriteLine()
 
             AnsiConsole.Write(
                 match index with

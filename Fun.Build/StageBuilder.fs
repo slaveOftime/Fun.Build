@@ -357,13 +357,17 @@ let inline cmd (commandStr: FormattableString) =
         let command = ctx.BuildCommand(commandStr.ToString())
         let args: obj[] = Array.create commandStr.ArgumentCount "*"
         let encryptiedStr = String.Format(commandStr.Format, args)
+
         AnsiConsole.MarkupLine $"[green]{encryptiedStr}[/]"
+
         let result = Process.Start command
 
-        let! ct = Async.CancellationToken
-        use! cd = Async.OnCancel(fun _ -> result.Close())
+        use! cd =
+            Async.OnCancel(fun _ ->
+                AnsiConsole.MarkupLine $"[yellow]{commandStr}[/] is cancelled or timeouted."
+                result.Kill()
+            )
 
         result.WaitForExit()
         return result.ExitCode
-    }
-    )
+    })
