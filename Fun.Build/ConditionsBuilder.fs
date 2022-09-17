@@ -12,15 +12,15 @@ type ConditionsBuilder() =
     member inline _.Delay([<InlineIfLambda>] fn: unit -> BuildStageIsActive) = BuildConditions(fun conds -> conds @ [ fn().Invoke ])
 
 
-    member inline _.Combine([<InlineIfLambda>] builder: BuildConditions, [<InlineIfLambda>] buildStageIsActive: BuildStageIsActive) =
+    member inline _.Combine([<InlineIfLambda>] buildStageIsActive: BuildStageIsActive, [<InlineIfLambda>] builder: BuildConditions) =
         BuildConditions(fun conditions -> builder.Invoke(conditions) @ [ buildStageIsActive.Invoke ])
 
-    member inline this.Combine([<InlineIfLambda>] buildStageIsActive: BuildStageIsActive, [<InlineIfLambda>] builder: BuildConditions) =
-        this.Combine(builder, buildStageIsActive)
 
+    member inline _.For([<InlineIfLambda>] builder: BuildConditions, [<InlineIfLambda>] fn: unit -> BuildConditions) =
+        BuildConditions(fun conds -> fn().Invoke(builder.Invoke(conds)))
 
-    member inline this.For([<InlineIfLambda>] builder: BuildConditions, [<InlineIfLambda>] fn: unit -> BuildStageIsActive) =
-        this.Combine(builder, fn ())
+    member inline _.For([<InlineIfLambda>] builder: BuildConditions, [<InlineIfLambda>] fn: unit -> BuildStageIsActive) =
+        BuildConditions(fun conds -> builder.Invoke(conds) @ [ fn().Invoke ])
 
 
     [<CustomOperation("envVar")>]
