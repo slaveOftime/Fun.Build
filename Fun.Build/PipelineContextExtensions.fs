@@ -92,11 +92,13 @@ type PipelineContext with
         let sw = Stopwatch.StartNew()
         use cts = new Threading.CancellationTokenSource(timeoutForPipeline)
 
-        Console.CancelKeyPress.Add(fun _ ->
-            AnsiConsole.WriteLine()
-            AnsiConsole.MarkupLine "Pipeline is cancelled by console."
-            AnsiConsole.WriteLine()
+        Console.CancelKeyPress.Add(fun e ->
             cts.Cancel()
+            e.Cancel <- true
+
+            AnsiConsole.WriteLine()
+            AnsiConsole.MarkupLine "[yellow]Pipeline is cancelled by console.[/]"
+            AnsiConsole.WriteLine()
         )
 
         AnsiConsole.MarkupLine $"[grey]Run stages[/]"
@@ -105,15 +107,30 @@ type PipelineContext with
         AnsiConsole.WriteLine()
         AnsiConsole.WriteLine()
 
-        AnsiConsole.MarkupLine $"[grey]Run post stages[/]"
-        let hasFailedPostStage = this.RunStages(this.PostStages, cts.Token, failfast = false)
-        AnsiConsole.MarkupLine $"[grey]Run post stages finished[/]"
-        AnsiConsole.WriteLine()
-        AnsiConsole.WriteLine()
+        let mutable hasFailedPostStage = false
+        if cts.IsCancellationRequested |> not then
+            AnsiConsole.MarkupLine $"[grey]Run post stages[/]"
+            hasFailedPostStage <- this.RunStages(this.PostStages, cts.Token, failfast = false)
+            AnsiConsole.MarkupLine $"[grey]Run post stages finished[/]"
+            AnsiConsole.WriteLine()
+            AnsiConsole.WriteLine()
+
 
         let hasError = hasFailedStage || hasFailedPostStage
 
-        AnsiConsole.MarkupLine $"""[bold {if hasError then "red" else "lime"}]Run PIPELINE {this.Name} finished in {sw.ElapsedMilliseconds} ms[/]"""
+        let color =
+            if hasError then "red"
+            else if cts.IsCancellationRequested then "yellow"
+            else "lime"
+
+        let exitText = if cts.IsCancellationRequested then "canncelled" else "finished"
+
+
+        AnsiConsole.MarkupLine $"""PIPELINE [bold {color}]{this.Name}[/] is {exitText} in {sw.ElapsedMilliseconds} ms"""
         AnsiConsole.WriteLine()
 
-        if hasError then failwith "Pipeline is failed."
+
+        if cts.IsCancellationRequested then
+            raise (PipelineCancelledException "Cancelled by console")
+
+        if hasError then raise (PipelineFailedException "Pipeline is failed")

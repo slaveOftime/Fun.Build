@@ -54,10 +54,9 @@ pipeline "Fun.Build" {
         // You can also nest stages, the stage will be treated as a single stage for parent stage.
         stage "Demo nested" {
             echo "cool nested"
-            stage "Deeper" {
-                echo "cooller"
-            }
+            stage "Deeper" { echo "cooller" }
         }
+        openBrowser "https://github.com/dotnet/runtime/issues/17938"
     }
     post [ // Post stages are optional. It will run even other normal stages are failed.
         stage "Post stage" {

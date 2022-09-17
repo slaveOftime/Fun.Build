@@ -111,7 +111,7 @@ let ``pipeline should world with mutiple stages with different conditions`` () =
 
 [<Fact>]
 let ``post stage should always run when other stage is failed`` () =
-    Assert.Throws<exn>(fun _ ->
+    Assert.Throws<PipelineFailedException>(fun _ ->
         shouldBeCalled (fun call ->
             pipeline "" {
                 stage "" {
@@ -127,7 +127,7 @@ let ``post stage should always run when other stage is failed`` () =
     )
     |> ignore
 
-    Assert.Throws<exn>(fun _ ->
+    Assert.Throws<PipelineFailedException>(fun _ ->
         shouldBeCalled (fun call ->
             pipeline "" {
                 stage "" { run (fun _ -> -1) }
@@ -142,7 +142,7 @@ let ``post stage should always run when other stage is failed`` () =
 
 [<Fact>]
 let ``all post stages should always run when some post stages are failed`` () =
-    Assert.Throws<exn>(fun _ ->
+    Assert.Throws<PipelineFailedException>(fun _ ->
         shouldBeCalled (fun call ->
             pipeline "" {
                 post [
@@ -160,7 +160,7 @@ let ``all post stages should always run when some post stages are failed`` () =
     )
     |> ignore
 
-    Assert.Throws<exn>(fun _ ->
+    Assert.Throws<PipelineFailedException>(fun _ ->
         shouldBeCalled (fun call ->
             pipeline "" {
                 post [ stage "" { run (fun _ -> -1) }; stage "" { run call } ]

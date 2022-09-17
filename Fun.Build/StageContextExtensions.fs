@@ -2,9 +2,12 @@
 module Fun.Build.StageContextExtensions
 
 open System
-open Spectre.Console
-open CliWrap
+open System.Text
 open System.Diagnostics
+open Spectre.Console
+
+
+let private parallelStepLock = obj ()
 
 
 type StageContext with
@@ -135,7 +138,7 @@ type StageContext with
     member inline ctx.GetCmdArgOrEnvVar(key) = ctx.TryGetCmdArgOrEnvVar key |> ValueOption.defaultValue ""
 
 
-    member ctx.BuildCommand(commandStr: string, outputStream: IO.Stream) =
+    member ctx.BuildCommand(commandStr: string) =
         let index = commandStr.IndexOf " "
 
         let cmd, args =
@@ -146,24 +149,38 @@ type StageContext with
             else
                 commandStr, ""
 
-        let mutable command = Cli.Wrap(cmd).WithArguments(args)
+        let command = ProcessStartInfo(cmd, args)
 
-        ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command <- command.WithWorkingDirectory x)
 
-        command <- command.WithEnvironmentVariables(ctx.BuildEnvVars())
-        command <- command.WithStandardOutputPipe(PipeTarget.ToStream outputStream).WithValidation(CommandResultValidation.None)
+        ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command.WorkingDirectory <- x)
+
+        ctx.BuildEnvVars() |> Map.iter (fun k v -> command.Environment[ k ] <- v)
+
+        command.StandardOutputEncoding <- Encoding.UTF8
+        command.RedirectStandardOutput <- true
         command
 
-    member ctx.AddCommandStep(commandStr: string) =
+
+    member ctx.AddCommandStep(commandStrFn: StageContext -> Async<string>) =
         { ctx with
             Steps =
                 ctx.Steps
                 @ [
                     StepFn(fun ctx -> async {
-                        use outputStream = Console.OpenStandardOutput()
-                        let command = ctx.BuildCommand(commandStr, outputStream)
-                        AnsiConsole.MarkupLine $"[green]{command.ToString()}[/]"
-                        let! result = command.ExecuteAsync().Task |> Async.AwaitTask
+                        let! commandStr = commandStrFn ctx
+                        let command = ctx.BuildCommand(commandStr)
+
+                        AnsiConsole.MarkupLine $"[green]{commandStr}[/]"
+
+                        use result = Process.Start command
+
+                        use! cd =
+                            Async.OnCancel(fun _ ->
+                                AnsiConsole.MarkupLine $"[yellow]{commandStr}[/] is cancelled or timeouted and the process will be killed."
+                                result.Kill()
+                            )
+
+                        result.WaitForExit()
                         return result.ExitCode
                     }
                     )
@@ -184,21 +201,12 @@ type StageContext with
 
     member ctx.WhenBranch(branch: string) =
         try
-            let mutable currentBranch = ""
+            let command = ctx.BuildCommand("git branch --show-current")
+            ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command.WorkingDirectory <- x)
 
-            let mutable command =
-                Cli
-                    .Wrap("git")
-                    .WithArguments("branch --show-current")
-                    .WithStandardOutputPipe(PipeTarget.ToDelegate(fun x -> currentBranch <- x))
-                    .WithValidation(CommandResultValidation.None)
-
-            ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command <- command.WithWorkingDirectory x)
-
-            command.ExecuteAsync().GetAwaiter().GetResult() |> ignore
-
-            currentBranch = branch
-
+            let result = Process.Start command
+            result.WaitForExit()
+            result.StandardOutput.ReadLine() = branch
         with ex ->
             AnsiConsole.MarkupLine $"[red]Run git to get branch info failed: {ex.Message}[/]"
             false
@@ -220,6 +228,9 @@ type StageContext with
             use cts = new Threading.CancellationTokenSource(timeoutForStage)
             use linkedCTS = Threading.CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancelToken)
 
+            use stepCTS = new Threading.CancellationTokenSource(timeoutForStep)
+            use linkedStepCTS = Threading.CancellationTokenSource.CreateLinkedTokenSource(stepCTS.Token, linkedCTS.Token)
+
 
             AnsiConsole.Write(Rule())
             AnsiConsole.Write(
@@ -234,50 +245,64 @@ type StageContext with
 
             let steps =
                 stage.Steps
-                |> Seq.map (fun step ->
-                    let ts = async {
-                        let sw = Stopwatch.StartNew()
-                        AnsiConsole.MarkupLine $"""[grey]> step started{if isParallel then " in parallel -->" else ":"}[/]"""
-                        let! result =
-                            match step with
-                            | StepFn fn -> fn stage
-                            | StepOfStage subStage -> async {
-                                let subStage =
-                                    { subStage with
-                                        ParentContext = ValueSome(StageParent.Stage stage)
-                                    }
-                                return subStage.Run(ValueNone, linkedCTS.Token)
-                              }
+                |> Seq.map (fun step -> async {
+                    let sw = Stopwatch.StartNew()
+                    AnsiConsole.MarkupLine $"""[grey]> step started{if isParallel then " in parallel -->" else ":"}[/]"""
+                    let! result =
+                        match step with
+                        | StepFn fn -> fn stage
+                        | StepOfStage subStage -> async {
+                            let subStage =
+                                { subStage with
+                                    ParentContext = ValueSome(StageParent.Stage stage)
+                                }
+                            return subStage.Run(ValueNone, linkedStepCTS.Token)
+                          }
 
-                        AnsiConsole.MarkupLine
-                            $"""[gray]> step finished{if isParallel then " in parallel." else "."} {sw.ElapsedMilliseconds}ms.[/]"""
-                        AnsiConsole.WriteLine()
-                        if result <> 0 then
-                            failwith $"Step finished without a success exist code. {result}"
-                    }
-                    Async.StartChild(ts, timeoutForStep)
+                    AnsiConsole.MarkupLine $"""[gray]> step finished{if isParallel then " in parallel." else "."} {sw.ElapsedMilliseconds}ms.[/]"""
+                    AnsiConsole.WriteLine()
+                    if result <> 0 then
+                        failwith $"Step finished without a success exist code. {result}"
+                }
                 )
 
             try
                 let ts =
                     if isParallel then
                         async {
-                            let! completers = steps |> Async.Parallel
-                            do! Async.Parallel completers |> Async.Ignore
+                            let mutable count = 0
+
+                            for ts in steps do
+                                Async.Start(
+                                    async {
+                                        do! ts
+                                        // TODO should find a better way to do parallel and pass cancellation token down
+                                        lock parallelStepLock (fun _ -> count <- count + 1)
+                                    },
+                                    linkedStepCTS.Token
+                                )
+
+                            while count < Seq.length steps do
+                                do! Async.Sleep 10
                         }
                     else
                         async {
                             for step in steps do
-                                let! completer = step
+                                let! completer = Async.StartChild(step, timeoutForStep)
                                 do! completer
                         }
+
                 Async.RunSynchronously(ts, cancellationToken = linkedCTS.Token)
 
             with ex ->
-                AnsiConsole.MarkupLine $"[red]> step failed: {ex.Message}[/]"
-                AnsiConsole.WriteException ex
-                AnsiConsole.WriteLine()
                 exitCode <- -1
+                if linkedCTS.Token.IsCancellationRequested then
+                    AnsiConsole.MarkupLine $"[yellow]Stage is cancelled or timeouted.[/]"
+                    AnsiConsole.WriteLine()
+                else
+                    AnsiConsole.MarkupLine $"[red]> step failed: {ex.Message}[/]"
+                    AnsiConsole.WriteException ex
+                    AnsiConsole.WriteLine()
 
             AnsiConsole.Write(
                 match index with

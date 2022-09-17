@@ -48,3 +48,7 @@ type BuildStage = delegate of ctx: StageContext -> StageContext
 type BuildStageIsActive = delegate of ctx: StageContext -> bool
 
 type BuildStep = delegate of ctx: StageContext -> Async<int>
+
+
+exception PipelineFailedException of string
+exception PipelineCancelledException of string

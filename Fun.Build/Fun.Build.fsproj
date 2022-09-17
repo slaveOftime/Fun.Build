@@ -5,7 +5,7 @@
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<TrimMode>link</TrimMode>
 		<IsTrimmable>true</IsTrimmable>
-		<Version>0.1.2</Version>
+		<Version>0.1.3</Version>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -16,10 +16,10 @@
 		<Compile Include="ConditionsBuilder.fs" />
 		<Compile Include="StageBuilder.fs" />
 		<Compile Include="PipelineBuilder.fs" />
+		<Compile Include="BuiltinCmds.fs" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="CliWrap" Version="3.5.0" />
 		<PackageReference Include="Spectre.Console" Version="0.45.0" />
 	</ItemGroup>
 
