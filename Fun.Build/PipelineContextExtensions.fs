@@ -93,13 +93,12 @@ type PipelineContext with
         use cts = new Threading.CancellationTokenSource(timeoutForPipeline)
 
         Console.CancelKeyPress.Add(fun e ->
+            cts.Cancel()
+            e.Cancel <- true
+            
             AnsiConsole.WriteLine()
             AnsiConsole.MarkupLine "[yellow]Pipeline is cancelled by console.[/]"
             AnsiConsole.WriteLine()
-
-            cts.Cancel()
-
-            e.Cancel <- true
         )
 
         AnsiConsole.MarkupLine $"[grey]Run stages[/]"
@@ -108,11 +107,13 @@ type PipelineContext with
         AnsiConsole.WriteLine()
         AnsiConsole.WriteLine()
 
-        AnsiConsole.MarkupLine $"[grey]Run post stages[/]"
-        let hasFailedPostStage = this.RunStages(this.PostStages, cts.Token, failfast = false)
-        AnsiConsole.MarkupLine $"[grey]Run post stages finished[/]"
-        AnsiConsole.WriteLine()
-        AnsiConsole.WriteLine()
+        let mutable hasFailedPostStage = false
+        if cts.IsCancellationRequested |> not then
+            AnsiConsole.MarkupLine $"[grey]Run post stages[/]"
+            hasFailedPostStage <- this.RunStages(this.PostStages, cts.Token, failfast = false)
+            AnsiConsole.MarkupLine $"[grey]Run post stages finished[/]"
+            AnsiConsole.WriteLine()
+            AnsiConsole.WriteLine()
 
 
         let hasError = hasFailedStage || hasFailedPostStage

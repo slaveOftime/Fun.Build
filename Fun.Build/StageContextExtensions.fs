@@ -176,7 +176,7 @@ type StageContext with
 
                         use! cd =
                             Async.OnCancel(fun _ ->
-                                AnsiConsole.MarkupLine $"[yellow]{commandStr}[/] is cancelled or timeouted."
+                                AnsiConsole.MarkupLine $"[yellow]{commandStr}[/] is cancelled or timeouted and the process will be killed."
                                 result.Kill()
                             )
 
@@ -297,7 +297,7 @@ type StageContext with
             with ex ->
                 exitCode <- -1
                 if linkedCTS.Token.IsCancellationRequested then
-                    AnsiConsole.MarkupLine $"[yellow]Stage is ancelled or timeouted.[/]"
+                    AnsiConsole.MarkupLine $"[yellow]Stage is cancelled or timeouted.[/]"
                     AnsiConsole.WriteLine()
                 else
                     AnsiConsole.MarkupLine $"[red]> step failed: {ex.Message}[/]"

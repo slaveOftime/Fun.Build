@@ -364,7 +364,7 @@ let inline cmd (commandStr: FormattableString) =
 
         use! cd =
             Async.OnCancel(fun _ ->
-                AnsiConsole.MarkupLine $"[yellow]{commandStr}[/] is cancelled or timeouted."
+                AnsiConsole.MarkupLine $"[yellow]{commandStr}[/] is cancelled or timeouted and the process will be killed."
                 result.Kill()
             )
 
