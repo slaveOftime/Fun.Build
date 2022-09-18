@@ -2,7 +2,9 @@
 module internal Fun.Build.Utils
 
 open System
+open System.IO
 open System.Diagnostics
+open System.Runtime.InteropServices
 open Spectre.Console
 
 
@@ -16,7 +18,47 @@ module ValueOption =
         | _ -> ValueNone
 
 
+let paths =
+    lazy
+        (fun () ->
+            let envPath = Environment.GetEnvironmentVariable("PATH")
+            if String.IsNullOrEmpty envPath |> not then
+                envPath.Split Path.PathSeparator |> Seq.toList
+            else
+                []
+        )
+
+
 type Process with
+
+    static member GetQualifiedFileName(cmd: string) =
+        if
+            not (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            || Path.IsPathRooted(cmd)
+            || not (String.IsNullOrWhiteSpace(Path.GetExtension cmd))
+        then
+            cmd
+        else
+            seq {
+                use ps = Process.GetCurrentProcess()
+                if ps.MainModule <> null then ps.MainModule.FileName
+
+                Directory.GetCurrentDirectory()
+
+                yield! paths.Value()
+            }
+            |> Seq.tryPick (fun path ->
+                if Directory.Exists path then
+                    [ "exe"; "cmd"; "bat" ]
+                    |> Seq.tryPick (fun ext ->
+                        let file = Path.ChangeExtension(Path.Combine(path, cmd), ext)
+                        if File.Exists file then Some file else None
+                    )
+                else
+                    None
+            )
+            |> Option.defaultValue cmd
+
 
     static member StartAsync(startInfo: ProcessStartInfo, commandStr: string, logPrefix: string) = async {
         use result = Process.Start startInfo
