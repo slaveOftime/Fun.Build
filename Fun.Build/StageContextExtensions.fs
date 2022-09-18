@@ -166,19 +166,8 @@ type StageContext with
                     StepFn(fun ctx -> async {
                         let! commandStr = commandStrFn ctx
                         let command = ctx.BuildCommand(commandStr)
-
                         AnsiConsole.MarkupLine $"[green]{commandStr}[/]"
-
-                        use result = Process.Start command
-
-                        use! cd =
-                            Async.OnCancel(fun _ ->
-                                AnsiConsole.MarkupLine $"[yellow]{commandStr}[/] is cancelled or timeouted and the process will be killed."
-                                result.Kill()
-                            )
-
-                        result.WaitForExit()
-                        return result.ExitCode
+                        return! Process.StartAsync(command, commandStr)
                     }
                     )
                 ]

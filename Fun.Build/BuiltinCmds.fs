@@ -8,7 +8,7 @@ open System.Runtime.InteropServices
 
 
 /// Create a command with a formattable string which will encode the arguments as * when print to console.
-let inline cmd (commandStr: FormattableString) =
+let cmd (commandStr: FormattableString) =
     step (fun ctx -> async {
         let command = ctx.BuildCommand(commandStr.ToString())
         let args: obj[] = Array.create commandStr.ArgumentCount "*"
@@ -16,16 +16,7 @@ let inline cmd (commandStr: FormattableString) =
 
         AnsiConsole.MarkupLine $"[green]{encryptiedStr}[/]"
 
-        let result = Process.Start command
-
-        use! cd =
-            Async.OnCancel(fun _ ->
-                AnsiConsole.MarkupLine $"[yellow]{commandStr}[/] is cancelled or timeouted and the process will be killed."
-                result.Kill()
-            )
-
-        result.WaitForExit()
-        return result.ExitCode
+        return! Process.StartAsync(command, encryptiedStr)
     }
     )
 
