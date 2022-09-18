@@ -8,17 +8,7 @@ open System.Runtime.InteropServices
 open Spectre.Console
 
 
-module ValueOption =
-
-    let inline defaultWithVOption (fn: unit -> 'T voption) (data: 'T voption) = if data.IsSome then data else fn ()
-
-    let inline ofOption (data: 'T option) =
-        match data with
-        | Some x -> ValueSome x
-        | _ -> ValueNone
-
-
-let paths =
+let windowsEnvPaths =
     lazy
         (fun () ->
             let envPath = Environment.GetEnvironmentVariable("PATH")
@@ -27,6 +17,19 @@ let paths =
             else
                 []
         )
+
+
+let windowsExeExts = [ "exe"; "cmd"; "bat" ]
+
+
+module ValueOption =
+
+    let inline defaultWithVOption (fn: unit -> 'T voption) (data: 'T voption) = if data.IsSome then data else fn ()
+
+    let inline ofOption (data: 'T option) =
+        match data with
+        | Some x -> ValueSome x
+        | _ -> ValueNone
 
 
 type Process with
@@ -45,17 +48,14 @@ type Process with
 
                 Directory.GetCurrentDirectory()
 
-                yield! paths.Value()
+                yield! windowsEnvPaths.Value()
             }
             |> Seq.tryPick (fun path ->
-                if Directory.Exists path then
-                    [ "exe"; "cmd"; "bat" ]
-                    |> Seq.tryPick (fun ext ->
-                        let file = Path.ChangeExtension(Path.Combine(path, cmd), ext)
-                        if File.Exists file then Some file else None
-                    )
-                else
-                    None
+                windowsExeExts
+                |> Seq.tryPick (fun ext ->
+                    let file = Path.ChangeExtension(Path.Combine(path, cmd), ext)
+                    if File.Exists file then Some file else None
+                )
             )
             |> Option.defaultValue cmd
 
