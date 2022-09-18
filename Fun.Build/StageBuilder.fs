@@ -23,20 +23,30 @@ type StageBuilder(name: string) =
 
     member inline _.Delay([<InlineIfLambda>] fn: unit -> BuildStageIsActive) = BuildStage(fun ctx -> { ctx with IsActive = fn().Invoke })
 
-    member inline _.Delay([<InlineIfLambda>] fn: unit -> BuildStep) = BuildStage(fun ctx -> { ctx with Steps = ctx.Steps @ [ StepFn(fn().Invoke) ] })
+    member inline _.Delay([<InlineIfLambda>] fn: unit -> BuildStep) =
+        BuildStage(fun ctx ->
+            { ctx with
+                Steps = ctx.Steps @ [ Step.StepFn(fn().Invoke) ]
+            }
+        )
 
     member inline _.Delay([<InlineIfLambda>] fn: unit -> StageContext) =
-        BuildStage(fun ctx -> { ctx with Steps = ctx.Steps @ [ StepOfStage(fn ()) ] })
+        BuildStage(fun ctx -> { ctx with Steps = ctx.Steps @ [ Step.StepOfStage(fn ()) ] })
 
 
     member inline _.Combine([<InlineIfLambda>] condition: BuildStageIsActive, [<InlineIfLambda>] build: BuildStage) =
         BuildStage(fun ctx -> build.Invoke { ctx with IsActive = condition.Invoke })
 
     member inline _.Combine([<InlineIfLambda>] builder: BuildStep, [<InlineIfLambda>] build: BuildStage) =
-        BuildStage(fun ctx -> build.Invoke { ctx with Steps = ctx.Steps @ [ StepFn builder.Invoke ] })
+        BuildStage(fun ctx ->
+            build.Invoke
+                { ctx with
+                    Steps = ctx.Steps @ [ Step.StepFn builder.Invoke ]
+                }
+        )
 
     member inline _.Combine(stage: StageContext, [<InlineIfLambda>] build: BuildStage) =
-        BuildStage(fun ctx -> build.Invoke { ctx with Steps = ctx.Steps @ [ StepOfStage stage ] })
+        BuildStage(fun ctx -> build.Invoke { ctx with Steps = ctx.Steps @ [ Step.StepOfStage stage ] })
 
 
     member inline _.For([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] fn: unit -> BuildStage) =
@@ -51,13 +61,15 @@ type StageBuilder(name: string) =
     member inline _.For([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] fn: unit -> BuildStep) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with Steps = ctx.Steps @ [ StepFn(fn().Invoke) ] }
+            { ctx with
+                Steps = ctx.Steps @ [ Step.StepFn(fn().Invoke) ]
+            }
         )
 
     member inline _.For([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] fn: unit -> StageContext) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with Steps = ctx.Steps @ [ StepOfStage(fn ()) ] }
+            { ctx with Steps = ctx.Steps @ [ Step.StepOfStage(fn ()) ] }
         )
 
 
@@ -127,9 +139,9 @@ type StageBuilder(name: string) =
                 Steps =
                     ctx.Steps
                     @ [
-                        StepFn(fun ctx -> async {
+                        Step.StepFn(fun (ctx, i) -> async {
                             let builder = buildStep ctx
-                            return! builder.Invoke(ctx)
+                            return! builder.Invoke(ctx, i)
                         }
                         )
                     ]
@@ -166,7 +178,7 @@ type StageBuilder(name: string) =
                 Steps =
                     ctx.Steps
                     @ [
-                        StepFn(fun _ -> async {
+                        Step.StepFn(fun _ -> async {
                             do! step
                             return 0
                         }
@@ -180,7 +192,9 @@ type StageBuilder(name: string) =
     member inline _.run([<InlineIfLambda>] build: BuildStage, step: Async<int>) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with Steps = ctx.Steps @ [ StepFn(fun _ -> step) ] }
+            { ctx with
+                Steps = ctx.Steps @ [ Step.StepFn(fun _ -> step) ]
+            }
         )
 
 
@@ -193,7 +207,7 @@ type StageBuilder(name: string) =
                 Steps =
                     ctx.Steps
                     @ [
-                        StepFn(fun ctx -> async {
+                        Step.StepFn(fun (ctx, _) -> async {
                             step ctx
                             return 0
                         }
@@ -208,7 +222,7 @@ type StageBuilder(name: string) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
             { ctx with
-                Steps = ctx.Steps @ [ StepFn(fun _ -> async { return step ctx }) ]
+                Steps = ctx.Steps @ [ Step.StepFn(fun _ -> async { return step ctx }) ]
             }
         )
 
@@ -222,7 +236,7 @@ type StageBuilder(name: string) =
                 Steps =
                     ctx.Steps
                     @ [
-                        StepFn(fun ctx -> async {
+                        Step.StepFn(fun (ctx, _) -> async {
                             do! step ctx
                             return 0
                         }
@@ -237,7 +251,7 @@ type StageBuilder(name: string) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
             { ctx with
-                Steps = ctx.Steps @ [ StepFn(fun _ -> async { return! step ctx }) ]
+                Steps = ctx.Steps @ [ Step.StepFn(fun _ -> async { return! step ctx }) ]
             }
         )
 
@@ -251,7 +265,7 @@ type StageBuilder(name: string) =
                 Steps =
                     ctx.Steps
                     @ [
-                        StepFn(fun ctx -> async {
+                        Step.StepFn(fun (ctx, _) -> async {
                             do! step ctx |> Async.AwaitTask
                             return 0
                         }
@@ -269,7 +283,7 @@ type StageBuilder(name: string) =
                 Steps =
                     ctx.Steps
                     @ [
-                        StepFn(fun ctx -> async {
+                        Step.StepFn(fun (ctx, _) -> async {
                             do! step ctx |> Async.AwaitTask
                             return 0
                         }
@@ -284,7 +298,7 @@ type StageBuilder(name: string) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
             { ctx with
-                Steps = ctx.Steps @ [ StepFn(fun _ -> async { return! step ctx |> Async.AwaitTask }) ]
+                Steps = ctx.Steps @ [ Step.StepFn(fun _ -> async { return! step ctx |> Async.AwaitTask }) ]
             }
         )
 
@@ -298,8 +312,8 @@ type StageBuilder(name: string) =
                 Steps =
                     ctx.Steps
                     @ [
-                        StepFn(fun ctx -> async {
-                            printfn "%s" (msg ctx)
+                        Step.StepFn(fun (ctx, i) -> async {
+                            printfn "%s %s" (ctx.BuildStepPrefix i) (msg ctx)
                             return 0
                         }
                         )

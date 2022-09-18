@@ -7,9 +7,6 @@ open System.Diagnostics
 open Spectre.Console
 
 
-let private parallelStepLock = obj ()
-
-
 type StageContext with
 
     static member Create(name: string) = {
@@ -138,6 +135,9 @@ type StageContext with
     member inline ctx.GetCmdArgOrEnvVar(key) = ctx.TryGetCmdArgOrEnvVar key |> ValueOption.defaultValue ""
 
 
+    member inline ctx.BuildStepPrefix(i: int) = sprintf "%s/step-%d>" (ctx.GetNamePath()) i
+
+
     member ctx.BuildCommand(commandStr: string) =
         let index = commandStr.IndexOf " "
 
@@ -166,22 +166,11 @@ type StageContext with
             Steps =
                 ctx.Steps
                 @ [
-                    StepFn(fun ctx -> async {
+                    Step.StepFn(fun (ctx, i) -> async {
                         let! commandStr = commandStrFn ctx
                         let command = ctx.BuildCommand(commandStr)
-
-                        AnsiConsole.MarkupLine $"[green]{commandStr}[/]"
-
-                        use result = Process.Start command
-
-                        use! cd =
-                            Async.OnCancel(fun _ ->
-                                AnsiConsole.MarkupLine $"[yellow]{commandStr}[/] is cancelled or timeouted and the process will be killed."
-                                result.Kill()
-                            )
-
-                        result.WaitForExit()
-                        return result.ExitCode
+                        AnsiConsole.MarkupLine $"{ctx.BuildStepPrefix i} [green]{commandStr}[/]"
+                        return! Process.StartAsync(command, commandStr, ctx.BuildStepPrefix i)
                     }
                     )
                 ]
@@ -213,7 +202,7 @@ type StageContext with
 
 
     /// Run the stage. If index is not provided then it will be treated as sub-stage.
-    member stage.Run(index: int voption, cancelToken: Threading.CancellationToken) =
+    member stage.Run(index: StageIndex, cancelToken: Threading.CancellationToken) =
         let mutable exitCode = 0
 
         let isActive = stage.IsActive stage
@@ -234,35 +223,35 @@ type StageContext with
 
             AnsiConsole.Write(Rule())
             AnsiConsole.Write(
+                let extraInfo = $"Stage timeout: {timeoutForStage}ms. Step timeout: {timeoutForStep}ms."
                 match index with
-                | ValueSome i ->
-                    Rule($"STAGE #{i} [bold teal]{namePath}[/] started. Stage timeout: {timeoutForStage}ms. Step timeout: {timeoutForStep}ms.")
-                        .LeftAligned()
-                | _ -> Rule($"SUB-STAGE {namePath}. Stage timeout: {timeoutForStage}ms. Step timeout: {timeoutForStep}ms.").LeftAligned()
+                | StageIndex.Stage i -> Rule($"STAGE #{i} [bold teal]{namePath}[/] started. {extraInfo}").LeftAligned()
+                | StageIndex.Step i -> Rule($"SUBSTAGE [bold teal]{stage.BuildStepPrefix i}[/]. {extraInfo}").LeftAligned()
             )
             AnsiConsole.WriteLine()
 
 
             let steps =
                 stage.Steps
-                |> Seq.map (fun step -> async {
+                |> Seq.mapi (fun i step -> async {
+                    let prefix = stage.BuildStepPrefix i
                     let sw = Stopwatch.StartNew()
-                    AnsiConsole.MarkupLine $"""[grey]> step started{if isParallel then " in parallel -->" else ":"}[/]"""
+                    AnsiConsole.MarkupLine $"""[grey]{prefix} started{if isParallel then " in parallel -->" else ":"}[/]"""
                     let! result =
                         match step with
-                        | StepFn fn -> fn stage
-                        | StepOfStage subStage -> async {
+                        | Step.StepFn fn -> fn (stage, i)
+                        | Step.StepOfStage subStage -> async {
                             let subStage =
                                 { subStage with
                                     ParentContext = ValueSome(StageParent.Stage stage)
                                 }
-                            return subStage.Run(ValueNone, linkedStepCTS.Token)
+                            return subStage.Run(StageIndex.Step i, linkedStepCTS.Token)
                           }
 
-                    AnsiConsole.MarkupLine $"""[gray]> step finished{if isParallel then " in parallel." else "."} {sw.ElapsedMilliseconds}ms.[/]"""
+                    AnsiConsole.MarkupLine $"""[gray]{prefix} finished{if isParallel then " in parallel." else "."} {sw.ElapsedMilliseconds}ms.[/]"""
                     AnsiConsole.WriteLine()
                     if result <> 0 then
-                        failwith $"Step finished without a success exist code. {result}"
+                        failwith $"{prefix} finished without a success exist code. {result}"
                 }
                 )
 
@@ -270,20 +259,14 @@ type StageContext with
                 let ts =
                     if isParallel then
                         async {
-                            let mutable count = 0
+                            let completers = ResizeArray()
 
                             for ts in steps do
-                                Async.Start(
-                                    async {
-                                        do! ts
-                                        // TODO should find a better way to do parallel and pass cancellation token down
-                                        lock parallelStepLock (fun _ -> count <- count + 1)
-                                    },
-                                    linkedStepCTS.Token
-                                )
+                                let! completer = Async.StartChild(ts, timeoutForStep)
+                                completers.Add completer
 
-                            while count < Seq.length steps do
-                                do! Async.Sleep 10
+                            for completer in completers do
+                                do! completer
                         }
                     else
                         async {
@@ -300,17 +283,16 @@ type StageContext with
                     AnsiConsole.MarkupLine $"[yellow]Stage is cancelled or timeouted.[/]"
                     AnsiConsole.WriteLine()
                 else
-                    AnsiConsole.MarkupLine $"[red]> step failed: {ex.Message}[/]"
+                    AnsiConsole.MarkupLine $"[red]Stage's step is failed: {ex.Message}[/]"
                     AnsiConsole.WriteException ex
                     AnsiConsole.WriteLine()
 
             AnsiConsole.Write(
+                let color = if exitCode <> 0 then "red" else "teal"
                 match index with
-                | ValueSome i ->
-                    Rule($"""STAGE #{i} [bold {if exitCode <> 0 then "red" else "teal"}]{namePath}[/] finished. {stageSW.ElapsedMilliseconds}ms.""")
-                        .LeftAligned()
-                | _ ->
-                    Rule($"""SUB-STAGE [bold {if exitCode <> 0 then "red" else "teal"}]{namePath}[/] finished. {stageSW.ElapsedMilliseconds}ms.""")
+                | StageIndex.Stage i -> Rule($"""STAGE #{i} [bold {color}]{namePath}[/] finished. {stageSW.ElapsedMilliseconds}ms.""").LeftAligned()
+                | StageIndex.Step i ->
+                    Rule($"""SUBSTAGE [bold {color}]{stage.BuildStepPrefix i}[/] finished. {stageSW.ElapsedMilliseconds}ms.""")
                         .LeftAligned()
             )
             AnsiConsole.Write(Rule())
@@ -319,8 +301,8 @@ type StageContext with
             AnsiConsole.Write(Rule())
             AnsiConsole.MarkupLine(
                 match index with
-                | ValueSome i -> $"STAGE #{i} [bold grey]{namePath}[/] is inactive"
-                | _ -> $"SUB-STAGE [bold grey]{namePath}[/] is inactive"
+                | StageIndex.Stage i -> $"STAGE #{i} [bold grey]{namePath}[/] is inactive"
+                | StageIndex.Step i -> $"SUBSTAGE [bold grey]{stage.BuildStepPrefix i}[/] is inactive"
             )
             AnsiConsole.Write(Rule())
 

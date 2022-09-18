@@ -62,10 +62,10 @@ type PipelineContext with
             let isActive = stage.IsActive stage
 
             if isActive then
-                hasError <- stage.Run(ValueSome i, cancelToken) <> 0 || hasError
+                hasError <- stage.Run(StageIndex.Stage i, cancelToken) <> 0 || hasError
             else
                 AnsiConsole.Write(Rule())
-                AnsiConsole.MarkupLine "STAGE #{i} [bold grey]{stage.Name}[/] is inactive"
+                AnsiConsole.MarkupLine $"STAGE #{i} [bold grey]{stage.Name}[/] is inactive"
                 AnsiConsole.Write(Rule())
 
             i <- i + 1
