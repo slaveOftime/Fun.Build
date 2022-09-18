@@ -149,8 +149,7 @@ type StageContext with
             else
                 commandStr, ""
 
-        let command = ProcessStartInfo(cmd, args)
-
+        let command = ProcessStartInfo(Process.GetQualifiedFileName cmd, args)
 
         ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command.WorkingDirectory <- x)
 

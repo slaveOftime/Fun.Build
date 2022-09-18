@@ -20,7 +20,7 @@ Every **step** is just a **async< int >**, int is for the exit code.
 ## Example:
 
 ```fsharp
-#r "nuget: Fun.Build, 0.1.4"
+#r "nuget: Fun.Build, 0.1.5"
 
 open Fun.Build
 
