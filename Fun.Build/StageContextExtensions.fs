@@ -7,9 +7,6 @@ open System.Diagnostics
 open Spectre.Console
 
 
-let private parallelStepLock = obj ()
-
-
 type StageContext with
 
     static member Create(name: string) = {
@@ -270,20 +267,14 @@ type StageContext with
                 let ts =
                     if isParallel then
                         async {
-                            let mutable count = 0
+                            let completers = ResizeArray()
 
                             for ts in steps do
-                                Async.Start(
-                                    async {
-                                        do! ts
-                                        // TODO should find a better way to do parallel and pass cancellation token down
-                                        lock parallelStepLock (fun _ -> count <- count + 1)
-                                    },
-                                    linkedStepCTS.Token
-                                )
+                                let! completer = Async.StartChild(ts, timeoutForStep)
+                                completers.Add completer
 
-                            while count < Seq.length steps do
-                                do! Async.Sleep 10
+                            for completer in completers do
+                                do! completer
                         }
                     else
                         async {
