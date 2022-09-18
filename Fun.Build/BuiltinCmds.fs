@@ -24,6 +24,8 @@ let cmd (commandStr: FormattableString) =
 /// Open url in browser
 let openBrowser (url: string) =
     step (fun ctx i -> async {
+        let prefix = ctx.BuildStepPrefix i
+        AnsiConsole.MarkupLine $"{prefix} Open {url} in browser"
         try
             Process.Start(url) |> ignore
             return 0
@@ -39,7 +41,7 @@ let openBrowser (url: string) =
                 Process.Start("open", url) |> ignore
                 return 0
             else
-                AnsiConsole.MarkupLine $"{ctx.BuildStepPrefix i} [red]Open url failed. Platform is not supportted.[/]"
+                AnsiConsole.MarkupLine $"{prefix} [red]Open url failed. Platform is not supportted.[/]"
                 return -1
     }
     )
