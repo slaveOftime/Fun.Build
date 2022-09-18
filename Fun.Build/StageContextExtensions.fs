@@ -166,7 +166,7 @@ type StageContext with
             Steps =
                 ctx.Steps
                 @ [
-                    StepFn(fun (ctx, i) -> async {
+                    Step.StepFn(fun (ctx, i) -> async {
                         let! commandStr = commandStrFn ctx
                         let command = ctx.BuildCommand(commandStr)
                         AnsiConsole.MarkupLine $"{ctx.BuildStepPrefix i} [green]{commandStr}[/]"
@@ -239,8 +239,8 @@ type StageContext with
                     AnsiConsole.MarkupLine $"""[grey]{prefix} started{if isParallel then " in parallel -->" else ":"}[/]"""
                     let! result =
                         match step with
-                        | StepFn fn -> fn (stage, i)
-                        | StepOfStage subStage -> async {
+                        | Step.StepFn fn -> fn (stage, i)
+                        | Step.StepOfStage subStage -> async {
                             let subStage =
                                 { subStage with
                                     ParentContext = ValueSome(StageParent.Stage stage)

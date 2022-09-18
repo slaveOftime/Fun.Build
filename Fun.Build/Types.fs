@@ -3,15 +3,26 @@
 open System
 
 
-[<Struct>]
+type StepIndex = int
+
+
+[<Struct; RequireQualifiedAccess>]
 type Step =
-    | StepFn of fn: (StageContext * int -> Async<int>)
+    | StepFn of fn: (StageContext * StepIndex -> Async<int>)
     | StepOfStage of stage: StageContext
+
 
 [<Struct; RequireQualifiedAccess>]
 type StageParent =
     | Stage of stage: StageContext
     | Pipeline of pipeline: PipelineContext
+
+
+[<Struct; RequireQualifiedAccess>]
+type StageIndex =
+    | Step of step: int
+    | Stage of stage: int
+
 
 type StageContext = {
     Name: string
@@ -39,12 +50,6 @@ type PipelineContext = {
 }
 
 
-[<RequireQualifiedAccess; Struct>]
-type StageIndex =
-    | Step of step: int
-    | Stage of stage: int
-
-
 type BuildPipeline = delegate of ctx: PipelineContext -> PipelineContext
 
 type BuildConditions = delegate of conditions: (StageContext -> bool) list -> (StageContext -> bool) list
@@ -53,7 +58,7 @@ type BuildStage = delegate of ctx: StageContext -> StageContext
 
 type BuildStageIsActive = delegate of ctx: StageContext -> bool
 
-type BuildStep = delegate of ctx: StageContext * index: int -> Async<int>
+type BuildStep = delegate of ctx: StageContext * index: StepIndex -> Async<int>
 
 exception PipelineFailedException of string
 exception PipelineCancelledException of string
