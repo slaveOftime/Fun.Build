@@ -9,21 +9,21 @@ open System.Runtime.InteropServices
 
 /// Create a command with a formattable string which will encode the arguments as * when print to console.
 let cmd (commandStr: FormattableString) =
-    step (fun ctx -> async {
+    step (fun ctx i -> async {
         let command = ctx.BuildCommand(commandStr.ToString())
         let args: obj[] = Array.create commandStr.ArgumentCount "*"
         let encryptiedStr = String.Format(commandStr.Format, args)
 
-        AnsiConsole.MarkupLine $"[green]{encryptiedStr}[/]"
+        AnsiConsole.MarkupLine $"{ctx.BuildStepPrefix i} [green]{encryptiedStr}[/]"
 
-        return! Process.StartAsync(command, encryptiedStr)
+        return! Process.StartAsync(command, encryptiedStr, ctx.BuildStepPrefix i)
     }
     )
 
 
 /// Open url in browser
 let openBrowser (url: string) =
-    step (fun _ -> async {
+    step (fun ctx i -> async {
         try
             Process.Start(url) |> ignore
             return 0
@@ -39,7 +39,7 @@ let openBrowser (url: string) =
                 Process.Start("open", url) |> ignore
                 return 0
             else
-                AnsiConsole.MarkupLine "[red]Open url failed. Platform is not supportted.[/]"
+                AnsiConsole.MarkupLine $"{ctx.BuildStepPrefix i} [red]Open url failed. Platform is not supportted.[/]"
                 return -1
     }
     )

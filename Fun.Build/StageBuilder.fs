@@ -127,9 +127,9 @@ type StageBuilder(name: string) =
                 Steps =
                     ctx.Steps
                     @ [
-                        StepFn(fun ctx -> async {
+                        StepFn(fun (ctx, i) -> async {
                             let builder = buildStep ctx
-                            return! builder.Invoke(ctx)
+                            return! builder.Invoke(ctx, i)
                         }
                         )
                     ]
@@ -193,7 +193,7 @@ type StageBuilder(name: string) =
                 Steps =
                     ctx.Steps
                     @ [
-                        StepFn(fun ctx -> async {
+                        StepFn(fun (ctx, _) -> async {
                             step ctx
                             return 0
                         }
@@ -222,7 +222,7 @@ type StageBuilder(name: string) =
                 Steps =
                     ctx.Steps
                     @ [
-                        StepFn(fun ctx -> async {
+                        StepFn(fun (ctx, _) -> async {
                             do! step ctx
                             return 0
                         }
@@ -251,7 +251,7 @@ type StageBuilder(name: string) =
                 Steps =
                     ctx.Steps
                     @ [
-                        StepFn(fun ctx -> async {
+                        StepFn(fun (ctx, _) -> async {
                             do! step ctx |> Async.AwaitTask
                             return 0
                         }
@@ -269,7 +269,7 @@ type StageBuilder(name: string) =
                 Steps =
                     ctx.Steps
                     @ [
-                        StepFn(fun ctx -> async {
+                        StepFn(fun (ctx, _) -> async {
                             do! step ctx |> Async.AwaitTask
                             return 0
                         }
@@ -298,8 +298,8 @@ type StageBuilder(name: string) =
                 Steps =
                     ctx.Steps
                     @ [
-                        StepFn(fun ctx -> async {
-                            printfn "%s" (msg ctx)
+                        StepFn(fun (ctx, i) -> async {
+                            printfn "%s %s" (ctx.BuildStepPrefix i) (msg ctx)
                             return 0
                         }
                         )

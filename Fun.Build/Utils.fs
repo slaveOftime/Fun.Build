@@ -18,14 +18,14 @@ module ValueOption =
 
 type Process with
 
-    static member StartAsync(startInfo: ProcessStartInfo, commandStr: string) = async {
+    static member StartAsync(startInfo: ProcessStartInfo, commandStr: string, logPrefix: string) = async {
         use result = Process.Start startInfo
 
-        result.OutputDataReceived.Add(fun e -> Console.WriteLine e.Data)
+        result.OutputDataReceived.Add(fun e -> Console.WriteLine(logPrefix + e.Data))
 
         use! cd =
             Async.OnCancel(fun _ ->
-                AnsiConsole.MarkupLine $"[yellow]{commandStr}[/] is cancelled or timeouted and the process will be killed."
+                AnsiConsole.MarkupLine $"{logPrefix}[yellow]{commandStr}[/] is cancelled or timeouted and the process will be killed."
                 result.Kill()
             )
 

@@ -1,4 +1,3 @@
-#r "nuget: Cliwrap"
 #r "nuget: Spectre.Console"
 #r "Fun.Build/bin/Debug/netstandard2.0/Fun.Build.dll"
 
@@ -30,8 +29,8 @@ pipeline "Fun.Build" {
         run (fun ctx -> ())
         run (fun ctx -> 0) // return an exit code to indicate if it successful
         // You can also use the low level api
-        step (fun ctx -> async { return 0 })
-        BuildStep(fun ctx -> async { return 0 })
+        step (fun ctx _ -> async { return 0 })
+        BuildStep(fun ctx _ -> async { return 0 })
     }
     stage "Demo2" {
         // whenAny, whenNot, whenAll. They can also be composed.
