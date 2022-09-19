@@ -2,9 +2,7 @@
 module Fun.Build.StageBuilder
 
 open System
-open System.Diagnostics
 open System.Threading.Tasks
-open Spectre.Console
 
 
 type StageBuilder(name: string) =
@@ -324,40 +322,6 @@ type StageBuilder(name: string) =
     /// Add a step to run.
     [<CustomOperation("echo")>]
     member inline this.echo([<InlineIfLambda>] build: BuildStage, msg: string) = this.echo (build, (fun _ -> msg))
-
-
-    /// Set if stage is active, or should run.
-    [<CustomOperation("when'")>]
-    member inline _.when'([<InlineIfLambda>] build: BuildStage, value: bool) =
-        BuildStage(fun ctx -> { build.Invoke ctx with IsActive = fun _ -> value })
-
-
-    /// Set if stage is active, or should run by check the environment variable.
-    [<CustomOperation("whenEnvVar")>]
-    member inline _.whenEnvVar([<InlineIfLambda>] build: BuildStage, envKey: string, ?envValue: string) =
-        BuildStage(fun ctx ->
-            { build.Invoke ctx with
-                IsActive = fun ctx -> ctx.WhenEnvArg(envKey, defaultArg envValue "")
-            }
-        )
-
-    /// Set if stage is active, or should run by check the command line args.
-    [<CustomOperation("whenCmdArg")>]
-    member inline _.whenCmdArg([<InlineIfLambda>] build: BuildStage, argKey: string, ?argValue: string) =
-        BuildStage(fun ctx ->
-            { build.Invoke ctx with
-                IsActive = fun ctx -> ctx.WhenCmdArg(argKey, defaultArg argValue "")
-            }
-        )
-
-    /// Set if stage is active, or should run by check the git branch name.
-    [<CustomOperation("whenBranch")>]
-    member inline _.whenBranch([<InlineIfLambda>] build: BuildStage, branch: string) =
-        BuildStage(fun ctx ->
-            { build.Invoke ctx with
-                IsActive = fun ctx -> ctx.WhenBranch branch
-            }
-        )
 
 
 /// Build a stage with multiple steps which will run in sequence by default.

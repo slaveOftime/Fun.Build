@@ -2,7 +2,7 @@
 
 <p style="color: red;">Current it is under development, use it carefully</p>
 
-This is a project mainly used for CICD, you can use it in a fsharp project or as a script. You can check the **build.fsx** under the root folder to check how the Fun.Build project itself is built and published to nuget.
+This is a project mainly used for CICD, you can use it in a fsharp project or as a script. You can check the **build.fsx** or **demo.fsx** under the root folder to check how the Fun.Build project itself is built and published to nuget.
 
 The basic idea is you have **pipeline** which can contain multiple stages.  
 Every **stage** can contain multiple steps. In the stage you can set it to run in parallel or run under some conditions (when envVar, cmdArg, branch etc.).  
@@ -68,15 +68,18 @@ pipeline "Fun.Build" {
         run "dotnet --version"
         run "dotnet --version"
     }
+    // You can also nest stages, the stage will be treated as a single stage for parent stage.
     stage "Demo3" {
-        workingDir @"C:\Users"
-        run "powershell pwd"
-        // You can also nest stages, the stage will be treated as a single stage for parent stage.
+        stage "Platform" {
+            workingDir @"C:\Users"
+            whenWindows
+            run "powershell pwd"
+        }
         stage "Demo nested" {
             echo "cool nested"
             stage "Deeper" { echo "cooller" }
         }
-        openBrowser "https://github.com/dotnet/runtime/issues/17938"
+        openBrowser "https://github.com/slaveOftime/Fun.Build"
     }
     post [ // Post stages are optional. It will run even other normal stages are failed.
         stage "Post stage" {

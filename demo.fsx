@@ -47,15 +47,18 @@ pipeline "Fun.Build" {
         run "dotnet --version"
         run "dotnet --version"
     }
+    // You can also nest stages, the stage will be treated as a single stage for parent stage.
     stage "Demo3" {
-        workingDir @"C:\Users"
-        run "powershell pwd"
-        // You can also nest stages, the stage will be treated as a single stage for parent stage.
+        stage "Platform" {
+            workingDir @"C:\Users"
+            whenWindows
+            run "powershell pwd"
+        }
         stage "Demo nested" {
             echo "cool nested"
             stage "Deeper" { echo "cooller" }
         }
-        openBrowser "https://github.com/dotnet/runtime/issues/17938"
+        openBrowser "https://github.com/slaveOftime/Fun.Build"
     }
     post [ // Post stages are optional. It will run even other normal stages are failed.
         stage "Post stage" {

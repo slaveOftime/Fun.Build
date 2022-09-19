@@ -171,6 +171,10 @@ let ``when compose should work`` () =
                 branch "dev"
                 branch "master"
             }
+            whenAny {
+                platformWindows
+                platformLinux
+            }
         }
     }
 
