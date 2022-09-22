@@ -56,13 +56,16 @@ type PipelineContext with
 
         let mutable i = 0
         let mutable hasError = false
+        let stageExns = ResizeArray<exn>()
 
         while i < stages.Length && (not failfast || not hasError) do
             let stage = stages[i]
             let isActive = stage.IsActive stage
 
             if isActive then
-                hasError <- stage.Run(StageIndex.Stage i, cancelToken) <> 0 || hasError
+                let result, exns = stage.Run(StageIndex.Stage i, cancelToken)
+                stageExns.AddRange exns
+                hasError <- result <> 0 || hasError
             else
                 AnsiConsole.Write(Rule())
                 AnsiConsole.MarkupLine $"STAGE #{i} [bold grey]{stage.Name}[/] is inactive"
@@ -70,7 +73,7 @@ type PipelineContext with
 
             i <- i + 1
 
-        hasError
+        hasError, stageExns
 
 
     member this.Run() =
@@ -90,6 +93,7 @@ type PipelineContext with
 
 
         let sw = Stopwatch.StartNew()
+        let pipelineExns = ResizeArray<exn>()
         use cts = new Threading.CancellationTokenSource(timeoutForPipeline)
 
         Console.CancelKeyPress.Add(fun e ->
@@ -102,7 +106,8 @@ type PipelineContext with
         )
 
         AnsiConsole.MarkupLine $"[grey]Run stages[/]"
-        let hasFailedStage = this.RunStages(this.Stages, cts.Token, failfast = true)
+        let hasFailedStage, stageExns = this.RunStages(this.Stages, cts.Token, failfast = true)
+        pipelineExns.AddRange stageExns
         AnsiConsole.MarkupLine $"[grey]Run stages finished[/]"
         AnsiConsole.WriteLine()
         AnsiConsole.WriteLine()
@@ -110,7 +115,9 @@ type PipelineContext with
         let mutable hasFailedPostStage = false
         if cts.IsCancellationRequested |> not then
             AnsiConsole.MarkupLine $"[grey]Run post stages[/]"
-            hasFailedPostStage <- this.RunStages(this.PostStages, cts.Token, failfast = false)
+            let result, postStageExns = this.RunStages(this.PostStages, cts.Token, failfast = false)
+            hasFailedPostStage <- result
+            pipelineExns.AddRange postStageExns
             AnsiConsole.MarkupLine $"[grey]Run post stages finished[/]"
             AnsiConsole.WriteLine()
             AnsiConsole.WriteLine()
@@ -133,4 +140,10 @@ type PipelineContext with
         if cts.IsCancellationRequested then
             raise (PipelineCancelledException "Cancelled by console")
 
-        if hasError then raise (PipelineFailedException "Pipeline is failed")
+        if pipelineExns.Count > 0 then
+            for exn in pipelineExns do
+                AnsiConsole.WriteException exn
+                AnsiConsole.WriteLine()
+            raise (PipelineFailedException("Pipeline is failed because of exception", pipelineExns[0]))
+        else if hasError then
+            raise (PipelineFailedException "Pipeline is failed because exit code is not 0")

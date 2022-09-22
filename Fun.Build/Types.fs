@@ -60,5 +60,13 @@ type BuildStageIsActive = delegate of ctx: StageContext -> bool
 
 type BuildStep = delegate of ctx: StageContext * index: StepIndex -> Async<int>
 
-exception PipelineFailedException of string
-exception PipelineCancelledException of string
+
+type PipelineCancelledException(msg: string) =
+    inherit Exception(msg)
+
+
+type PipelineFailedException =
+    inherit Exception
+
+    new(msg: string) = { inherit Exception(msg) }
+    new(msg: string, ex: exn) = { inherit Exception(msg, ex) }

@@ -1,6 +1,8 @@
 ﻿[<AutoOpen>]
 module Fun.Build.ConditionsBuilder
 
+open System.Runtime.InteropServices
+
 
 type ConditionsBuilder() =
 
@@ -48,6 +50,96 @@ type ConditionsBuilder() =
             @ [
                 fun ctx -> ctx.WhenBranch(branch)
             ]
+        )
+
+    [<CustomOperation("platformWindows")>]
+    member inline _.platformWindows([<InlineIfLambda>] builder: BuildConditions) =
+        BuildConditions(fun conditions ->
+            builder.Invoke(conditions)
+            @ [
+                fun _ -> RuntimeInformation.IsOSPlatform OSPlatform.Windows
+            ]
+        )
+
+    [<CustomOperation("platformLinux")>]
+    member inline _.platformLinux([<InlineIfLambda>] builder: BuildConditions) =
+        BuildConditions(fun conditions ->
+            builder.Invoke(conditions)
+            @ [
+                fun _ -> RuntimeInformation.IsOSPlatform OSPlatform.Linux
+            ]
+        )
+
+    [<CustomOperation("platformOSX")>]
+    member inline _.platformOSX([<InlineIfLambda>] builder: BuildConditions) =
+        BuildConditions(fun conditions ->
+            builder.Invoke(conditions)
+            @ [
+                fun _ -> RuntimeInformation.IsOSPlatform OSPlatform.OSX
+            ]
+        )
+
+
+type StageBuilder with
+
+    /// Set if stage is active or should run.
+    [<CustomOperation("when'")>]
+    member inline _.when'([<InlineIfLambda>] build: BuildStage, value: bool) =
+        BuildStage(fun ctx -> { build.Invoke ctx with IsActive = fun _ -> value })
+
+
+    /// Set if stage is active or should run by check the environment variable.
+    [<CustomOperation("whenEnvVar")>]
+    member inline _.whenEnvVar([<InlineIfLambda>] build: BuildStage, envKey: string, ?envValue: string) =
+        BuildStage(fun ctx ->
+            { build.Invoke ctx with
+                IsActive = fun ctx -> ctx.WhenEnvArg(envKey, defaultArg envValue "")
+            }
+        )
+
+    /// Set if stage is active or should run by check the command line args.
+    [<CustomOperation("whenCmdArg")>]
+    member inline _.whenCmdArg([<InlineIfLambda>] build: BuildStage, argKey: string, ?argValue: string) =
+        BuildStage(fun ctx ->
+            { build.Invoke ctx with
+                IsActive = fun ctx -> ctx.WhenCmdArg(argKey, defaultArg argValue "")
+            }
+        )
+
+    /// Set if stage is active or should run by check the git branch name.
+    [<CustomOperation("whenBranch")>]
+    member inline _.whenBranch([<InlineIfLambda>] build: BuildStage, branch: string) =
+        BuildStage(fun ctx ->
+            { build.Invoke ctx with
+                IsActive = fun ctx -> ctx.WhenBranch branch
+            }
+        )
+
+    /// Set if stage is active or should run by check the platform is Windows.
+    [<CustomOperation("whenWindows")>]
+    member inline _.whenWindows([<InlineIfLambda>] build: BuildStage) =
+        BuildStage(fun ctx ->
+            { build.Invoke ctx with
+                IsActive = fun _ -> RuntimeInformation.IsOSPlatform OSPlatform.Windows
+            }
+        )
+
+    /// Set if stage is active or should run by check the platform is Windows.
+    [<CustomOperation("whenLinux")>]
+    member inline _.whenLinux([<InlineIfLambda>] build: BuildStage) =
+        BuildStage(fun ctx ->
+            { build.Invoke ctx with
+                IsActive = fun _ -> RuntimeInformation.IsOSPlatform OSPlatform.Linux
+            }
+        )
+
+    /// Set if stage is active or should run by check the platform is Windows.
+    [<CustomOperation("whenOSX")>]
+    member inline _.whenOSX([<InlineIfLambda>] build: BuildStage) =
+        BuildStage(fun ctx ->
+            { build.Invoke ctx with
+                IsActive = fun _ -> RuntimeInformation.IsOSPlatform OSPlatform.OSX
+            }
         )
 
 

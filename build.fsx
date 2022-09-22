@@ -1,4 +1,4 @@
-#r "nuget: Fun.Build, 0.1.2"
+#r "nuget: Fun.Build, 0.1.5"
 #r "nuget: Fake.IO.FileSystem, 5.23.0"
 
 open Fake.IO
