@@ -1,4 +1,4 @@
-# Fun.Build
+# Fun.Build [![Nuget](https://img.shields.io/nuget/vpre/Fun.Build)](https://www.nuget.org/packages/Fun.Build)
 
 <p style="color: red;">Current it is under development, use it carefully</p>
 
@@ -20,7 +20,7 @@ Every **step** is just a **async< int >**, int is for the exit code.
 ## Example:
 
 ```fsharp
-#r "nuget: Fun.Build, 0.1.5"
+#r "nuget: Fun.Build, 0.1.6"
 
 open Fun.Build
 
