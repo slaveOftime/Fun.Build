@@ -214,7 +214,9 @@ type StageContext with
             let timeoutForStage = stage.GetTimeoutForStage()
 
             use cts = new Threading.CancellationTokenSource(timeoutForStage)
-            use linkedCTS = Threading.CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancelToken)
+            use stepErrorCTS = new Threading.CancellationTokenSource()
+            use linkedStepErrorCTS = Threading.CancellationTokenSource.CreateLinkedTokenSource(cts.Token, stepErrorCTS.Token)
+            use linkedCTS = Threading.CancellationTokenSource.CreateLinkedTokenSource(linkedStepErrorCTS.Token, cancelToken)
 
             use stepCTS = new Threading.CancellationTokenSource(timeoutForStep)
             use linkedStepCTS = Threading.CancellationTokenSource.CreateLinkedTokenSource(stepCTS.Token, linkedCTS.Token)
@@ -234,23 +236,33 @@ type StageContext with
                 stage.Steps
                 |> Seq.mapi (fun i step -> async {
                     let prefix = stage.BuildStepPrefix i
-                    let sw = Stopwatch.StartNew()
-                    AnsiConsole.MarkupLine $"""[grey]{prefix} started{if isParallel then " in parallel -->" else ":"}[/]"""
-                    let! result =
-                        match step with
-                        | Step.StepFn fn -> fn (stage, i)
-                        | Step.StepOfStage subStage -> async {
-                            let subStage =
-                                { subStage with
-                                    ParentContext = ValueSome(StageParent.Stage stage)
-                                }
-                            return subStage.Run(StageIndex.Step i, linkedStepCTS.Token)
-                          }
+                    try
+                        let sw = Stopwatch.StartNew()
+                        AnsiConsole.MarkupLine $"""[grey]{prefix} started{if isParallel then " in parallel -->" else ":"}[/]"""
 
-                    AnsiConsole.MarkupLine $"""[gray]{prefix} finished{if isParallel then " in parallel." else "."} {sw.ElapsedMilliseconds}ms.[/]"""
-                    AnsiConsole.WriteLine()
-                    if result <> 0 then
-                        failwith $"{prefix} finished without a success exist code. {result}"
+                        let! result =
+                            match step with
+                            | Step.StepFn fn -> fn (stage, i)
+                            | Step.StepOfStage subStage -> async {
+                                let subStage =
+                                    { subStage with
+                                        ParentContext = ValueSome(StageParent.Stage stage)
+                                    }
+                                return subStage.Run(StageIndex.Step i, linkedStepCTS.Token)
+                              }
+
+                        AnsiConsole.MarkupLine
+                            $"""[gray]{prefix} finished{if isParallel then " in parallel." else "."} {sw.ElapsedMilliseconds}ms.[/]"""
+                        AnsiConsole.WriteLine()
+
+                        if result <> 0 then stepErrorCTS.Cancel()
+                        return result
+
+                    with ex ->
+                        AnsiConsole.MarkupLine $"[red]{prefix} exception hanppened.[/]"
+                        AnsiConsole.WriteException ex
+                        stepErrorCTS.Cancel()
+                        return -1
                 }
                 )
 
@@ -264,14 +276,25 @@ type StageContext with
                                 let! completer = Async.StartChild(ts, timeoutForStep)
                                 completers.Add completer
 
-                            for completer in completers do
-                                do! completer
+                            let mutable i = 0
+                            let mutable hasError = false
+                            while i < completers.Count && not hasError do
+                                let! result = completers[i]
+                                i <- i + 1
+                                exitCode <- result
+                                hasError <- exitCode <> 0
                         }
                     else
                         async {
-                            for step in steps do
-                                let! completer = Async.StartChild(step, timeoutForStep)
-                                do! completer
+                            let mutable i = 0
+                            let mutable hasError = false
+                            let length = Seq.length steps
+                            while i < length && not hasError do
+                                let! completer = Async.StartChild(Seq.item i steps, timeoutForStep)
+                                let! result = completer
+                                i <- i + 1
+                                exitCode <- result
+                                hasError <- exitCode <> 0
                         }
 
                 Async.RunSynchronously(ts, cancellationToken = linkedCTS.Token)
