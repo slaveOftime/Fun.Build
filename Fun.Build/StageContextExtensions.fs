@@ -203,6 +203,7 @@ type StageContext with
     /// Run the stage. If index is not provided then it will be treated as sub-stage.
     member stage.Run(index: StageIndex, cancelToken: Threading.CancellationToken) =
         let mutable exitCode = 0
+        let stepExns = ResizeArray<exn>()
 
         let isActive = stage.IsActive stage
         let namePath = stage.GetNamePath()
@@ -248,7 +249,9 @@ type StageContext with
                                     { subStage with
                                         ParentContext = ValueSome(StageParent.Stage stage)
                                     }
-                                return subStage.Run(StageIndex.Step i, linkedStepCTS.Token)
+                                let result, exn = subStage.Run(StageIndex.Step i, linkedStepCTS.Token)
+                                stepExns.AddRange exn
+                                return result
                               }
 
                         AnsiConsole.MarkupLine
@@ -261,6 +264,7 @@ type StageContext with
                     with ex ->
                         AnsiConsole.MarkupLine $"[red]{prefix} exception hanppened.[/]"
                         AnsiConsole.WriteException ex
+                        stepExns.Add ex
                         stepErrorCTS.Cancel()
                         return -1
                 }
@@ -328,4 +332,4 @@ type StageContext with
             )
             AnsiConsole.Write(Rule())
 
-        exitCode
+        exitCode, stepExns
