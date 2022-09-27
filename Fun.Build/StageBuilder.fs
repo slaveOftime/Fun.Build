@@ -70,7 +70,6 @@ type StageBuilder(name: string) =
             { ctx with Steps = ctx.Steps @ [ Step.StepOfStage(fn ()) ] }
         )
 
-
     /// Add or override environment variables
     [<CustomOperation("envVars")>]
     member inline _.envVars([<InlineIfLambda>] build: BuildStage, kvs: seq<string * string>) =
@@ -81,6 +80,16 @@ type StageBuilder(name: string) =
             }
         )
 
+    /// Override acceptable exit codes
+    [<CustomOperation("acceptExitCodes")>]
+    member inline _.acceptExitCodes([<InlineIfLambda>] build: BuildStage, codes: seq<int>) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with
+                AcceptableExitCodes = Set.ofSeq codes
+            }
+        )
+    
     /// Set timeout for every step under the current stage.
     /// Unit is second.
     [<CustomOperation("timeout")>]

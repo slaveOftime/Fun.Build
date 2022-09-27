@@ -23,6 +23,7 @@ type PipelineContext with
             Name = name
             CmdArgs = Seq.toList (Environment.GetCommandLineArgs())
             EnvVars = envVars |> Seq.map (fun (KeyValue (k, v)) -> k, v) |> Map.ofSeq
+            AcceptableExitCodes = set [| 0 |]
             Timeout = ValueNone
             TimeoutForStep = ValueNone
             TimeoutForStage = ValueNone
@@ -65,7 +66,7 @@ type PipelineContext with
             if isActive then
                 let result, exns = stage.Run(StageIndex.Stage i, cancelToken)
                 stageExns.AddRange exns
-                hasError <- result <> 0 || hasError
+                hasError <- not (stage.IsAcceptableExitCode result) || hasError
             else
                 AnsiConsole.Write(Rule())
                 AnsiConsole.MarkupLine $"STAGE #{i} [bold grey]{stage.Name}[/] is inactive"

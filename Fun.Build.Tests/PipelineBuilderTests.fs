@@ -7,7 +7,7 @@ open System.Threading.Tasks
 
 
 [<Fact>]
-let ``pipeline should world with mutiple stages with different conditions`` () =
+let ``pipeline should world with multiple stages with different conditions`` () =
     shouldNotBeCalled (fun call ->
         pipeline "" {
             stage "" {
