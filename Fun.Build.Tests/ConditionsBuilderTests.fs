@@ -203,3 +203,30 @@ let ``when compose should work`` () =
     }
     |> condition.Invoke
     |> Assert.False
+
+[<Fact>]
+let ``acceptExitCodes should override exit codes in pipeline`` () =
+    let pipeline =
+        pipeline "main" {
+            acceptExitCodes [| 1;2;3 |]
+        }
+
+    let codes = pipeline.AcceptableExitCodes |> Seq.toArray
+    Assert.Equal<int array>([| 1;2;3 |], codes)
+
+[<Fact>]
+let ``acceptExitCodes should override exit codes in stage`` () =
+    let stage =
+        stage "" {
+            acceptExitCodes [| 4;5;6 |]
+        }
+
+    shouldNotBeCalled (fun _ ->
+        pipeline "" {
+            stage
+            runImmediate
+        }
+    )
+
+    let codes = stage.AcceptableExitCodes |> Seq.toArray
+    Assert.Equal<int array>([| 4;5;6 |], codes)

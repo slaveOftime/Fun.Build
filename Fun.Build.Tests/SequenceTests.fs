@@ -135,3 +135,35 @@ let ``nested stages should run in sequence`` () =
         runImmediate
     }
     Assert.Equal<int>([ 1; 2; 3; 4; 5; 6; 7 ], calls)
+
+[<Fact>]
+let ``custom exit code should pass for stage`` () =
+    pipeline "" {
+        stage "" {
+            acceptExitCodes [| 99 |]
+            run (fun _ -> async { return 99 })
+        }
+        runImmediate
+    }
+
+[<Fact>]
+let ``custom exit code should pass for pipeline`` () =
+    pipeline "" {
+        acceptExitCodes [| 99 |]
+        stage "" {
+            run (fun _ -> async { return 99 })
+        }
+        runImmediate
+    }
+
+[<Fact>]
+let ``custom exit code should pass for nested stage`` () =
+    pipeline "" {
+        stage "" {
+            acceptExitCodes [| 99 |]
+            stage "nested" {
+                run (fun _ -> async { return 99 })
+            }
+        }
+        runImmediate
+    }

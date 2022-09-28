@@ -17,6 +17,7 @@ type StageContext with
         TimeoutForStep = ValueNone
         WorkingDir = ValueNone
         EnvVars = Map.empty
+        AcceptableExitCodes = set [| 0 |]
         ParentContext = ValueNone
         Steps = []
     }
@@ -258,7 +259,7 @@ type StageContext with
                             $"""[gray]{prefix} finished{if isParallel then " in parallel." else "."} {sw.ElapsedMilliseconds}ms.[/]"""
                         AnsiConsole.WriteLine()
 
-                        if result <> 0 then stepErrorCTS.Cancel()
+                        if not (stage.IsAcceptableExitCode result) then stepErrorCTS.Cancel()
                         return result
 
                     with ex ->
@@ -333,3 +334,14 @@ type StageContext with
             AnsiConsole.Write(Rule())
 
         exitCode, stepExns
+
+    /// Verify if the exit code is allowed.
+    member stage.IsAcceptableExitCode (exitCode:int) : bool =
+        let parentAcceptableExitCodes =
+            match stage.ParentContext with
+            | ValueNone -> Set.empty
+            | ValueSome (StageParent.Pipeline pipeline) -> pipeline.AcceptableExitCodes
+            | ValueSome (StageParent.Stage parentStage) -> parentStage.AcceptableExitCodes
+        
+        Set.contains exitCode stage.AcceptableExitCodes || Set.contains exitCode parentAcceptableExitCodes
+                        

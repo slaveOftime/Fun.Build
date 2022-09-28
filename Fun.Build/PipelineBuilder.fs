@@ -3,7 +3,6 @@ module Fun.Build.PipelineBuilder
 
 open System
 
-
 type PipelineBuilder(name: string) =
 
     member inline _.Run(_: unit) = ()
@@ -120,6 +119,16 @@ type PipelineBuilder(name: string) =
             }
         )
 
+    /// Override acceptable exit codes
+    [<CustomOperation("acceptExitCodes")>]
+    member inline _.acceptExitCodes([<InlineIfLambda>] build: BuildPipeline, codes: seq<int>) =
+        BuildPipeline(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with
+                AcceptableExitCodes = Set.ofSeq codes
+            }
+        )
+
     /// Reset command line args.
     /// By default, it will use Environment.GetCommandLineArgs()
     [<CustomOperation("cmdArgs")>]
@@ -129,7 +138,7 @@ type PipelineBuilder(name: string) =
             { ctx with CmdArgs = args }
         )
 
-    /// Set workding dir for all steps under the stage.
+    /// Set working dir for all steps under the stage.
     [<CustomOperation("workingDir")>]
     member inline _.workingDir([<InlineIfLambda>] build: BuildPipeline, dir: string) =
         BuildPipeline(fun ctx -> { build.Invoke ctx with WorkingDir = ValueSome dir })
@@ -148,7 +157,7 @@ type PipelineBuilder(name: string) =
     member _.runImmediate(build: BuildPipeline) = build.Invoke(PipelineContext.Create name).Run()
 
 
-    /// If set to true (default), then will check the if the CmdArgs contains -p if it append an arugment which is equal to the pipeline name, if all checks then it will run the pipeline.
+    /// If set to true (default), then will check the if the CmdArgs contains -p if it append an argument which is equal to the pipeline name, if all checks then it will run the pipeline.
     /// If set to false and if there is no -p in the CmdArgs, then it will also run the pipeline.
     [<CustomOperation("runIfOnlySpecified")>]
     member _.runIfOnlySpecified(build: BuildPipeline, ?specified: bool) =

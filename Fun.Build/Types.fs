@@ -32,6 +32,7 @@ type StageContext = {
     TimeoutForStep: TimeSpan voption
     WorkingDir: string voption
     EnvVars: Map<string, string>
+    AcceptableExitCodes: Set<int>
     ParentContext: StageParent voption
     Steps: Step list
 }
@@ -41,6 +42,7 @@ type PipelineContext = {
     Name: string
     CmdArgs: string list
     EnvVars: Map<string, string>
+    AcceptableExitCodes: Set<int>
     Timeout: TimeSpan voption
     TimeoutForStep: TimeSpan voption
     TimeoutForStage: TimeSpan voption
