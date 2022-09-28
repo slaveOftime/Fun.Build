@@ -258,7 +258,7 @@ type StageContext with
                     let prefix = stage.BuildStepPrefix i
                     try
                         let sw = Stopwatch.StartNew()
-                        AnsiConsole.MarkupLine $"""[turquoise4]{prefix} started{if isParallel then " in parallel -->" else ":"}[/]"""
+                        AnsiConsole.MarkupLine $"""[turquoise4]{prefix} started{if isParallel then " in parallel -->" else ""}[/]"""
 
                         let! isSuccess =
                             match step with

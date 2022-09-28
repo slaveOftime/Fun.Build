@@ -20,7 +20,7 @@ Every **step** is just a **async< int >**, int is for the exit code.
 ## Example:
 
 ```fsharp
-#r "nuget: Fun.Build, 0.1.6"
+#r "nuget: Fun.Build, 0.1.7"
 
 open Fun.Build
 
@@ -50,8 +50,8 @@ pipeline "Fun.Build" {
         run (fun ctx -> ())
         run (fun ctx -> 0) // return an exit code to indicate if it successful
         // You can also use the low level api
-        step (fun ctx _ -> async { return 0 })
-        BuildStep(fun ctx _ -> async { return 0 })
+        step (fun ctx _ -> async { return Ok() })
+        BuildStep(fun ctx _ -> async { return Ok() })
     }
     stage "Demo2" {
         // whenAny, whenNot, whenAll. They can also be composed.
@@ -78,6 +78,10 @@ pipeline "Fun.Build" {
         stage "Demo nested" {
             echo "cool nested"
             stage "Deeper" { echo "cooller" }
+        }
+        stage "Exit code" {
+            acceptExitCodes [ 123 ]
+            run (fun _ -> 123)
         }
         openBrowser "https://github.com/slaveOftime/Fun.Build"
     }
