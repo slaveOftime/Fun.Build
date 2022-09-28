@@ -85,11 +85,9 @@ type StageBuilder(name: string) =
     member inline _.acceptExitCodes([<InlineIfLambda>] build: BuildStage, codes: seq<int>) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with
-                AcceptableExitCodes = Set.ofSeq codes
-            }
+            { ctx with AcceptableExitCodes = Set.ofSeq codes }
         )
-    
+
     /// Set timeout for every step under the current stage.
     /// Unit is second.
     [<CustomOperation("timeout")>]

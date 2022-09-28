@@ -124,9 +124,7 @@ type PipelineBuilder(name: string) =
     member inline _.acceptExitCodes([<InlineIfLambda>] build: BuildPipeline, codes: seq<int>) =
         BuildPipeline(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with
-                AcceptableExitCodes = Set.ofSeq codes
-            }
+            { ctx with AcceptableExitCodes = Set.ofSeq codes }
         )
 
     /// Reset command line args.

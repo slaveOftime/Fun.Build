@@ -150,9 +150,7 @@ let ``custom exit code should pass for stage`` () =
 let ``custom exit code should pass for pipeline`` () =
     pipeline "" {
         acceptExitCodes [| 99 |]
-        stage "" {
-            run (fun _ -> async { return 99 })
-        }
+        stage "" { run (fun _ -> async { return 99 }) }
         runImmediate
     }
 
@@ -161,9 +159,7 @@ let ``custom exit code should pass for nested stage`` () =
     pipeline "" {
         stage "" {
             acceptExitCodes [| 99 |]
-            stage "nested" {
-                run (fun _ -> async { return 99 })
-            }
+            stage "nested" { run (fun _ -> async { return 99 }) }
         }
         runImmediate
     }
