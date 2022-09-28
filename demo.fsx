@@ -70,13 +70,14 @@ pipeline "Fun.Build" {
             echo (fun ctx -> sprintf "You are finished here: %A" (ctx.GetWorkingDir()))
             run (fun _ -> async {
                 return 0 // do something
-            })
+            }
+            )
         }
     ]
     // You can have multiple pipelines, sometimes you only want to run it only if the command specified the pipeline name.
     // If this is set to false, then it will always run if you do not specify which pipeline to run. By default it is true.
     // To specify you can do this: dotnet fsi build.fsx -p Fun.Build
     runIfOnlySpecified false
-    // You can also run it directly
-    // runImmediate
+// You can also run it directly
+// runImmediate
 }

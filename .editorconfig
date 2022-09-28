@@ -1,0 +1,16 @@
+root = true
+
+[*.{fs,fsx}]
+max_line_length=150
+fsharp_max_if_then_short_width=80
+fsharp_max_if_then_else_short_width=80
+fsharp_max_infix_operator_expression=120
+fsharp_max_record_width=60
+fsharp_max_array_or_list_width=120
+fsharp_max_value_binding_width=120
+fsharp_max_function_binding_width=120
+fsharp_max_dot_get_expression_width=120
+fsharp_multiline_block_brackets_on_same_column=true
+fsharp_multi_line_lambda_closing_newline=true
+fsharp_blank_lines_around_nested_multiline_expressions=false
+fsharp_experimental_stroustrup_style=true

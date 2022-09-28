@@ -18,6 +18,7 @@ pipeline "Fun.Build" {
         whenNot { envVar "GITHUB_ACTION" }
         run "fantomas . -r"
     }
+    stage "Check formatting" { run "fantomas . -r --check" }
     stage "Run unit tests" { run "dotnet test" }
     stage "Build packages" { run "dotnet pack -c Release Fun.Build/Fun.Build.fsproj -o ." }
     stage "Publish packages to nuget" {
