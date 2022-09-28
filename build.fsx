@@ -1,4 +1,4 @@
-#r "nuget: Fun.Build, 0.1.6"
+#r "nuget: Fun.Build, 0.1.7"
 #r "nuget: Fake.IO.FileSystem, 5.23.0"
 
 open Fake.IO
@@ -7,18 +7,23 @@ open Fun.Build
 
 
 pipeline "Fun.Build" {
-    timeout 60
     stage "Check environment" {
         paralle
         run "dotnet --version"
         run "dotnet --list-sdks"
+        run "dotnet tool restore"
         run (fun ctx -> printfn $"""GITHUB_ACTION: {ctx.GetEnvVar "GITHUB_ACTION"}""")
     }
     stage "Lint" {
-        whenNot { envVar "GITHUB_ACTION" }
-        run "fantomas . -r"
+        stage "Format" {
+            whenNot { envVar "GITHUB_ACTION" }
+            run "dotnet fantomas . -r"
+        }
+        stage "Check" {
+            whenEnvVar "GITHUB_ACTION"
+            run "dotnet fantomas . -r --check"
+        }
     }
-    stage "Check formatting" { run "fantomas . -r --check" }
     stage "Run unit tests" { run "dotnet test" }
     stage "Build packages" { run "dotnet pack -c Release Fun.Build/Fun.Build.fsproj -o ." }
     stage "Publish packages to nuget" {

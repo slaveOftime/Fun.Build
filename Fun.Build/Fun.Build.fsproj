@@ -23,4 +23,8 @@
 		<PackageReference Include="Spectre.Console" Version="0.45.0" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <PackageReference Update="FSharp.Core" Version="6.0.0" />
+	</ItemGroup>
+
 </Project>
