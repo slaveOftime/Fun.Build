@@ -16,7 +16,8 @@ let cmd (commandStr: FormattableString) =
 
         AnsiConsole.MarkupLine $"{ctx.BuildStepPrefix i} [green]{encryptiedStr}[/]"
 
-        return! Process.StartAsync(command, encryptiedStr, ctx.BuildStepPrefix i)
+        let! exitCode = Process.StartAsync(command, encryptiedStr, ctx.BuildStepPrefix i)
+        return ctx.MapExitCodeToResult exitCode
     }
     )
 
@@ -28,20 +29,19 @@ let openBrowser (url: string) =
         AnsiConsole.MarkupLine $"{prefix} Open {url} in browser"
         try
             Process.Start(url) |> ignore
-            return 0
+            return Ok()
         with _ ->
             // hack because of this: https://github.com/dotnet/corefx/issues/10361
             if RuntimeInformation.IsOSPlatform OSPlatform.Windows then
                 Process.Start(ProcessStartInfo(FileName = "cmd", Arguments = $"/c start {url}", UseShellExecute = true)) |> ignore
-                return 0
+                return Ok()
             else if RuntimeInformation.IsOSPlatform OSPlatform.Linux then
                 Process.Start("xdg-open", url) |> ignore
-                return 0
+                return Ok()
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) then
                 Process.Start("open", url) |> ignore
-                return 0
+                return Ok()
             else
-                AnsiConsole.MarkupLine $"{prefix} [red]Open url failed. Platform is not supportted.[/]"
-                return -1
+                return Error "Open url failed. Platform is not supportted."
     }
     )

@@ -139,6 +139,23 @@ type StageContext with
     member inline ctx.BuildStepPrefix(i: int) = sprintf "%s/step-%d>" (ctx.GetNamePath()) i
 
 
+    /// Verify if the exit code is allowed.
+    member stage.IsAcceptableExitCode(exitCode: int) : bool =
+        let parentAcceptableExitCodes =
+            match stage.ParentContext with
+            | ValueNone -> Set.empty
+            | ValueSome (StageParent.Pipeline pipeline) -> pipeline.AcceptableExitCodes
+            | ValueSome (StageParent.Stage parentStage) -> parentStage.AcceptableExitCodes
+
+        Set.contains exitCode stage.AcceptableExitCodes || Set.contains exitCode parentAcceptableExitCodes
+
+    member stage.MapExitCodeToResult(exitCode: int) =
+        if stage.IsAcceptableExitCode exitCode then
+            Ok()
+        else
+            Error "Exit code is not indicating as successful."
+
+
     member ctx.BuildCommand(commandStr: string) =
         let index = commandStr.IndexOf " "
 
@@ -170,7 +187,8 @@ type StageContext with
                         let! commandStr = commandStrFn ctx
                         let command = ctx.BuildCommand(commandStr)
                         AnsiConsole.MarkupLine $"{ctx.BuildStepPrefix i} [green]{commandStr}[/]"
-                        return! Process.StartAsync(command, commandStr, ctx.BuildStepPrefix i)
+                        let! exitCode = Process.StartAsync(command, commandStr, ctx.BuildStepPrefix i)
+                        return ctx.MapExitCodeToResult exitCode
                     }
                     )
                 ]
@@ -245,8 +263,12 @@ type StageContext with
                         let! isSuccess =
                             match step with
                             | Step.StepFn fn -> async {
-                                let! exitCode = fn (stage, i)
-                                return stage.IsAcceptableExitCode exitCode
+                                match! fn (stage, i) with
+                                | Error e ->
+                                    if String.IsNullOrEmpty e |> not then
+                                        AnsiConsole.MarkupLine $"""{prefix} error: [red]{e}[/]"""
+                                    return false
+                                | Ok _ -> return true
                               }
                             | Step.StepOfStage subStage -> async {
                                 let subStage =
@@ -333,14 +355,3 @@ type StageContext with
             AnsiConsole.WriteLine()
 
         isSuccess, stepExns
-
-
-    /// Verify if the exit code is allowed.
-    member stage.IsAcceptableExitCode(exitCode: int) : bool =
-        let parentAcceptableExitCodes =
-            match stage.ParentContext with
-            | ValueNone -> Set.empty
-            | ValueSome (StageParent.Pipeline pipeline) -> pipeline.AcceptableExitCodes
-            | ValueSome (StageParent.Stage parentStage) -> parentStage.AcceptableExitCodes
-
-        Set.contains exitCode stage.AcceptableExitCodes || Set.contains exitCode parentAcceptableExitCodes

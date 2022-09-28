@@ -8,7 +8,7 @@ type StepIndex = int
 
 [<Struct; RequireQualifiedAccess>]
 type Step =
-    | StepFn of fn: (StageContext * StepIndex -> Async<int>)
+    | StepFn of fn: (StageContext * StepIndex -> Async<Result<unit, string>>)
     | StepOfStage of stage: StageContext
 
 
@@ -60,7 +60,7 @@ type BuildStage = delegate of ctx: StageContext -> StageContext
 
 type BuildStageIsActive = delegate of ctx: StageContext -> bool
 
-type BuildStep = delegate of ctx: StageContext * index: StepIndex -> Async<int>
+type BuildStep = delegate of ctx: StageContext * index: StepIndex -> Async<Result<unit, string>>
 
 
 type PipelineCancelledException(msg: string) =

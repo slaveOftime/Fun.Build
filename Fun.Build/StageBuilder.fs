@@ -185,20 +185,28 @@ type StageBuilder(name: string) =
                     @ [
                         Step.StepFn(fun _ -> async {
                             do! step
-                            return 0
+                            return Ok()
                         }
                         )
                     ]
             }
         )
 
-    /// Add a step to run a async with exit code returned.
+    /// Add a step to run a async with an exit code returned.
     [<CustomOperation("run")>]
     member inline _.run([<InlineIfLambda>] build: BuildStage, step: Async<int>) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
             { ctx with
-                Steps = ctx.Steps @ [ Step.StepFn(fun _ -> step) ]
+                Steps =
+                    ctx.Steps
+                    @ [
+                        Step.StepFn(fun (ctx, _) -> async {
+                            let! exitCode = step
+                            return ctx.MapExitCodeToResult exitCode
+                        }
+                        )
+                    ]
             }
         )
 
@@ -214,20 +222,20 @@ type StageBuilder(name: string) =
                     @ [
                         Step.StepFn(fun (ctx, _) -> async {
                             step ctx
-                            return 0
+                            return Ok()
                         }
                         )
                     ]
             }
         )
 
-    /// Add a step to run and return an exist code.
+    /// Add a step to run and return an exit code.
     [<CustomOperation("run")>]
     member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] step: StageContext -> int) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
             { ctx with
-                Steps = ctx.Steps @ [ Step.StepFn(fun _ -> async { return step ctx }) ]
+                Steps = ctx.Steps @ [ Step.StepFn(fun (ctx, _) -> async { return ctx.MapExitCodeToResult(step ctx) }) ]
             }
         )
 
@@ -243,20 +251,59 @@ type StageBuilder(name: string) =
                     @ [
                         Step.StepFn(fun (ctx, _) -> async {
                             do! step ctx
-                            return 0
+                            return Ok()
                         }
                         )
                     ]
             }
         )
 
-    /// Add a step to run.
+    /// Add a step to run and return an exit code.
     [<CustomOperation("run")>]
     member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] step: StageContext -> Async<int>) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
             { ctx with
-                Steps = ctx.Steps @ [ Step.StepFn(fun _ -> async { return! step ctx }) ]
+                Steps =
+                    ctx.Steps
+                    @ [
+                        Step.StepFn(fun (ctx, _) -> async {
+                            let! exitCode = step ctx
+                            return ctx.MapExitCodeToResult exitCode
+                        }
+                        )
+                    ]
+            }
+        )
+
+
+    /// Add a step to run with a Result<unit, string> to indicate if step is successful.
+    [<CustomOperation("run")>]
+    member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] step: StageContext -> Async<Result<unit, string>>) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with
+                Steps = ctx.Steps @ [ Step.StepFn(fun (ctx, _) -> step ctx) ]
+            }
+        )
+
+    /// Add a step to run with a Result<unit, string> to indicate if step is successful.
+    [<CustomOperation("run")>]
+    member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] step: StageContext -> Task<Result<unit, string>>) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with
+                Steps = ctx.Steps @ [ Step.StepFn(fun (ctx, _) -> step ctx |> Async.AwaitTask) ]
+            }
+        )
+
+    /// Add a step to run with a Result<unit, string> to indicate if step is successful.
+    [<CustomOperation("run")>]
+    member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] step: StageContext -> Result<unit, string>) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with
+                Steps = ctx.Steps @ [ Step.StepFn(fun (ctx, _) -> async { return step ctx }) ]
             }
         )
 
@@ -272,7 +319,7 @@ type StageBuilder(name: string) =
                     @ [
                         Step.StepFn(fun (ctx, _) -> async {
                             do! step ctx |> Async.AwaitTask
-                            return 0
+                            return Ok()
                         }
                         )
                     ]
@@ -290,7 +337,7 @@ type StageBuilder(name: string) =
                     @ [
                         Step.StepFn(fun (ctx, _) -> async {
                             do! step ctx |> Async.AwaitTask
-                            return 0
+                            return Ok()
                         }
                         )
                     ]
@@ -303,7 +350,15 @@ type StageBuilder(name: string) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
             { ctx with
-                Steps = ctx.Steps @ [ Step.StepFn(fun _ -> async { return! step ctx |> Async.AwaitTask }) ]
+                Steps =
+                    ctx.Steps
+                    @ [
+                        Step.StepFn(fun (ctx, _) -> async {
+                            let! exitCode = step ctx |> Async.AwaitTask
+                            return ctx.MapExitCodeToResult exitCode
+                        }
+                        )
+                    ]
             }
         )
 
@@ -319,7 +374,7 @@ type StageBuilder(name: string) =
                     @ [
                         Step.StepFn(fun (ctx, i) -> async {
                             printfn "%s %s" (ctx.BuildStepPrefix i) (msg ctx)
-                            return 0
+                            return Ok()
                         }
                         )
                     ]
