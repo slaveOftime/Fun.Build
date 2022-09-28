@@ -1,0 +1,8 @@
+root = true
+
+[*.{fs,fsx}]
+fsharp_multiline_block_brackets_on_same_column=true
+fsharp_multi_line_lambda_closing_newline=true
+fsharp_blank_lines_around_nested_multiline_expressions=false
+fsharp_experimental_stroustrup_style=true
+fsharp_keep_max_number_of_blank_lines=1
