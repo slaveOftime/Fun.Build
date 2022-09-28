@@ -58,6 +58,10 @@ pipeline "Fun.Build" {
             echo "cool nested"
             stage "Deeper" { echo "cooller" }
         }
+        stage "Exit code" {
+            acceptExitCodes [ 123 ]
+            run (fun _ -> 123)
+        }
         openBrowser "https://github.com/slaveOftime/Fun.Build"
     }
     post [ // Post stages are optional. It will run even other normal stages are failed.

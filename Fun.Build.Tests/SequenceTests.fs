@@ -160,6 +160,10 @@ let ``custom exit code should pass for nested stage`` () =
         stage "" {
             acceptExitCodes [| 99 |]
             stage "nested" { run (fun _ -> async { return 99 }) }
+            stage "nested2" {
+                acceptExitCodes [ 123 ]
+                run (fun _ -> 123)
+            }
         }
         runImmediate
     }

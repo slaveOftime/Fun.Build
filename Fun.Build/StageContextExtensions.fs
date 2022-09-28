@@ -203,7 +203,7 @@ type StageContext with
 
     /// Run the stage. If index is not provided then it will be treated as sub-stage.
     member stage.Run(index: StageIndex, cancelToken: Threading.CancellationToken) =
-        let mutable exitCode = 0
+        let mutable isSuccess = true
         let stepExns = ResizeArray<exn>()
 
         let isActive = stage.IsActive stage
@@ -242,32 +242,35 @@ type StageContext with
                         let sw = Stopwatch.StartNew()
                         AnsiConsole.MarkupLine $"""[turquoise4]{prefix} started{if isParallel then " in parallel -->" else ":"}[/]"""
 
-                        let! result =
+                        let! isSuccess =
                             match step with
-                            | Step.StepFn fn -> fn (stage, i)
+                            | Step.StepFn fn -> async {
+                                let! exitCode = fn (stage, i)
+                                return stage.IsAcceptableExitCode exitCode
+                              }
                             | Step.StepOfStage subStage -> async {
                                 let subStage =
                                     { subStage with
                                         ParentContext = ValueSome(StageParent.Stage stage)
                                     }
-                                let result, exn = subStage.Run(StageIndex.Step i, linkedStepCTS.Token)
+                                let isSuccess, exn = subStage.Run(StageIndex.Step i, linkedStepCTS.Token)
                                 stepExns.AddRange exn
-                                return result
+                                return isSuccess
                               }
 
                         AnsiConsole.MarkupLine
                             $"""[turquoise4]{prefix} finished{if isParallel then " in parallel." else "."} {sw.ElapsedMilliseconds}ms.[/]"""
                         AnsiConsole.WriteLine()
 
-                        if not (stage.IsAcceptableExitCode result) then stepErrorCTS.Cancel()
-                        return result
+                        if not isSuccess then stepErrorCTS.Cancel()
+                        return isSuccess
 
                     with ex ->
                         AnsiConsole.MarkupLine $"[red]{prefix} exception hanppened.[/]"
                         AnsiConsole.WriteException ex
                         stepExns.Add ex
                         stepErrorCTS.Cancel()
-                        return -1
+                        return false
                 }
                 )
 
@@ -282,30 +285,26 @@ type StageContext with
                                 completers.Add completer
 
                             let mutable i = 0
-                            let mutable hasError = false
-                            while i < completers.Count && not hasError do
+                            while i < completers.Count && isSuccess do
                                 let! result = completers[i]
                                 i <- i + 1
-                                exitCode <- result
-                                hasError <- exitCode <> 0
+                                isSuccess <- isSuccess && result
                         }
                     else
                         async {
                             let mutable i = 0
-                            let mutable hasError = false
                             let length = Seq.length steps
-                            while i < length && not hasError do
+                            while i < length && isSuccess do
                                 let! completer = Async.StartChild(Seq.item i steps, timeoutForStep)
                                 let! result = completer
                                 i <- i + 1
-                                exitCode <- result
-                                hasError <- exitCode <> 0
+                                isSuccess <- isSuccess && result
                         }
 
                 Async.RunSynchronously(ts, cancellationToken = linkedCTS.Token)
 
             with ex ->
-                exitCode <- -1
+                isSuccess <- false
                 if linkedCTS.Token.IsCancellationRequested then
                     AnsiConsole.MarkupLine $"[yellow]Stage is cancelled or timeouted.[/]"
                     AnsiConsole.WriteLine()
@@ -315,7 +314,7 @@ type StageContext with
                     AnsiConsole.WriteLine()
 
             AnsiConsole.Write(
-                let color = if exitCode <> 0 then "red" else "teal"
+                let color = if isSuccess then "teal" else "red"
                 match index with
                 | StageIndex.Stage i -> Rule($"""STAGE #{i} [bold {color}]{namePath}[/] finished. {stageSW.ElapsedMilliseconds}ms.""").LeftAligned()
                 | StageIndex.Step i ->
@@ -333,7 +332,8 @@ type StageContext with
             )
             AnsiConsole.WriteLine()
 
-        exitCode, stepExns
+        isSuccess, stepExns
+
 
     /// Verify if the exit code is allowed.
     member stage.IsAcceptableExitCode(exitCode: int) : bool =

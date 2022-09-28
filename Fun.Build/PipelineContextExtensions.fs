@@ -64,9 +64,9 @@ type PipelineContext with
             let isActive = stage.IsActive stage
 
             if isActive then
-                let result, exns = stage.Run(StageIndex.Stage i, cancelToken)
+                let isSuccess, exns = stage.Run(StageIndex.Stage i, cancelToken)
                 stageExns.AddRange exns
-                hasError <- not (stage.IsAcceptableExitCode result) || hasError
+                hasError <- hasError || not isSuccess
             else
                 AnsiConsole.Write(Rule())
                 AnsiConsole.MarkupLine $"STAGE #{i} [bold turquoise4]{stage.Name}[/] is inactive"
@@ -147,4 +147,4 @@ type PipelineContext with
                 AnsiConsole.WriteLine()
             raise (PipelineFailedException("Pipeline is failed because of exception", pipelineExns[0]))
         else if hasError then
-            raise (PipelineFailedException "Pipeline is failed because exit code is not 0")
+            raise (PipelineFailedException "Pipeline is failed because exit code is indicating as successful")
