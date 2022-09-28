@@ -124,7 +124,7 @@ type StageBuilder with
             }
         )
 
-    /// Set if stage is active or should run by check the platform is Windows.
+    /// Set if stage is active or should run by check the platform is Linux.
     [<CustomOperation("whenLinux")>]
     member inline _.whenLinux([<InlineIfLambda>] build: BuildStage) =
         BuildStage(fun ctx ->
@@ -133,7 +133,7 @@ type StageBuilder with
             }
         )
 
-    /// Set if stage is active or should run by check the platform is Windows.
+    /// Set if stage is active or should run by check the platform is OSX.
     [<CustomOperation("whenOSX")>]
     member inline _.whenOSX([<InlineIfLambda>] build: BuildStage) =
         BuildStage(fun ctx ->
