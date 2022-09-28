@@ -69,7 +69,7 @@ type PipelineContext with
                 hasError <- not (stage.IsAcceptableExitCode result) || hasError
             else
                 AnsiConsole.Write(Rule())
-                AnsiConsole.MarkupLine $"STAGE #{i} [bold grey]{stage.Name}[/] is inactive"
+                AnsiConsole.MarkupLine $"STAGE #{i} [bold turquoise4]{stage.Name}[/] is inactive"
                 AnsiConsole.Write(Rule())
 
             i <- i + 1
@@ -106,20 +106,20 @@ type PipelineContext with
             AnsiConsole.WriteLine()
         )
 
-        AnsiConsole.MarkupLine $"[grey]Run stages[/]"
+        AnsiConsole.MarkupLine $"[turquoise4]Run stages[/]"
         let hasFailedStage, stageExns = this.RunStages(this.Stages, cts.Token, failfast = true)
         pipelineExns.AddRange stageExns
-        AnsiConsole.MarkupLine $"[grey]Run stages finished[/]"
+        AnsiConsole.MarkupLine $"[turquoise4]Run stages finished[/]"
         AnsiConsole.WriteLine()
         AnsiConsole.WriteLine()
 
         let mutable hasFailedPostStage = false
         if cts.IsCancellationRequested |> not then
-            AnsiConsole.MarkupLine $"[grey]Run post stages[/]"
+            AnsiConsole.MarkupLine $"[turquoise4]Run post stages[/]"
             let result, postStageExns = this.RunStages(this.PostStages, cts.Token, failfast = false)
             hasFailedPostStage <- result
             pipelineExns.AddRange postStageExns
-            AnsiConsole.MarkupLine $"[grey]Run post stages finished[/]"
+            AnsiConsole.MarkupLine $"[turquoise4]Run post stages finished[/]"
             AnsiConsole.WriteLine()
             AnsiConsole.WriteLine()
 

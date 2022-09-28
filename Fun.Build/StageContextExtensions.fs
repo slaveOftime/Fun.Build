@@ -224,7 +224,7 @@ type StageContext with
             use linkedStepCTS = Threading.CancellationTokenSource.CreateLinkedTokenSource(stepCTS.Token, linkedCTS.Token)
 
 
-            AnsiConsole.Write(Rule())
+            AnsiConsole.WriteLine()
             AnsiConsole.Write(
                 let extraInfo = $"Stage timeout: {timeoutForStage}ms. Step timeout: {timeoutForStep}ms."
                 match index with
@@ -240,7 +240,7 @@ type StageContext with
                     let prefix = stage.BuildStepPrefix i
                     try
                         let sw = Stopwatch.StartNew()
-                        AnsiConsole.MarkupLine $"""[grey]{prefix} started{if isParallel then " in parallel -->" else ":"}[/]"""
+                        AnsiConsole.MarkupLine $"""[turquoise4]{prefix} started{if isParallel then " in parallel -->" else ":"}[/]"""
 
                         let! result =
                             match step with
@@ -256,7 +256,7 @@ type StageContext with
                               }
 
                         AnsiConsole.MarkupLine
-                            $"""[gray]{prefix} finished{if isParallel then " in parallel." else "."} {sw.ElapsedMilliseconds}ms.[/]"""
+                            $"""[turquoise4]{prefix} finished{if isParallel then " in parallel." else "."} {sw.ElapsedMilliseconds}ms.[/]"""
                         AnsiConsole.WriteLine()
 
                         if not (stage.IsAcceptableExitCode result) then stepErrorCTS.Cancel()
@@ -322,26 +322,25 @@ type StageContext with
                     Rule($"""SUBSTAGE [bold {color}]{stage.BuildStepPrefix i}[/] finished. {stageSW.ElapsedMilliseconds}ms.""")
                         .LeftAligned()
             )
-            AnsiConsole.Write(Rule())
+            AnsiConsole.WriteLine()
 
         else
-            AnsiConsole.Write(Rule())
+            AnsiConsole.WriteLine()
             AnsiConsole.MarkupLine(
                 match index with
-                | StageIndex.Stage i -> $"STAGE #{i} [bold grey]{namePath}[/] is inactive"
-                | StageIndex.Step i -> $"SUBSTAGE [bold grey]{stage.BuildStepPrefix i}[/] is inactive"
+                | StageIndex.Stage i -> $"STAGE #{i} [bold turquoise4]{namePath}[/] is inactive"
+                | StageIndex.Step i -> $"SUBSTAGE [bold turquoise4]{stage.BuildStepPrefix i}[/] is inactive"
             )
-            AnsiConsole.Write(Rule())
+            AnsiConsole.WriteLine()
 
         exitCode, stepExns
 
     /// Verify if the exit code is allowed.
-    member stage.IsAcceptableExitCode (exitCode:int) : bool =
+    member stage.IsAcceptableExitCode(exitCode: int) : bool =
         let parentAcceptableExitCodes =
             match stage.ParentContext with
             | ValueNone -> Set.empty
             | ValueSome (StageParent.Pipeline pipeline) -> pipeline.AcceptableExitCodes
             | ValueSome (StageParent.Stage parentStage) -> parentStage.AcceptableExitCodes
-        
+
         Set.contains exitCode stage.AcceptableExitCodes || Set.contains exitCode parentAcceptableExitCodes
-                        
