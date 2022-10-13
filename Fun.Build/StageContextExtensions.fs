@@ -186,7 +186,8 @@ type StageContext with
                     Step.StepFn(fun (ctx, i) -> async {
                         let! commandStr = commandStrFn ctx
                         let command = ctx.BuildCommand(commandStr)
-                        AnsiConsole.MarkupLine $"{ctx.BuildStepPrefix i} [green]{commandStr}[/]"
+                        AnsiConsole.Markup $"[green]{ctx.BuildStepPrefix i}[/] "
+                        AnsiConsole.MarkupLine $"{commandStr}"
                         let! exitCode = Process.StartAsync(command, commandStr, ctx.BuildStepPrefix i)
                         return ctx.MapExitCodeToResult exitCode
                     }

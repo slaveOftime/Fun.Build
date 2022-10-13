@@ -14,7 +14,8 @@ let cmd (commandStr: FormattableString) =
         let args: obj[] = Array.create commandStr.ArgumentCount "*"
         let encryptiedStr = String.Format(commandStr.Format, args)
 
-        AnsiConsole.MarkupLine $"{ctx.BuildStepPrefix i} [green]{encryptiedStr}[/]"
+        AnsiConsole.Markup $"[green]{ctx.BuildStepPrefix i}[/] "
+        AnsiConsole.MarkupLine $"{encryptiedStr}"
 
         let! exitCode = Process.StartAsync(command, encryptiedStr, ctx.BuildStepPrefix i)
         return ctx.MapExitCodeToResult exitCode
