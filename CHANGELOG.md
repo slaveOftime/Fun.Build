@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.9
+## [0.1.9] - 2022-10-13
 
 ### Added
 * Introduce [Keep a changelog](https://keepachangelog.com/)
