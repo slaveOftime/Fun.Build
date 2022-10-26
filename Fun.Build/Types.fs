@@ -24,6 +24,12 @@ type StageIndex =
     | Stage of stage: int
 
 
+[<Struct; RequireQualifiedAccess>]
+type Mode =
+    | Execution
+    | CommandHelp
+
+
 type StageContext = {
     Name: string
     IsActive: StageContext -> bool
@@ -40,6 +46,7 @@ type StageContext = {
 
 type PipelineContext = {
     Name: string
+    Mode: Mode
     CmdArgs: string list
     EnvVars: Map<string, string>
     AcceptableExitCodes: Set<int>

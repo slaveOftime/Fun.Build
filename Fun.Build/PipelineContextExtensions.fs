@@ -21,6 +21,7 @@ type PipelineContext with
 
         {
             Name = name
+            Mode = Mode.Execution
             CmdArgs = Seq.toList (Environment.GetCommandLineArgs())
             EnvVars = envVars |> Seq.map (fun (KeyValue (k, v)) -> k, v) |> Map.ofSeq
             AcceptableExitCodes = set [| 0 |]
@@ -148,3 +149,45 @@ type PipelineContext with
             raise (PipelineFailedException("Pipeline is failed because of exception", pipelineExns[0]))
         else if hasError then
             raise (PipelineFailedException "Pipeline is failed because exit code is indicating as successful")
+
+
+    member pipeline.RunCommandHelp() =
+        Console.InputEncoding <- Encoding.UTF8
+        Console.OutputEncoding <- Encoding.UTF8
+
+        AnsiConsole.MarkupLine $"Pipeline [green]{pipeline.Name}[/] stages execution options/conditions"
+        AnsiConsole.WriteLine()
+
+        let rec run index (stage: StageContext) =
+            AnsiConsole.MarkupLine $"[grey]{stage.BuildStepPrefix index}[/]"
+            stage.IsActive stage |> ignore
+            for inedx, step in List.indexed stage.Steps do
+                match step with
+                | Step.StepFn _ -> ()
+                | Step.StepOfStage s ->
+                    run
+                        inedx
+                        { s with
+                            ParentContext = ValueSome(StageParent.Stage stage)
+                        }
+
+        pipeline.Stages
+        |> List.iteri (fun index stage ->
+            run
+                index
+                { stage with
+                    ParentContext = ValueSome(StageParent.Pipeline pipeline)
+                }
+        )
+        pipeline.PostStages
+        |> List.iteri (fun index stage ->
+            run
+                index
+                { stage with
+                    ParentContext = ValueSome(StageParent.Pipeline pipeline)
+                }
+        )
+
+        AnsiConsole.MarkupLine ""
+        AnsiConsole.MarkupLine "If you are running in commandline you can execute like below:"
+        AnsiConsole.MarkupLine "[green]dotnet fsi (your fsharp script).fsx -p (your pipeline name) (some cmd options)[/]"

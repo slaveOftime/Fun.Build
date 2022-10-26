@@ -4,6 +4,7 @@ module Fun.Build.StageContextExtensions
 open System
 open System.Text
 open System.Diagnostics
+open System.Runtime.InteropServices
 open Spectre.Console
 
 
@@ -32,6 +33,13 @@ type StageContext with
         )
         |> ValueOption.defaultValue ""
         |> fun x -> x + ctx.Name
+
+
+    member ctx.Mode =
+        match ctx.ParentContext with
+        | ValueNone -> Mode.Execution
+        | ValueSome (StageParent.Stage s) -> s.Mode
+        | ValueSome (StageParent.Pipeline p) -> p.Mode
 
 
     member ctx.GetWorkingDir() =
@@ -138,6 +146,12 @@ type StageContext with
 
     member inline ctx.BuildStepPrefix(i: int) = sprintf "%s/step-%d>" (ctx.GetNamePath()) i
 
+    member ctx.BuildIndent() =
+        match ctx.ParentContext with
+        | ValueNone -> ""
+        | ValueSome (StageParent.Stage s) -> "    " + s.BuildIndent()
+        | ValueSome (StageParent.Pipeline _) -> ""
+
 
     /// Verify if the exit code is allowed.
     member stage.IsAcceptableExitCode(exitCode: int) : bool =
@@ -196,28 +210,70 @@ type StageContext with
         }
 
 
-    member ctx.WhenEnvArg(envKey: string, envValue: string) =
-        match ctx.TryGetEnvVar envKey with
-        | ValueSome v when envValue = "" || v = envValue -> true
-        | _ -> false
+    member ctx.WhenEnvArg(envKey: string, envValue: string, description) =
+        if ctx.Mode = Mode.CommandHelp then
+            AnsiConsole.Markup $"{ctx.BuildIndent()}env: [green]{envKey}[/]"
 
-    member ctx.WhenCmdArg(argKey: string, argValue: string) =
-        match ctx.TryGetCmdArg argKey with
-        | ValueSome v when argValue = "" || v = argValue -> true
-        | _ -> false
+            if String.IsNullOrEmpty envValue |> not then
+                AnsiConsole.Markup $"=[green]{envValue}[/]"
+
+            match description with
+            | Some x -> AnsiConsole.Markup $"[teal]    %s{x}[/]"
+            | _ -> ()
+
+            AnsiConsole.WriteLine()
+
+            true
+
+        else
+            match ctx.TryGetEnvVar envKey with
+            | ValueSome v when envValue = "" || v = envValue -> true
+            | _ -> false
+
+    member ctx.WhenCmdArg(argKey: string, argValue: string, description) =
+        if ctx.Mode = Mode.CommandHelp then
+            AnsiConsole.Markup $"{ctx.BuildIndent()}cmd: [green]{argKey}[/]"
+
+            if String.IsNullOrEmpty argValue |> not then
+                AnsiConsole.Markup $"=[green]{argValue}[/]"
+
+            match description with
+            | Some x -> AnsiConsole.Markup $"[teal]    %s{x}[/]"
+            | _ -> ()
+
+            AnsiConsole.WriteLine()
+
+            true
+
+        else
+            match ctx.TryGetCmdArg argKey with
+            | ValueSome v when argValue = "" || v = argValue -> true
+            | _ -> false
 
 
     member ctx.WhenBranch(branch: string) =
-        try
-            let command = ctx.BuildCommand("git branch --show-current")
-            ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command.WorkingDirectory <- x)
+        if ctx.Mode = Mode.CommandHelp then
+            AnsiConsole.MarkupLine $"{ctx.BuildIndent()}when branch is [green]{branch}[/]"
+            true
+        else
+            try
+                let command = ctx.BuildCommand("git branch --show-current")
+                ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command.WorkingDirectory <- x)
 
-            let result = Process.Start command
-            result.WaitForExit()
-            result.StandardOutput.ReadLine() = branch
-        with ex ->
-            AnsiConsole.MarkupLine $"[red]Run git to get branch info failed: {ex.Message}[/]"
-            false
+                let result = Process.Start command
+                result.WaitForExit()
+                result.StandardOutput.ReadLine() = branch
+            with ex ->
+                AnsiConsole.MarkupLine $"[red]Run git to get branch info failed: {ex.Message}[/]"
+                false
+
+
+    member ctx.WhenPlatform(platform: OSPlatform) =
+        if ctx.Mode = Mode.CommandHelp then
+            AnsiConsole.MarkupLine $"{ctx.BuildIndent()}when platform is [green]{platform}[/]"
+            true
+        else
+            RuntimeInformation.IsOSPlatform platform
 
 
     /// Run the stage. If index is not provided then it will be treated as sub-stage.

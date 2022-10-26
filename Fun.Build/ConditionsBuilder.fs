@@ -2,6 +2,7 @@
 module Fun.Build.ConditionsBuilder
 
 open System.Runtime.InteropServices
+open Spectre.Console
 
 
 type ConditionsBuilder() =
@@ -26,20 +27,20 @@ type ConditionsBuilder() =
 
 
     [<CustomOperation("envVar")>]
-    member inline _.envVar([<InlineIfLambda>] builder: BuildConditions, envKey: string, ?envValue: string) =
+    member inline _.envVar([<InlineIfLambda>] builder: BuildConditions, envKey: string, ?envValue: string, ?description: string) =
         BuildConditions(fun conditions ->
             builder.Invoke(conditions)
             @ [
-                fun ctx -> ctx.WhenEnvArg(envKey, defaultArg envValue "")
+                fun ctx -> ctx.WhenEnvArg(envKey, defaultArg envValue "", description)
             ]
         )
 
     [<CustomOperation("cmdArg")>]
-    member inline _.cmdArg([<InlineIfLambda>] builder: BuildConditions, argKey: string, ?argValue: string) =
+    member inline _.cmdArg([<InlineIfLambda>] builder: BuildConditions, argKey: string, ?argValue: string, ?description: string) =
         BuildConditions(fun conditions ->
             builder.Invoke(conditions)
             @ [
-                fun ctx -> ctx.WhenCmdArg(argKey, defaultArg argValue "")
+                fun ctx -> ctx.WhenCmdArg(argKey, defaultArg argValue "", description)
             ]
         )
 
@@ -57,7 +58,7 @@ type ConditionsBuilder() =
         BuildConditions(fun conditions ->
             builder.Invoke(conditions)
             @ [
-                fun _ -> RuntimeInformation.IsOSPlatform OSPlatform.Windows
+                fun ctx -> ctx.WhenPlatform OSPlatform.Windows
             ]
         )
 
@@ -66,7 +67,7 @@ type ConditionsBuilder() =
         BuildConditions(fun conditions ->
             builder.Invoke(conditions)
             @ [
-                fun _ -> RuntimeInformation.IsOSPlatform OSPlatform.Linux
+                fun ctx -> ctx.WhenPlatform OSPlatform.Linux
             ]
         )
 
@@ -75,7 +76,7 @@ type ConditionsBuilder() =
         BuildConditions(fun conditions ->
             builder.Invoke(conditions)
             @ [
-                fun _ -> RuntimeInformation.IsOSPlatform OSPlatform.OSX
+                fun ctx -> ctx.WhenPlatform OSPlatform.OSX
             ]
         )
 
@@ -92,20 +93,20 @@ type StageBuilder with
     /// Set if stage is active or should run by check the environment variable.
     /// Only the last condition will take effect.
     [<CustomOperation("whenEnvVar")>]
-    member inline _.whenEnvVar([<InlineIfLambda>] build: BuildStage, envKey: string, ?envValue: string) =
+    member inline _.whenEnvVar([<InlineIfLambda>] build: BuildStage, envKey: string, ?envValue: string, ?description) =
         BuildStage(fun ctx ->
             { build.Invoke ctx with
-                IsActive = fun ctx -> ctx.WhenEnvArg(envKey, defaultArg envValue "")
+                IsActive = fun ctx -> ctx.WhenEnvArg(envKey, defaultArg envValue "", description)
             }
         )
 
     /// Set if stage is active or should run by check the command line args.
     /// Only the last condition will take effect.
     [<CustomOperation("whenCmdArg")>]
-    member inline _.whenCmdArg([<InlineIfLambda>] build: BuildStage, argKey: string, ?argValue: string) =
+    member inline _.whenCmdArg([<InlineIfLambda>] build: BuildStage, argKey: string, ?argValue: string, ?description) =
         BuildStage(fun ctx ->
             { build.Invoke ctx with
-                IsActive = fun ctx -> ctx.WhenCmdArg(argKey, defaultArg argValue "")
+                IsActive = fun ctx -> ctx.WhenCmdArg(argKey, defaultArg argValue "", description)
             }
         )
 
@@ -125,7 +126,7 @@ type StageBuilder with
     member inline _.whenWindows([<InlineIfLambda>] build: BuildStage) =
         BuildStage(fun ctx ->
             { build.Invoke ctx with
-                IsActive = fun _ -> RuntimeInformation.IsOSPlatform OSPlatform.Windows
+                IsActive = fun ctx -> ctx.WhenPlatform OSPlatform.Windows
             }
         )
 
@@ -135,7 +136,7 @@ type StageBuilder with
     member inline _.whenLinux([<InlineIfLambda>] build: BuildStage) =
         BuildStage(fun ctx ->
             { build.Invoke ctx with
-                IsActive = fun _ -> RuntimeInformation.IsOSPlatform OSPlatform.Linux
+                IsActive = fun ctx -> ctx.WhenPlatform OSPlatform.Linux
             }
         )
 
@@ -145,7 +146,7 @@ type StageBuilder with
     member inline _.whenOSX([<InlineIfLambda>] build: BuildStage) =
         BuildStage(fun ctx ->
             { build.Invoke ctx with
-                IsActive = fun _ -> RuntimeInformation.IsOSPlatform OSPlatform.OSX
+                IsActive = fun ctx -> ctx.WhenPlatform OSPlatform.OSX
             }
         )
 
@@ -154,21 +155,66 @@ type WhenAnyBuilder() =
     inherit ConditionsBuilder()
 
     member inline _.Run([<InlineIfLambda>] builder: BuildConditions) =
-        BuildStageIsActive(fun ctx -> builder.Invoke [] |> Seq.exists (fun fn -> fn ctx))
+        BuildStageIsActive(fun ctx ->
+            if ctx.Mode = Mode.CommandHelp then
+                AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}<when any below conditions are met>[/]"
+                let indentCtx =
+                    { StageContext.Create "" with
+                        ParentContext = ctx.ParentContext
+                    }
+                let newCtx =
+                    { ctx with
+                        ParentContext = ValueSome(StageParent.Stage indentCtx)
+                    }
+                builder.Invoke [] |> Seq.iter (fun fn -> fn newCtx |> ignore)
+                true
+            else
+                builder.Invoke [] |> Seq.exists (fun fn -> fn ctx)
+        )
 
 
 type WhenAllBuilder() =
     inherit ConditionsBuilder()
 
     member inline _.Run([<InlineIfLambda>] builder: BuildConditions) =
-        BuildStageIsActive(fun ctx -> builder.Invoke [] |> Seq.map (fun fn -> fn ctx) |> Seq.reduce (fun x y -> x && y))
+        BuildStageIsActive(fun ctx ->
+            AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}<when all below conditions are met>[/]"
+            if ctx.Mode = Mode.CommandHelp then
+                let indentCtx =
+                    { StageContext.Create "" with
+                        ParentContext = ctx.ParentContext
+                    }
+                let newCtx =
+                    { ctx with
+                        ParentContext = ValueSome(StageParent.Stage indentCtx)
+                    }
+                builder.Invoke [] |> Seq.iter (fun fn -> fn newCtx |> ignore)
+                true
+            else
+                builder.Invoke [] |> Seq.map (fun fn -> fn ctx) |> Seq.reduce (fun x y -> x && y)
+        )
 
 
 type WhenNotBuilder() =
     inherit ConditionsBuilder()
 
     member inline _.Run([<InlineIfLambda>] builder: BuildConditions) =
-        BuildStageIsActive(fun ctx -> builder.Invoke [] |> Seq.map (fun fn -> not (fn ctx)) |> Seq.reduce (fun x y -> x && y))
+        BuildStageIsActive(fun ctx ->
+            if ctx.Mode = Mode.CommandHelp then
+                AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}<when all below conditions are not met>[/]"
+                let indentCtx =
+                    { StageContext.Create "" with
+                        ParentContext = ctx.ParentContext
+                    }
+                let newCtx =
+                    { ctx with
+                        ParentContext = ValueSome(StageParent.Stage indentCtx)
+                    }
+                builder.Invoke [] |> Seq.iter (fun fn -> fn newCtx |> ignore)
+                true
+            else
+                builder.Invoke [] |> Seq.map (fun fn -> not (fn ctx)) |> Seq.reduce (fun x y -> x && y)
+        )
 
 
 /// When any of the added conditions are satisified, the stage will be active

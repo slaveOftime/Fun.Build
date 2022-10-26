@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.0] - 2022-10-26
+
+Support CommandHelp mode for pipeline, you can put printPipelineCommandHelpIfNeeded() at the end of your script to get some help infomation. 
+Then you can run below command to get the help info: 
+dotnet fsi build.fsx -- -h
+
+You can also run below command without use printPipelineCommandHelpIfNeeded() to get help info for specific pipeline: 
+dotnet fsi build.fsx -- -p your_pipeline_name -h
+
 ## [0.1.9] - 2022-10-13
 
 ### Added

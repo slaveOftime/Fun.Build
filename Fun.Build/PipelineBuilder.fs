@@ -2,6 +2,11 @@
 module Fun.Build.PipelineBuilder
 
 open System
+open Spectre.Console
+
+
+let private runIfOnlySpecifiedPipelines = System.Collections.Generic.List<PipelineContext>()
+
 
 type PipelineBuilder(name: string) =
 
@@ -161,14 +166,48 @@ type PipelineBuilder(name: string) =
     member _.runIfOnlySpecified(build: BuildPipeline, ?specified: bool) =
         let specified = defaultArg specified true
         let ctx = build.Invoke(PipelineContext.Create name)
-        let index = ctx.CmdArgs |> Seq.tryFindIndex ((=) "-p")
 
-        match index with
-        | Some index when List.length ctx.CmdArgs > index + 1 -> if ctx.CmdArgs[index + 1] = ctx.Name then ctx.Run()
-        | None when not specified -> ctx.Run()
-        | _ -> ()
+        let args = ctx.CmdArgs @ Array.toList (Environment.GetCommandLineArgs())
+        let isHelp = args |> Seq.exists (fun arg -> arg = "-h" || arg = "--help")
+        let pipelineIndex = args |> Seq.tryFindIndex (fun arg -> arg = "-p" || arg = "--pipeline")
+
+        runIfOnlySpecifiedPipelines.Add ctx
+
+        if isHelp then
+            match pipelineIndex with
+            | Some index when List.length args > index + 1 && args[index + 1] = ctx.Name -> { ctx with Mode = Mode.CommandHelp }.RunCommandHelp()
+            | _ -> ()
+        else
+            match pipelineIndex with
+            | Some index when List.length args > index + 1 -> if args[index + 1] = ctx.Name then ctx.Run()
+            | None when not specified -> ctx.Run()
+            | _ -> ()
 
 
 /// Build a pipeline with a specific name.
 /// You can compose stage with it, so they can run in sequence.
 let inline pipeline name = PipelineBuilder name
+
+
+let printPipelineCommandHelpIfNeeded () =
+    let args = Environment.GetCommandLineArgs()
+    let isSpecifiedPipeline = args |> Seq.exists (fun arg -> arg = "-p" || arg = "--pipeline")
+    let isHelp = args |> Seq.exists (fun arg -> arg = "-h" || arg = "--help")
+
+    if isHelp && not isSpecifiedPipeline then
+
+        if runIfOnlySpecifiedPipelines.Count = 1 then
+            let newCtx =
+                { runIfOnlySpecifiedPipelines[0] with
+                    Mode = Mode.CommandHelp
+                }
+            newCtx.RunCommandHelp()
+
+        else
+            AnsiConsole.MarkupLine "Below are the pipelines which will run if only specified:"
+            AnsiConsole.WriteLine()
+            for pipeline in runIfOnlySpecifiedPipelines do
+                AnsiConsole.MarkupLine $"    [green]{pipeline.Name}[/]"
+            AnsiConsole.WriteLine()
+            AnsiConsole.WriteLine "You can run below command to check more information:"
+            AnsiConsole.MarkupLine "[green]dotnet fsi (your fsharp script).fsx -- -p (your pipeline) -h[/]"
