@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.2.2] - 2022-10-27
+
+Expose ProcessExtensions
+
 ## [0.2.1] - 2022-10-27
 
 - Improve CommandHelp mode
