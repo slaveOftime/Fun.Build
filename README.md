@@ -106,9 +106,13 @@ pipeline "Fun.Build" {
 
 ## Print command help information
 
-You can put printPipelineCommandHelpIfNeeded() at the end of your script to get some help infomation. 
+You can call **tryPrintPipelineCommandHelp ()** at the end of your script to get some help infomation.  
 Then you can run below command to get the help info: 
+```bash
 dotnet fsi build.fsx -- -h
+```
 
-You can also run below command without use printPipelineCommandHelpIfNeeded to get help info for specific pipeline: 
-dotnet fsi build.fsx -- -p your_pipeline_name -h
+You can also run below command without call **tryPrintPipelineCommandHelp** to get help info for  pipeline which is set with **runIfOnlySpecified**:
+```bash 
+dotnet fsi build.fsx -- -p your_pipeline -h
+```
