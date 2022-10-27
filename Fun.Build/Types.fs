@@ -27,7 +27,7 @@ type StageIndex =
 [<Struct; RequireQualifiedAccess>]
 type Mode =
     | Execution
-    | CommandHelp
+    | CommandHelp of verbose: bool
 
 
 type StageContext = {

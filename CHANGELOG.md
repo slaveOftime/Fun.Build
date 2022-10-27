@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.2.1] - 2022-10-27
+
+- Improve CommandHelp mode
+- Add --verbose for CommandHelp mode
+
 ## [0.2.0] - 2022-10-26
 
 Support CommandHelp mode for pipeline, you can put printPipelineCommandHelpIfNeeded() at the end of your script to get some help infomation. 

@@ -169,13 +169,14 @@ type PipelineBuilder(name: string) =
 
         let args = ctx.CmdArgs @ Array.toList (Environment.GetCommandLineArgs())
         let isHelp = args |> Seq.exists (fun arg -> arg = "-h" || arg = "--help")
+        let verbose = args |> Seq.exists (fun arg -> arg = "-v" || arg = "--verbose")
         let pipelineIndex = args |> Seq.tryFindIndex (fun arg -> arg = "-p" || arg = "--pipeline")
 
         runIfOnlySpecifiedPipelines.Add ctx
 
         if isHelp then
             match pipelineIndex with
-            | Some index when List.length args > index + 1 && args[index + 1] = ctx.Name -> { ctx with Mode = Mode.CommandHelp }.RunCommandHelp()
+            | Some index when List.length args > index + 1 && args[index + 1] = ctx.Name -> ctx.RunCommandHelp(verbose)
             | _ -> ()
         else
             match pipelineIndex with
@@ -189,25 +190,32 @@ type PipelineBuilder(name: string) =
 let inline pipeline name = PipelineBuilder name
 
 
-let printPipelineCommandHelpIfNeeded () =
+/// Only when you have -h or --help in your command, it will try to print the help informations.
+/// When you use dotnet fsi, please remember to add --, so the help options can be passed in. eg: dotnet fsi demo.fsx -- -h
+/// If you only have one specified pipeline, it will try to print its command only help information.
+let tryPrintPipelineCommandHelp () =
     let args = Environment.GetCommandLineArgs()
     let isSpecifiedPipeline = args |> Seq.exists (fun arg -> arg = "-p" || arg = "--pipeline")
     let isHelp = args |> Seq.exists (fun arg -> arg = "-h" || arg = "--help")
 
     if isHelp && not isSpecifiedPipeline then
-
         if runIfOnlySpecifiedPipelines.Count = 1 then
-            let newCtx =
-                { runIfOnlySpecifiedPipelines[0] with
-                    Mode = Mode.CommandHelp
-                }
-            newCtx.RunCommandHelp()
+            let verbose = args |> Seq.exists (fun arg -> arg = "-v" || arg = "--verbose")
+            runIfOnlySpecifiedPipelines[ 0 ].RunCommandHelp(verbose)
 
         else
-            AnsiConsole.MarkupLine "Below are the pipelines which will run if only specified:"
-            AnsiConsole.WriteLine()
+            AnsiConsole.MarkupLine "Below are the pipelines which are set as specified:"
+            AnsiConsole.MarkupLine ""
+
+            if runIfOnlySpecifiedPipelines.Count = 0 then
+                AnsiConsole.MarkupLine
+                    "[red]* No run if only specified pipelines are found. Please use [green]runIfOnlySpecified[/] at the end of your pipeline CE.[/]"
+
             for pipeline in runIfOnlySpecifiedPipelines do
-                AnsiConsole.MarkupLine $"    [green]{pipeline.Name}[/]"
-            AnsiConsole.WriteLine()
-            AnsiConsole.WriteLine "You can run below command to check more information:"
-            AnsiConsole.MarkupLine "[green]dotnet fsi (your fsharp script).fsx -- -p (your pipeline) -h[/]"
+                AnsiConsole.MarkupLine $"  [green]{pipeline.Name}[/]"
+
+            AnsiConsole.MarkupLine ""
+            AnsiConsole.MarkupLine "Usage: dotnet fsi your_script.fsx -- -h"
+            AnsiConsole.MarkupLine "Usage: dotnet fsi your_script.fsx -- -p your_pipeline"
+            AnsiConsole.MarkupLine "Usage: dotnet fsi your_script.fsx -- -p your_pipeline -h"
+            AnsiConsole.MarkupLine "Usage: dotnet fsi your_script.fsx -- -p your_pipeline -h --verbose"

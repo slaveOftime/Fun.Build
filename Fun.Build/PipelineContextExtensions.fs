@@ -151,43 +151,52 @@ type PipelineContext with
             raise (PipelineFailedException "Pipeline is failed because exit code is indicating as successful")
 
 
-    member pipeline.RunCommandHelp() =
+    member pipeline.RunCommandHelp(verbose: bool) =
         Console.InputEncoding <- Encoding.UTF8
         Console.OutputEncoding <- Encoding.UTF8
 
-        AnsiConsole.MarkupLine $"Pipeline [green]{pipeline.Name}[/] stages execution options/conditions"
-        AnsiConsole.WriteLine()
+        let pipeline = { pipeline with Mode = Mode.CommandHelp verbose }
 
-        let rec run index (stage: StageContext) =
-            AnsiConsole.MarkupLine $"[grey]{stage.BuildStepPrefix index}[/]"
-            stage.IsActive stage |> ignore
-            for inedx, step in List.indexed stage.Steps do
+        if verbose then
+            AnsiConsole.MarkupLine $"Pipeline [green]{pipeline.Name}[/] stages execution options/conditions"
+        else
+            AnsiConsole.MarkupLine $"Pipeline [green]{pipeline.Name}[/] command only help information"
+
+        AnsiConsole.MarkupLine ""
+        AnsiConsole.MarkupLine $"Usage: dotnet fsi your_script.fsx -p {pipeline.Name}"
+        AnsiConsole.MarkupLine $"Usage: dotnet fsi your_script.fsx -- -p {pipeline.Name} -h"
+        AnsiConsole.MarkupLine $"Usage: dotnet fsi your_script.fsx -- -p {pipeline.Name} -h --verbose"
+        AnsiConsole.MarkupLine ""
+
+        if not verbose then AnsiConsole.MarkupLine "Options collected from stages:"
+
+        let rec run (stage: StageContext) =
+            if verbose then AnsiConsole.MarkupLine $"[grey]{stage.GetNamePath()}[/]"
+
+            if stage.IsActive stage && verbose then
+                AnsiConsole.Console.MarkupLine $"{stage.BuildIndent()}[grey]no options/conditions[/]"
+
+            for step in stage.Steps do
                 match step with
                 | Step.StepFn _ -> ()
                 | Step.StepOfStage s ->
                     run
-                        inedx
                         { s with
                             ParentContext = ValueSome(StageParent.Stage stage)
                         }
 
         pipeline.Stages
-        |> List.iteri (fun index stage ->
+        |> List.iter (fun stage ->
             run
-                index
-                { stage with
-                    ParentContext = ValueSome(StageParent.Pipeline pipeline)
-                }
-        )
-        pipeline.PostStages
-        |> List.iteri (fun index stage ->
-            run
-                index
                 { stage with
                     ParentContext = ValueSome(StageParent.Pipeline pipeline)
                 }
         )
 
-        AnsiConsole.MarkupLine ""
-        AnsiConsole.MarkupLine "If you are running in commandline you can execute like below:"
-        AnsiConsole.MarkupLine "[green]dotnet fsi (your fsharp script).fsx -p (your pipeline name) (some cmd options)[/]"
+        pipeline.PostStages
+        |> List.iter (fun stage ->
+            run
+                { stage with
+                    ParentContext = ValueSome(StageParent.Pipeline pipeline)
+                }
+        )

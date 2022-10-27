@@ -156,8 +156,10 @@ type WhenAnyBuilder() =
 
     member inline _.Run([<InlineIfLambda>] builder: BuildConditions) =
         BuildStageIsActive(fun ctx ->
-            if ctx.Mode = Mode.CommandHelp then
-                AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}<when any below conditions are met>[/]"
+            match ctx.Mode with
+            | Mode.CommandHelp verbose ->
+                if verbose then
+                    AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}when any below conditions are met[/]"
                 let indentCtx =
                     { StageContext.Create "" with
                         ParentContext = ctx.ParentContext
@@ -167,9 +169,9 @@ type WhenAnyBuilder() =
                         ParentContext = ValueSome(StageParent.Stage indentCtx)
                     }
                 builder.Invoke [] |> Seq.iter (fun fn -> fn newCtx |> ignore)
-                true
-            else
-                builder.Invoke [] |> Seq.exists (fun fn -> fn ctx)
+                false
+
+            | Mode.Execution -> builder.Invoke [] |> Seq.exists (fun fn -> fn ctx)
         )
 
 
@@ -178,8 +180,10 @@ type WhenAllBuilder() =
 
     member inline _.Run([<InlineIfLambda>] builder: BuildConditions) =
         BuildStageIsActive(fun ctx ->
-            AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}<when all below conditions are met>[/]"
-            if ctx.Mode = Mode.CommandHelp then
+            match ctx.Mode with
+            | Mode.CommandHelp verbose ->
+                if verbose then
+                    AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}when all below conditions are met[/]"
                 let indentCtx =
                     { StageContext.Create "" with
                         ParentContext = ctx.ParentContext
@@ -189,9 +193,9 @@ type WhenAllBuilder() =
                         ParentContext = ValueSome(StageParent.Stage indentCtx)
                     }
                 builder.Invoke [] |> Seq.iter (fun fn -> fn newCtx |> ignore)
-                true
-            else
-                builder.Invoke [] |> Seq.map (fun fn -> fn ctx) |> Seq.reduce (fun x y -> x && y)
+                false
+
+            | Mode.Execution -> builder.Invoke [] |> Seq.map (fun fn -> fn ctx) |> Seq.reduce (fun x y -> x && y)
         )
 
 
@@ -200,8 +204,10 @@ type WhenNotBuilder() =
 
     member inline _.Run([<InlineIfLambda>] builder: BuildConditions) =
         BuildStageIsActive(fun ctx ->
-            if ctx.Mode = Mode.CommandHelp then
-                AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}<when all below conditions are not met>[/]"
+            match ctx.Mode with
+            | Mode.CommandHelp verbose ->
+                if verbose then
+                    AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}when all below conditions are not met[/]"
                 let indentCtx =
                     { StageContext.Create "" with
                         ParentContext = ctx.ParentContext
@@ -211,9 +217,9 @@ type WhenNotBuilder() =
                         ParentContext = ValueSome(StageParent.Stage indentCtx)
                     }
                 builder.Invoke [] |> Seq.iter (fun fn -> fn newCtx |> ignore)
-                true
-            else
-                builder.Invoke [] |> Seq.map (fun fn -> not (fn ctx)) |> Seq.reduce (fun x y -> x && y)
+                false
+
+            | Mode.Execution -> builder.Invoke [] |> Seq.map (fun fn -> not (fn ctx)) |> Seq.reduce (fun x y -> x && y)
         )
 
 

@@ -148,9 +148,9 @@ type StageContext with
 
     member ctx.BuildIndent() =
         match ctx.ParentContext with
-        | ValueNone -> ""
         | ValueSome (StageParent.Stage s) -> "    " + s.BuildIndent()
-        | ValueSome (StageParent.Pipeline _) -> ""
+        | ValueNone
+        | ValueSome (StageParent.Pipeline _) -> "    "
 
 
     /// Verify if the exit code is allowed.
@@ -211,51 +211,61 @@ type StageContext with
 
 
     member ctx.WhenEnvArg(envKey: string, envValue: string, description) =
-        if ctx.Mode = Mode.CommandHelp then
+        match ctx.Mode with
+        | Mode.CommandHelp true ->
             AnsiConsole.Markup $"{ctx.BuildIndent()}env: [green]{envKey}[/]"
 
             if String.IsNullOrEmpty envValue |> not then
                 AnsiConsole.Markup $"=[green]{envValue}[/]"
 
             match description with
-            | Some x -> AnsiConsole.Markup $"[teal]    %s{x}[/]"
+            | Some x -> AnsiConsole.Markup $"  [teal]%s{x}[/]"
             | _ -> ()
 
             AnsiConsole.WriteLine()
 
-            true
+            false
 
-        else
+        | Mode.CommandHelp false -> true
+
+        | Mode.Execution ->
             match ctx.TryGetEnvVar envKey with
             | ValueSome v when envValue = "" || v = envValue -> true
             | _ -> false
 
     member ctx.WhenCmdArg(argKey: string, argValue: string, description) =
-        if ctx.Mode = Mode.CommandHelp then
-            AnsiConsole.Markup $"{ctx.BuildIndent()}cmd: [green]{argKey}[/]"
+        match ctx.Mode with
+        | Mode.CommandHelp verbose ->
+            if verbose then
+                AnsiConsole.Markup $"{ctx.BuildIndent()}cmd: [green]{argKey}[/]"
+            else
+                AnsiConsole.Markup $"  [green]{argKey}[/]"
 
             if String.IsNullOrEmpty argValue |> not then
-                AnsiConsole.Markup $"=[green]{argValue}[/]"
+                AnsiConsole.Markup $" [green]{argValue}[/]"
 
             match description with
-            | Some x -> AnsiConsole.Markup $"[teal]    %s{x}[/]"
+            | Some x -> AnsiConsole.Markup $"    [teal]%s{x}[/]"
             | _ -> ()
 
             AnsiConsole.WriteLine()
 
-            true
+            false
 
-        else
+        | Mode.Execution ->
             match ctx.TryGetCmdArg argKey with
             | ValueSome v when argValue = "" || v = argValue -> true
             | _ -> false
 
 
     member ctx.WhenBranch(branch: string) =
-        if ctx.Mode = Mode.CommandHelp then
-            AnsiConsole.MarkupLine $"{ctx.BuildIndent()}when branch is [green]{branch}[/]"
-            true
-        else
+        match ctx.Mode with
+        | Mode.CommandHelp verbose ->
+            if verbose then
+                AnsiConsole.MarkupLine $"{ctx.BuildIndent()}when branch is [green]{branch}[/]"
+            false
+
+        | Mode.Execution ->
             try
                 let command = ctx.BuildCommand("git branch --show-current")
                 ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command.WorkingDirectory <- x)
@@ -269,11 +279,14 @@ type StageContext with
 
 
     member ctx.WhenPlatform(platform: OSPlatform) =
-        if ctx.Mode = Mode.CommandHelp then
+        match ctx.Mode with
+        | Mode.CommandHelp true ->
             AnsiConsole.MarkupLine $"{ctx.BuildIndent()}when platform is [green]{platform}[/]"
-            true
-        else
-            RuntimeInformation.IsOSPlatform platform
+            false
+
+        | Mode.CommandHelp false -> true
+
+        | Mode.Execution -> RuntimeInformation.IsOSPlatform platform
 
 
     /// Run the stage. If index is not provided then it will be treated as sub-stage.

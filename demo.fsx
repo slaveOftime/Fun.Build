@@ -39,8 +39,8 @@ pipeline "Fun.Build" {
             whenAny {
                 envVar "envKey" // Check has environment variable
                 envVar "envKey" "envValue" // Check has environment variable value
-                cmdArg "cmdKey" // Check has cmd arg
-                cmdArg "cmdKey" "cmdValue" // Check has cmd arg value which should be behind the cmdKey
+                cmdArg "cmdKey" "" "Check has cmd arg"
+                cmdArg "cmdKey" "cmdValue" "Check has cmd arg value which should be behind the cmdKey"
             }
         }
         paralle
@@ -81,3 +81,6 @@ pipeline "Fun.Build" {
 // You can also run it directly
 // runImmediate
 }
+
+
+tryPrintPipelineCommandHelp ()
