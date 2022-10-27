@@ -4,6 +4,7 @@
 
 - Improve CommandHelp mode
 - Add --verbose for CommandHelp mode
+- Support command file name with witespace, eg: run "'some complex path.exe' -h"
 
 ## [0.2.0] - 2022-10-26
 

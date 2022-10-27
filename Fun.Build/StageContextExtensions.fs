@@ -171,12 +171,15 @@ type StageContext with
 
 
     member ctx.BuildCommand(commandStr: string) =
-        let index = commandStr.IndexOf " "
+        let index =
+            if commandStr.StartsWith "\"" then commandStr.IndexOf "\" "
+            else if commandStr.StartsWith "'" then commandStr.IndexOf "' "
+            else commandStr.IndexOf " "
 
         let cmd, args =
             if index > 0 then
-                let cmd = commandStr.Substring(0, index)
-                let args = commandStr.Substring(index + 1)
+                let cmd = commandStr.Substring(0, index).Replace("\"", "").Replace("'", "").Trim()
+                let args = commandStr.Substring(index + 1).Trim()
                 cmd, args
             else
                 commandStr, ""
