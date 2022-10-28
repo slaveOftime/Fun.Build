@@ -1,8 +1,91 @@
 ﻿[<AutoOpen>]
 module Fun.Build.ConditionsBuilder
 
+open System
+open System.Diagnostics
 open System.Runtime.InteropServices
 open Spectre.Console
+
+
+type StageContext with
+    member ctx.WhenEnvArg(envKey: string, envValue: string, description) =
+        match ctx.Mode with
+        | Mode.CommandHelp true ->
+            AnsiConsole.Markup $"{ctx.BuildIndent()}env: [green]{envKey}[/]"
+
+            if String.IsNullOrEmpty envValue |> not then
+                AnsiConsole.Markup $"=[green]{envValue}[/]"
+
+            match description with
+            | Some x -> AnsiConsole.Markup $"  [teal]%s{x}[/]"
+            | _ -> ()
+
+            AnsiConsole.WriteLine()
+
+            false
+
+        | Mode.CommandHelp false -> true
+
+        | Mode.Execution ->
+            match ctx.TryGetEnvVar envKey with
+            | ValueSome v when envValue = "" || v = envValue -> true
+            | _ -> false
+
+
+    member ctx.WhenCmdArg(argKey: string, argValue: string, description) =
+        match ctx.Mode with
+        | Mode.CommandHelp verbose ->
+            if verbose then
+                AnsiConsole.Markup $"{ctx.BuildIndent()}cmd: [green]{argKey}[/]"
+            else
+                AnsiConsole.Markup $"  [green]{argKey}[/]"
+
+            if String.IsNullOrEmpty argValue |> not then
+                AnsiConsole.Markup $" [green]{argValue}[/]"
+
+            match description with
+            | Some x -> AnsiConsole.Markup $"    [teal]%s{x}[/]"
+            | _ -> ()
+
+            AnsiConsole.WriteLine()
+
+            false
+
+        | Mode.Execution ->
+            match ctx.TryGetCmdArg argKey with
+            | ValueSome v when argValue = "" || v = argValue -> true
+            | _ -> false
+
+
+    member ctx.WhenBranch(branch: string) =
+        match ctx.Mode with
+        | Mode.CommandHelp verbose ->
+            if verbose then
+                AnsiConsole.MarkupLine $"{ctx.BuildIndent()}when branch is [green]{branch}[/]"
+            false
+
+        | Mode.Execution ->
+            try
+                let command = ctx.BuildCommand("git branch --show-current")
+                ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command.WorkingDirectory <- x)
+
+                let result = Process.Start command
+                result.WaitForExit()
+                result.StandardOutput.ReadLine() = branch
+            with ex ->
+                AnsiConsole.MarkupLine $"[red]Run git to get branch info failed: {ex.Message}[/]"
+                false
+
+
+    member ctx.WhenPlatform(platform: OSPlatform) =
+        match ctx.Mode with
+        | Mode.CommandHelp true ->
+            AnsiConsole.MarkupLine $"{ctx.BuildIndent()}when platform is [green]{platform}[/]"
+            false
+
+        | Mode.CommandHelp false -> true
+
+        | Mode.Execution -> RuntimeInformation.IsOSPlatform platform
 
 
 type ConditionsBuilder() =

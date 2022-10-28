@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.2.3] - 2022-10-28
+
+- Refactor
+- Expose RunCommand, RunSensitiveCommand for StageContext
+
 ## [0.2.2] - 2022-10-27
 
 Expose ProcessExtensions

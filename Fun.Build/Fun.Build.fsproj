@@ -13,10 +13,10 @@
 		<Compile Include="Types.fs" />
 		<Compile Include="StageContextExtensions.fs" />
 		<Compile Include="PipelineContextExtensions.fs" />
+		<Compile Include="BuiltinCmds.fs" />
 		<Compile Include="StageBuilder.fs" />
 		<Compile Include="PipelineBuilder.fs" />
 		<Compile Include="ConditionsBuilder.fs" />
-		<Compile Include="BuiltinCmds.fs" />
 	</ItemGroup>
 
 	<ItemGroup>

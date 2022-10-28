@@ -64,7 +64,7 @@ module ProcessExtensions =
                 |> Option.defaultValue cmd
 
 
-        static member StartAsync(startInfo: ProcessStartInfo, commandStr: string, logPrefix: string) = async {
+        static member StartAsync(startInfo: ProcessStartInfo, commandLogString: string, logPrefix: string) = async {
             use result = Process.Start startInfo
 
             result.OutputDataReceived.Add(fun e -> Console.WriteLine(logPrefix + " " + e.Data))
@@ -72,7 +72,7 @@ module ProcessExtensions =
             use! cd =
                 Async.OnCancel(fun _ ->
                     AnsiConsole.Markup $"[yellow]{logPrefix}[/] "
-                    AnsiConsole.WriteLine $"{commandStr} is cancelled or timeouted and the process will be killed."
+                    AnsiConsole.WriteLine $"{commandLogString} is cancelled or timeouted and the process will be killed."
                     result.Kill()
                 )
 
