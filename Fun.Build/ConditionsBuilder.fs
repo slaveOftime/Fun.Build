@@ -8,6 +8,7 @@ open Spectre.Console
 
 
 type StageContext with
+
     member ctx.WhenEnvArg(envKey: string, envValue: string, description) =
         match ctx.Mode with
         | Mode.CommandHelp true ->
