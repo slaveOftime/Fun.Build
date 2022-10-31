@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.2.4] - 2022-10-31
+
+Improve command help format
+
 ## [0.2.3] - 2022-10-28
 
 - Refactor

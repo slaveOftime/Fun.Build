@@ -4,6 +4,7 @@
 open Fun.Build
 
 pipeline "Fun.Build" {
+    description "This is a demo pipeline for docs"
     timeout 30 // You can set overall timeout for the pipeline
     timeoutForStep 10 // You can set default timeout for every step in every stage
     timeoutForStage 10 // You can set default timeout for every stage
@@ -80,6 +81,12 @@ pipeline "Fun.Build" {
     runIfOnlySpecified false
 // You can also run it directly
 // runImmediate
+}
+
+
+pipeline "empty-pipeline" {
+    description "This is a placeholder"
+    runIfOnlySpecified
 }
 
 

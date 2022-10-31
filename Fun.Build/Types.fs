@@ -46,6 +46,7 @@ type StageContext = {
 
 type PipelineContext = {
     Name: string
+    Description: string voption
     Mode: Mode
     CmdArgs: string list
     EnvVars: Map<string, string>

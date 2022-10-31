@@ -24,6 +24,20 @@ module internal Utils =
     let windowsExeExts = [ "exe"; "cmd"; "bat" ]
 
 
+    let printCommandOption prefix (argInfo: string) (argDescription: string) = printfn "%s%-30s  %s" prefix argInfo argDescription
+
+    let printHelpOptions () = printCommandOption "  " "-h, --help" "Show help and usage information"
+
+
+    let getFsiFileName () =
+        let args = Environment.GetCommandLineArgs()
+
+        if args.Length >= 2 && args[ 1 ].EndsWith(".fsx", StringComparison.OrdinalIgnoreCase) then
+            args[1]
+        else
+            "your_script.fsx"
+
+
     module ValueOption =
 
         let inline defaultWithVOption (fn: unit -> 'T voption) (data: 'T voption) = if data.IsSome then data else fn ()

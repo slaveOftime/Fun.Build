@@ -21,6 +21,7 @@ type PipelineContext with
 
         {
             Name = name
+            Description = ValueNone
             Mode = Mode.Execution
             CmdArgs = Seq.toList (Environment.GetCommandLineArgs())
             EnvVars = envVars |> Seq.map (fun (KeyValue (k, v)) -> k, v) |> Map.ofSeq
@@ -155,20 +156,32 @@ type PipelineContext with
         Console.InputEncoding <- Encoding.UTF8
         Console.OutputEncoding <- Encoding.UTF8
 
+        let scriptFile = getFsiFileName ()
+
         let pipeline = { pipeline with Mode = Mode.CommandHelp verbose }
 
+        AnsiConsole.MarkupLine $"Description:"
+
         if verbose then
-            AnsiConsole.MarkupLine $"Pipeline [green]{pipeline.Name}[/] stages execution options/conditions"
+            AnsiConsole.MarkupLine $"  Pipeline [green]{pipeline.Name}[/] (stages execution options/conditions)"
         else
-            AnsiConsole.MarkupLine $"Pipeline [green]{pipeline.Name}[/] command only help information"
+            AnsiConsole.MarkupLine $"  Pipeline [green]{pipeline.Name}[/] (command only help information)"
 
-        AnsiConsole.MarkupLine ""
-        AnsiConsole.MarkupLine $"Usage: dotnet fsi your_script.fsx -p {pipeline.Name}"
-        AnsiConsole.MarkupLine $"Usage: dotnet fsi your_script.fsx -- -p {pipeline.Name} -h"
-        AnsiConsole.MarkupLine $"Usage: dotnet fsi your_script.fsx -- -p {pipeline.Name} -h --verbose"
-        AnsiConsole.MarkupLine ""
+        match pipeline.Description with
+        | ValueNone -> ()
+        | ValueSome x -> AnsiConsole.WriteLine $"  {x}"
 
-        if not verbose then AnsiConsole.MarkupLine "Options collected from stages:"
+        AnsiConsole.WriteLine ""
+        AnsiConsole.WriteLine $"Usage:"
+        AnsiConsole.WriteLine $"  dotnet fsi {scriptFile} -- -p {pipeline.Name} [options]"
+        AnsiConsole.WriteLine $"  dotnet fsi {scriptFile} -- -p {pipeline.Name} -h"
+        AnsiConsole.WriteLine $"  dotnet fsi {scriptFile} -- -p {pipeline.Name} -h --verbose"
+        AnsiConsole.WriteLine ""
+
+        if verbose then
+            AnsiConsole.WriteLine "Options/conditions:"
+        else
+            AnsiConsole.WriteLine "Options(collected from stages):"
 
         let rec run (stage: StageContext) =
             if verbose then AnsiConsole.MarkupLine $"[grey]{stage.GetNamePath()}[/]"
@@ -200,3 +213,9 @@ type PipelineContext with
                     ParentContext = ValueSome(StageParent.Pipeline pipeline)
                 }
         )
+
+        if not verbose then
+            printHelpOptions ()
+            printCommandOption "  " "-v, --verbose" "Make the help information verbose"
+
+        AnsiConsole.WriteLine ""

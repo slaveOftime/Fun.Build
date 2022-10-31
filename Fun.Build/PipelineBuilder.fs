@@ -57,6 +57,14 @@ type PipelineBuilder(name: string) =
         )
 
 
+    /// This description is mainly used for command help
+    [<CustomOperation("description")>]
+    member inline _.description([<InlineIfLambda>] build: BuildPipeline, x) =
+        BuildPipeline(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with Description = ValueSome x }
+        )
+
     /// Set default timeout for all stages, stage can also set timeout to override this. Unit is seconds.
     [<CustomOperation("timeout")>]
     member inline _.timeout([<InlineIfLambda>] build: BuildPipeline, seconds: int) =
@@ -198,24 +206,33 @@ let tryPrintPipelineCommandHelp () =
     let isSpecifiedPipeline = args |> Seq.exists (fun arg -> arg = "-p" || arg = "--pipeline")
     let isHelp = args |> Seq.exists (fun arg -> arg = "-h" || arg = "--help")
 
+    let scriptFile = getFsiFileName ()
+
     if isHelp && not isSpecifiedPipeline then
         if runIfOnlySpecifiedPipelines.Count = 1 then
             let verbose = args |> Seq.exists (fun arg -> arg = "-v" || arg = "--verbose")
             runIfOnlySpecifiedPipelines[ 0 ].RunCommandHelp(verbose)
 
         else
-            AnsiConsole.MarkupLine "Below are the pipelines which are set as specified:"
-            AnsiConsole.MarkupLine ""
+            AnsiConsole.WriteLine "Descriptions:"
+            AnsiConsole.WriteLine "  Below are the pipelines which are set as runIfOnlySpecified"
+            AnsiConsole.WriteLine ""
+
+            AnsiConsole.WriteLine "Pipelines:"
 
             if runIfOnlySpecifiedPipelines.Count = 0 then
                 AnsiConsole.MarkupLine
                     "[red]* No run if only specified pipelines are found. Please use [green]runIfOnlySpecified[/] at the end of your pipeline CE.[/]"
 
             for pipeline in runIfOnlySpecifiedPipelines do
-                AnsiConsole.MarkupLine $"  [green]{pipeline.Name}[/]"
+                printCommandOption "  " pipeline.Name (defaultValueArg pipeline.Description "")
 
-            AnsiConsole.MarkupLine ""
-            AnsiConsole.MarkupLine "Usage: dotnet fsi your_script.fsx -- -h"
-            AnsiConsole.MarkupLine "Usage: dotnet fsi your_script.fsx -- -p your_pipeline"
-            AnsiConsole.MarkupLine "Usage: dotnet fsi your_script.fsx -- -p your_pipeline -h"
-            AnsiConsole.MarkupLine "Usage: dotnet fsi your_script.fsx -- -p your_pipeline -h --verbose"
+            AnsiConsole.WriteLine ""
+            AnsiConsole.WriteLine "Usage:"
+            AnsiConsole.WriteLine $"  dotnet fsi {scriptFile} -- -h"
+            AnsiConsole.WriteLine $"  dotnet fsi {scriptFile} -- -p your_pipeline [options]"
+            AnsiConsole.WriteLine ""
+
+            AnsiConsole.WriteLine "Options:"
+            printHelpOptions ()
+            AnsiConsole.WriteLine ""

@@ -1,7 +1,6 @@
 ﻿[<AutoOpen>]
 module Fun.Build.ConditionsBuilder
 
-open System
 open System.Diagnostics
 open System.Runtime.InteropServices
 open Spectre.Console
@@ -12,17 +11,7 @@ type StageContext with
     member ctx.WhenEnvArg(envKey: string, envValue: string, description) =
         match ctx.Mode with
         | Mode.CommandHelp true ->
-            AnsiConsole.Markup $"{ctx.BuildIndent()}env: [green]{envKey}[/]"
-
-            if String.IsNullOrEmpty envValue |> not then
-                AnsiConsole.Markup $"=[green]{envValue}[/]"
-
-            match description with
-            | Some x -> AnsiConsole.Markup $"  [teal]%s{x}[/]"
-            | _ -> ()
-
-            AnsiConsole.WriteLine()
-
+            printCommandOption (ctx.BuildIndent()) (envKey + "  " + envValue) (defaultArg description "")
             false
 
         | Mode.CommandHelp false -> true
@@ -37,18 +26,9 @@ type StageContext with
         match ctx.Mode with
         | Mode.CommandHelp verbose ->
             if verbose then
-                AnsiConsole.Markup $"{ctx.BuildIndent()}cmd: [green]{argKey}[/]"
+                printCommandOption (ctx.BuildIndent()) (argKey + "  " + argValue) (defaultArg description "")
             else
-                AnsiConsole.Markup $"  [green]{argKey}[/]"
-
-            if String.IsNullOrEmpty argValue |> not then
-                AnsiConsole.Markup $" [green]{argValue}[/]"
-
-            match description with
-            | Some x -> AnsiConsole.Markup $"    [teal]%s{x}[/]"
-            | _ -> ()
-
-            AnsiConsole.WriteLine()
+                printCommandOption "  " (argKey + "  " + argValue) (defaultArg description "")
 
             false
 
