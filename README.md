@@ -6,7 +6,7 @@ This is a project mainly used for CICD, you can use it in a fsharp project or as
 
 The basic idea is you have **pipeline** which can contain multiple stages.  
 Every **stage** can contain multiple steps. In the stage you can set it to run in parallel or run under some conditions (when envVar, cmdArg, branch etc.).  
-Every **step** is just a **async< int >**, int is for the exit code. 
+Every **step** is just a **async<Result<unit, string>>**, string is for the error message. 
 
 
 ## For what
@@ -15,23 +15,24 @@ Every **step** is just a **async< int >**, int is for the exit code.
 - Type safety and extendable DSL
 - Build and compose complex pipelines
 - Test your pipelines locally
+- Generate command line help information automatically
 
 
 ## Example:
 
-```fsharp
-#r "nuget: Fun.Build, 0.1.7"
+Below example covered most of the apis and usage example, take it as the documents😊:
 
+```fsharp
+#r "nuget: Fun.Result"
+#r "nuget: Fun.Build, 0.2.5"
+
+open Fun.Result
 open Fun.Build
 
-pipeline "Fun.Build" {
-    timeout 30 // You can set overall timeout for the pipeline
-    timeoutForStep 10 // You can set default timeout for every step in every stage
-    timeoutForStage 10 // You can set default timeout for every stage
-    envVars [ "envKey", "envValue" ] // You can add or override environment variables
-    cmdArgs [ "arg1"; "arg2" ] // You can reset the command args
-    workingDir __SOURCE_DIRECTORY__
-    stage "Demo1" {
+
+// You can create a stage and reuse it in any pipeline or nested stages
+let demo1 =
+    stage "Ways to run something" {
         timeout 30 // You can set default timeout for the stage
         timeoutForStep 30 // You can set default timeout for step under the stage
         envVars [ "envKey", "envValue" ] // You can add or override environment variables
@@ -42,6 +43,12 @@ pipeline "Fun.Build" {
         run "dotnet --version"
         run (fun ctx -> "dotnet --version")
         run (fun ctx -> async { return "dotnet --version" })
+        // You use use the RunCommand to run multiple command according to your logics
+        run (fun ctx -> asyncResult {
+            do! ctx.RunCommand "dotnet --version"
+            do! ctx.RunCommand "dotnet --version"
+        }
+        )
         // You can run async functions
         run (Async.Sleep 1000)
         run (fun _ -> Async.Sleep 1000)
@@ -53,6 +60,20 @@ pipeline "Fun.Build" {
         step (fun ctx _ -> async { return Ok() })
         BuildStep(fun ctx _ -> async { return Ok() })
     }
+
+
+pipeline "Fun.Build" {
+    description "This is a demo pipeline for docs"
+    timeout 30 // You can set overall timeout for the pipeline
+    timeoutForStep 10 // You can set default timeout for every step in every stage
+    timeoutForStage 10 // You can set default timeout for every stage
+    envVars [ "envKey", "envValue" ] // You can add or override environment variables
+    cmdArgs [ "arg1"; "arg2" ] // You can reset the command args
+    workingDir __SOURCE_DIRECTORY__
+    // You can also override the accept exit code for success. By default 0 is for success.
+    // But if your external program is using other code you can add it here.
+    acceptExitCodes [ 0; 2 ]
+    demo1 // Reuse the stage here
     stage "Demo2" {
         // whenAny, whenNot, whenAll. They can also be composed.
         whenAll {
@@ -60,8 +81,9 @@ pipeline "Fun.Build" {
             whenAny {
                 envVar "envKey" // Check has environment variable
                 envVar "envKey" "envValue" // Check has environment variable value
-                cmdArg "cmdKey" // Check has cmd arg
-                cmdArg "cmdKey" "cmdValue" // Check has cmd arg value which should be behind the cmdKey
+                cmdArg "cmdKey" "" "Check has cmd arg"
+                cmdArg "cmdKey" "cmdValue" "Check has cmd arg value which should be behind the cmdKey"
+                whenNot { cmdArg "--not-demo" }
             }
         }
         paralle
@@ -83,7 +105,9 @@ pipeline "Fun.Build" {
             acceptExitCodes [ 123 ]
             run (fun _ -> 123)
         }
+        // You can open link in browser every easily
         openBrowser "https://github.com/slaveOftime/Fun.Build"
+        run (fun ctx -> ctx.OpenBrowser "https://github.com/slaveOftime/Fun.Build")
     }
     post [ // Post stages are optional. It will run even other normal stages are failed.
         stage "Post stage" {
@@ -91,7 +115,8 @@ pipeline "Fun.Build" {
             echo (fun ctx -> sprintf "You are finished here: %A" (ctx.GetWorkingDir()))
             run (fun _ -> async {
                 return 0 // do something
-            })
+            }
+            )
         }
     ]
     // You can have multiple pipelines, sometimes you only want to run it only if the command specified the pipeline name.
@@ -101,10 +126,21 @@ pipeline "Fun.Build" {
     // You can also run it directly
     // runImmediate
 }
+
+
+pipeline "empty-pipeline" {
+    description "This is a placeholder"
+    runIfOnlySpecified
+}
+
+
+// This will collect command line help information for you
+// You can run: dotnet demo.fsx -- -h
+tryPrintPipelineCommandHelp ()
 ```
 
 
-## Print command help information
+## Print command line help information
 
 You can call **tryPrintPipelineCommandHelp ()** at the end of your script to get some help infomation.  
 Then you can run below command to get the help info: 

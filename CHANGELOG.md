@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.5] - 2022-11-04
+
+- No need to print command options for whenNot
+- Improve verbose command line help info
+- Update docs
+
 ## [0.2.4] - 2022-10-31
 
 Improve command help format

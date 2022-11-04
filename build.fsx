@@ -1,4 +1,4 @@
-#r "nuget: Fun.Build, 0.1.7"
+#r "nuget: Fun.Build, 0.2.4"
 #r "nuget: Fake.IO.FileSystem, 5.23.0"
 
 open Fake.IO
@@ -7,6 +7,7 @@ open Fun.Build
 
 
 pipeline "Fun.Build" {
+    description "Build and deploy to nuget"
     stage "Check environment" {
         paralle
         run "dotnet --version"
@@ -47,3 +48,6 @@ pipeline "Fun.Build" {
     ]
     runIfOnlySpecified false
 }
+
+
+tryPrintPipelineCommandHelp ()

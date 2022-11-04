@@ -11,7 +11,7 @@ type StageContext with
     member ctx.WhenEnvArg(envKey: string, envValue: string, description) =
         match ctx.Mode with
         | Mode.CommandHelp true ->
-            printCommandOption (ctx.BuildIndent()) (envKey + "  " + envValue) (defaultArg description "")
+            printCommandOption (ctx.BuildIndent() + "env: ") (envKey + "  " + envValue) (defaultArg description "")
             false
 
         | Mode.CommandHelp false -> true
@@ -26,7 +26,7 @@ type StageContext with
         match ctx.Mode with
         | Mode.CommandHelp verbose ->
             if verbose then
-                printCommandOption (ctx.BuildIndent()) (argKey + "  " + argValue) (defaultArg description "")
+                printCommandOption (ctx.BuildIndent() + "cmd: ") (argKey + "  " + argValue) (defaultArg description "")
             else
                 printCommandOption "  " (argKey + "  " + argValue) (defaultArg description "")
 
@@ -225,7 +225,7 @@ type WhenAnyBuilder() =
                 if verbose then
                     AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}when any below conditions are met[/]"
                 let indentCtx =
-                    { StageContext.Create "" with
+                    { StageContext.Create "  " with
                         ParentContext = ctx.ParentContext
                     }
                 let newCtx =
@@ -249,7 +249,7 @@ type WhenAllBuilder() =
                 if verbose then
                     AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}when all below conditions are met[/]"
                 let indentCtx =
-                    { StageContext.Create "" with
+                    { StageContext.Create "  " with
                         ParentContext = ctx.ParentContext
                     }
                 let newCtx =
@@ -269,11 +269,10 @@ type WhenNotBuilder() =
     member inline _.Run([<InlineIfLambda>] builder: BuildConditions) =
         BuildStageIsActive(fun ctx ->
             match ctx.Mode with
-            | Mode.CommandHelp verbose ->
-                if verbose then
-                    AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}when all below conditions are not met[/]"
+            | Mode.CommandHelp true ->
+                AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}when all below conditions are [bold red]NOT[/] met[/]"
                 let indentCtx =
-                    { StageContext.Create "" with
+                    { StageContext.Create "  " with
                         ParentContext = ctx.ParentContext
                     }
                 let newCtx =
@@ -282,6 +281,8 @@ type WhenNotBuilder() =
                     }
                 builder.Invoke [] |> Seq.iter (fun fn -> fn newCtx |> ignore)
                 false
+
+            | Mode.CommandHelp false -> false
 
             | Mode.Execution -> builder.Invoke [] |> Seq.map (fun fn -> not (fn ctx)) |> Seq.reduce (fun x y -> x && y)
         )

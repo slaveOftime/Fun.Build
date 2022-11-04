@@ -144,11 +144,7 @@ type StageContext with
 
     member inline ctx.BuildStepPrefix(i: int) = sprintf "%s/step-%d>" (ctx.GetNamePath()) i
 
-    member ctx.BuildIndent() =
-        match ctx.ParentContext with
-        | ValueSome (StageParent.Stage s) -> "    " + s.BuildIndent()
-        | ValueNone
-        | ValueSome (StageParent.Pipeline _) -> "    "
+    member ctx.BuildIndent() = String(' ', ctx.GetNamePath().Length - ctx.Name.Length + 4)
 
 
     /// Verify if the exit code is allowed.

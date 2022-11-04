@@ -184,7 +184,7 @@ type PipelineContext with
             AnsiConsole.WriteLine "Options(collected from stages):"
 
         let rec run (stage: StageContext) =
-            if verbose then AnsiConsole.MarkupLine $"[grey]{stage.GetNamePath()}[/]"
+            if verbose then AnsiConsole.MarkupLine $"  [grey]{stage.GetNamePath()}[/]"
 
             if stage.IsActive stage && verbose then
                 AnsiConsole.Console.MarkupLine $"{stage.BuildIndent()}[grey]no options/conditions[/]"
