@@ -168,8 +168,11 @@ type PipelineBuilder(name: string) =
     member _.runImmediate(build: BuildPipeline) = build.Invoke(PipelineContext.Create name).Run()
 
 
-    /// If set to true (default), then will check the if the CmdArgs contains -p if it append an argument which is equal to the pipeline name, if all checks then it will run the pipeline.
-    /// If set to false and if there is no -p in the CmdArgs, then it will also run the pipeline.
+    /// <summary>
+    /// If set to true, the pipeline will be run only if it is specified using <c>-p &lt;name&gt;</c> or <c>--pipeline &lt;name&gt;</c> in the CLI where <c>&lt;name&gt;</c> is the name of the pipeline.
+    /// 
+    /// If set to false, the pipeline will be run if no <c>-p</c> or <c>--pipeline</c> is specified in command line args.
+    /// </summary>
     [<CustomOperation("runIfOnlySpecified")>]
     member _.runIfOnlySpecified(build: BuildPipeline, ?specified: bool) =
         let specified = defaultArg specified true
