@@ -31,6 +31,7 @@ type PipelineBuilder(name: string) =
                 )
         }
 
+
     member inline _.Yield(_: unit) = BuildPipeline id
 
     member inline _.Yield(stage: StageContext) = stage
@@ -57,12 +58,46 @@ type PipelineBuilder(name: string) =
         )
 
 
+    member inline _.Yield([<InlineIfLambda>] condition: BuildStageIsActive) = condition
+
+    member inline _.Delay([<InlineIfLambda>] fn: unit -> BuildStageIsActive) =
+        BuildPipeline(fun ctx ->
+            { ctx with
+                Verify = fun ctx -> fn().Invoke(ctx.MakeVerificationStage())
+            }
+        )
+
+    member inline _.Combine([<InlineIfLambda>] condition: BuildStageIsActive, [<InlineIfLambda>] build: BuildPipeline) =
+        BuildPipeline(fun ctx ->
+            build.Invoke
+                { ctx with
+                    Verify = fun ctx -> condition.Invoke(ctx.MakeVerificationStage())
+                }
+        )
+
+    member inline _.For([<InlineIfLambda>] build: BuildPipeline, [<InlineIfLambda>] fn: unit -> BuildStageIsActive) =
+        BuildPipeline(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with
+                Verify = fun ctx -> fn().Invoke(ctx.MakeVerificationStage())
+            }
+        )
+
+
     /// This description is mainly used for command help
     [<CustomOperation("description")>]
     member inline _.description([<InlineIfLambda>] build: BuildPipeline, x) =
         BuildPipeline(fun ctx ->
             let ctx = build.Invoke ctx
             { ctx with Description = ValueSome x }
+        )
+
+    /// Verify before run pipeline, will throw PipelineFailedException if return false
+    [<CustomOperation("verify")>]
+    member inline _.verify([<InlineIfLambda>] build: BuildPipeline, verify) =
+        BuildPipeline(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with Verify = verify }
         )
 
     /// Set default timeout for all stages, stage can also set timeout to override this. Unit is seconds.
@@ -170,7 +205,7 @@ type PipelineBuilder(name: string) =
 
     /// <summary>
     /// If set to true, the pipeline will be run only if it is specified using <c>-p &lt;name&gt;</c> or <c>--pipeline &lt;name&gt;</c> in the CLI where <c>&lt;name&gt;</c> is the name of the pipeline.
-    /// 
+    ///
     /// If set to false, the pipeline will be run if no <c>-p</c> or <c>--pipeline</c> is specified in command line args.
     /// </summary>
     [<CustomOperation("runIfOnlySpecified")>]

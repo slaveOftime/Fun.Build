@@ -269,12 +269,38 @@ let ``Syntax check`` () =
     |> ignore
 
 
-//[<Fact>]
-//let ``check sensitive command`` () =
-//    pipeline "check sensitive command" {
-//        stage "" {
-//            cmd $"powershell echo {123}"
-//            add (fun _ -> cmd $"powershell echo {456}")
-//        }
-//        runImmediate
-//    }
+[<Fact>]
+let ``Verification should work`` () =
+    Assert.Throws<PipelineFailedException>(fun _ ->
+        shouldNotBeCalled (fun call ->
+            pipeline "" {
+                whenCmdArg "123"
+                stage "" { run call }
+                post [ stage "" { run call } ]
+                runImmediate
+            }
+        )
+    )
+    |> ignore
+
+    Assert.Throws<PipelineFailedException>(fun _ ->
+        shouldNotBeCalled (fun call ->
+            pipeline "" {
+                verify (fun _ -> false)
+                stage "" { run call }
+                post [ stage "" { run call } ]
+                runImmediate
+            }
+        )
+    )
+    |> ignore
+
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            cmdArgs [ "123" ]
+            whenAll { cmdArg "123" }
+            stage "" { run call }
+            post [ stage "" { run call } ]
+            runImmediate
+        }
+    )

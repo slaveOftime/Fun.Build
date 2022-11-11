@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.2.6] - 2022-11-11
+
+Support add verification rule to pipeline
+
+```fsharp
+pipeline "pipeline-verify-demo" {
+    description "Verify before pipeline start running"
+    // Will throw exception when verification failed. The last rule will take effect. Below we set it for multiple times just for demo purpose.
+    // You can define your own logic
+    verify (fun ctx -> false)
+    // To keep consistence, the condition is similar like when building stage
+    whenCmdArg "verify"
+    whenAll {
+        cmdArg "v1"
+        branch "verify"
+    }
+    runIfOnlySpecified
+}
+```
+
 ## [0.2.5] - 2022-11-04
 
 - No need to print command options for whenNot

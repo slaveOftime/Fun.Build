@@ -48,6 +48,8 @@ type PipelineContext = {
     Name: string
     Description: string voption
     Mode: Mode
+    /// Verify before run pipeline, will throw PipelineFailedException if return false
+    Verify: PipelineContext -> bool
     CmdArgs: string list
     EnvVars: Map<string, string>
     AcceptableExitCodes: Set<int>

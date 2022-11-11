@@ -215,6 +215,76 @@ type StageBuilder with
         )
 
 
+type PipelineBuilder with
+
+    /// Set if stage is active or should run.
+    /// Only the last condition will take effect.
+    [<CustomOperation("when'")>]
+    member inline _.when'([<InlineIfLambda>] build: BuildPipeline, value: bool) =
+        BuildPipeline(fun ctx -> { build.Invoke ctx with Verify = fun _ -> value })
+
+
+    /// Set if stage is active or should run by check the environment variable.
+    /// Only the last condition will take effect.
+    [<CustomOperation("whenEnvVar")>]
+    member inline _.whenEnvVar([<InlineIfLambda>] build: BuildPipeline, envKey: string, ?envValue: string, ?description) =
+        BuildPipeline(fun ctx ->
+            { build.Invoke ctx with
+                Verify = fun ctx -> ctx.MakeVerificationStage().WhenEnvArg(envKey, defaultArg envValue "", description)
+            }
+        )
+
+    /// Set if stage is active or should run by check the command line args.
+    /// Only the last condition will take effect.
+    [<CustomOperation("whenCmdArg")>]
+    member inline _.whenCmdArg([<InlineIfLambda>] build: BuildPipeline, argKey: string, ?argValue: string, ?description) =
+        BuildPipeline(fun ctx ->
+            { build.Invoke ctx with
+                Verify = fun ctx -> ctx.MakeVerificationStage().WhenCmdArg(argKey, defaultArg argValue "", description)
+            }
+        )
+
+    /// Set if stage is active or should run by check the git branch name.
+    /// Only the last condition will take effect.
+    [<CustomOperation("whenBranch")>]
+    member inline _.whenBranch([<InlineIfLambda>] build: BuildPipeline, branch: string) =
+        BuildPipeline(fun ctx ->
+            { build.Invoke ctx with
+                Verify = fun ctx -> ctx.MakeVerificationStage().WhenBranch branch
+            }
+        )
+
+    /// Set if stage is active or should run by check the platform is Windows.
+    /// Only the last condition will take effect.
+    [<CustomOperation("whenWindows")>]
+    member inline _.whenWindows([<InlineIfLambda>] build: BuildPipeline) =
+        BuildPipeline(fun ctx ->
+            { build.Invoke ctx with
+                Verify = fun ctx -> ctx.MakeVerificationStage().WhenPlatform OSPlatform.Windows
+            }
+        )
+
+    /// Set if stage is active or should run by check the platform is Linux.
+    /// Only the last condition will take effect.
+    [<CustomOperation("whenLinux")>]
+    member inline _.whenLinux([<InlineIfLambda>] build: BuildPipeline) =
+        BuildPipeline(fun ctx ->
+            { build.Invoke ctx with
+                Verify = fun ctx -> ctx.MakeVerificationStage().WhenPlatform OSPlatform.Linux
+            }
+        )
+
+    /// Set if stage is active or should run by check the platform is OSX.
+    /// Only the last condition will take effect.
+    [<CustomOperation("whenOSX")>]
+    member inline _.whenOSX([<InlineIfLambda>] build: BuildPipeline) =
+        BuildPipeline(fun ctx ->
+            { build.Invoke ctx with
+                Verify = fun ctx -> ctx.MakeVerificationStage().WhenPlatform OSPlatform.OSX
+            }
+        )
+
+
 type WhenAnyBuilder() =
     inherit ConditionsBuilder()
 

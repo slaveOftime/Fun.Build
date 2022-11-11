@@ -23,6 +23,7 @@ type PipelineContext with
             Name = name
             Description = ValueNone
             Mode = Mode.Execution
+            Verify = fun _ -> true
             CmdArgs = Seq.toList (Environment.GetCommandLineArgs())
             EnvVars = envVars |> Seq.map (fun (KeyValue (k, v)) -> k, v) |> Map.ofSeq
             AcceptableExitCodes = set [| 0 |]
@@ -43,6 +44,12 @@ type PipelineContext with
             match this.PostStages |> List.tryFind (fun x -> x.Name = name) with
             | Some x -> ValueSome x
             | _ -> ValueNone
+
+
+    member this.MakeVerificationStage() =
+        { StageContext.Create("") with
+            ParentContext = ValueSome(StageParent.Pipeline this)
+        }
 
 
     member this.RunStages(stages: StageContext seq, cancelToken: Threading.CancellationToken, ?failfast: bool) =
@@ -88,6 +95,17 @@ type PipelineContext with
             title.LeftAligned() |> ignore
             title.Color <- Color.Red
             AnsiConsole.Write title
+
+
+        if this.Verify(this) |> not then
+            AnsiConsole.WriteLine()
+            AnsiConsole.MarkupLine $"[red]Pipeline verification failed, because some conditions are not met:[/]"
+            let pipeline = { this with Mode = Mode.CommandHelp true }
+            pipeline.Verify pipeline |> ignore
+            AnsiConsole.WriteLine()
+
+            raise (PipelineFailedException "Pipeline is failed because verification failed")
+
 
         let timeoutForPipeline = this.Timeout |> ValueOption.map (fun x -> int x.TotalMilliseconds) |> ValueOption.defaultValue -1
 
