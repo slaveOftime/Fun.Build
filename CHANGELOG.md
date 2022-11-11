@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.2.8] - 2022-11-11
+
+Fix pipeline failing message
+
 ## [0.2.7] - 2022-11-11
 
 Add Verification mode for better error displaying

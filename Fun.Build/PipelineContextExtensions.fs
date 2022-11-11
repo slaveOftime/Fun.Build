@@ -167,7 +167,7 @@ type PipelineContext with
                 AnsiConsole.WriteLine()
             raise (PipelineFailedException("Pipeline is failed because of exception", pipelineExns[0]))
         else if hasError then
-            raise (PipelineFailedException "Pipeline is failed because exit code is indicating as successful")
+            raise (PipelineFailedException "Pipeline is failed because result is not indicating as successful")
 
 
     member pipeline.RunCommandHelp(verbose: bool) =
