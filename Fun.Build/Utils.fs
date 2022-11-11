@@ -24,7 +24,9 @@ module internal Utils =
     let windowsExeExts = [ "exe"; "cmd"; "bat" ]
 
 
-    let printCommandOption prefix (argInfo: string) (argDescription: string) = printfn "%s%-30s  %s" prefix argInfo argDescription
+    let makeCommandOption prefix (argInfo: string) (argDescription: string) = sprintf "%s%-30s  %s" prefix argInfo argDescription
+
+    let printCommandOption prefix (argInfo: string) (argDescription: string) = printfn "%s" (makeCommandOption prefix argInfo argDescription)
 
     let printHelpOptions () = printCommandOption "  " "-h, --help" "Show help and usage information"
 

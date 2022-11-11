@@ -100,7 +100,7 @@ type PipelineContext with
         if this.Verify(this) |> not then
             AnsiConsole.WriteLine()
             AnsiConsole.MarkupLine $"[red]Pipeline verification failed, because some conditions are not met:[/]"
-            let pipeline = { this with Mode = Mode.CommandHelp true }
+            let pipeline = { this with Mode = Mode.Verification }
             pipeline.Verify pipeline |> ignore
             AnsiConsole.WriteLine()
 

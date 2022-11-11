@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.2.7] - 2022-11-11
+
+Add Verification mode for better error displaying
+
 ## [0.2.6] - 2022-11-11
 
 Support add verification rule to pipeline

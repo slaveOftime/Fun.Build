@@ -28,6 +28,7 @@ type StageIndex =
 type Mode =
     | Execution
     | CommandHelp of verbose: bool
+    | Verification
 
 
 type StageContext = {

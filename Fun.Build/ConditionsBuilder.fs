@@ -9,43 +9,53 @@ open Spectre.Console
 type StageContext with
 
     member ctx.WhenEnvArg(envKey: string, envValue: string, description) =
-        match ctx.Mode with
-        | Mode.CommandHelp true ->
-            printCommandOption (ctx.BuildIndent() + "env: ") (envKey + "  " + envValue) (defaultArg description "")
-            false
-
-        | Mode.CommandHelp false -> true
-
-        | Mode.Execution ->
+        let getResult () =
             match ctx.TryGetEnvVar envKey with
             | ValueSome v when envValue = "" || v = envValue -> true
             | _ -> false
 
+        let getPrintInfo () = makeCommandOption (ctx.BuildIndent() + "env: ") (envKey + "  " + envValue) (defaultArg description "")
+
+        match ctx.Mode with
+        | Mode.CommandHelp true ->
+            AnsiConsole.WriteLine(getPrintInfo ())
+            false
+        | Mode.CommandHelp false -> true
+        | Mode.Verification ->
+            if getResult () then
+                AnsiConsole.WriteLine("✅ " + getPrintInfo ())
+            else
+                AnsiConsole.MarkupLine $"❌ [red]{getPrintInfo ()}[/]"
+            false
+        | Mode.Execution -> getResult ()
+
 
     member ctx.WhenCmdArg(argKey: string, argValue: string, description) =
-        match ctx.Mode with
-        | Mode.CommandHelp verbose ->
-            if verbose then
-                printCommandOption (ctx.BuildIndent() + "cmd: ") (argKey + "  " + argValue) (defaultArg description "")
-            else
-                printCommandOption "  " (argKey + "  " + argValue) (defaultArg description "")
-
-            false
-
-        | Mode.Execution ->
+        let getResult () =
             match ctx.TryGetCmdArg argKey with
             | ValueSome v when argValue = "" || v = argValue -> true
             | _ -> false
 
+        let getPrintInfo () = makeCommandOption (ctx.BuildIndent() + "cmd: ") (argKey + "  " + argValue) (defaultArg description "")
+
+        match ctx.Mode with
+        | Mode.CommandHelp true ->
+            AnsiConsole.WriteLine(getPrintInfo ())
+            false
+        | Mode.CommandHelp false ->
+            printCommandOption "  " (argKey + "  " + argValue) (defaultArg description "")
+            false
+        | Mode.Verification ->
+            if getResult () then
+                AnsiConsole.WriteLine("✅ " + getPrintInfo ())
+            else
+                AnsiConsole.MarkupLine $"❌ [red]{getPrintInfo ()}[/]"
+            false
+        | Mode.Execution -> getResult ()
+
 
     member ctx.WhenBranch(branch: string) =
-        match ctx.Mode with
-        | Mode.CommandHelp verbose ->
-            if verbose then
-                AnsiConsole.MarkupLine $"{ctx.BuildIndent()}when branch is [green]{branch}[/]"
-            false
-
-        | Mode.Execution ->
+        let getResult () =
             try
                 let command = ctx.BuildCommand("git branch --show-current")
                 ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command.WorkingDirectory <- x)
@@ -57,16 +67,35 @@ type StageContext with
                 AnsiConsole.MarkupLine $"[red]Run git to get branch info failed: {ex.Message}[/]"
                 false
 
+        match ctx.Mode with
+        | Mode.CommandHelp verbose ->
+            if verbose then
+                AnsiConsole.MarkupLine $"{ctx.BuildIndent()}when branch is [green]{branch}[/]"
+            false
+        | Mode.Verification ->
+            if getResult () then
+                AnsiConsole.MarkupLine $"✅ {ctx.BuildIndent()}when branch is [green]{branch}[/]"
+            else
+                AnsiConsole.MarkupLine $"❌ {ctx.BuildIndent()}[red]when branch is {branch}[/]"
+            false
+        | Mode.Execution -> getResult ()
+
 
     member ctx.WhenPlatform(platform: OSPlatform) =
+        let getResult () = RuntimeInformation.IsOSPlatform platform
+
         match ctx.Mode with
         | Mode.CommandHelp true ->
             AnsiConsole.MarkupLine $"{ctx.BuildIndent()}when platform is [green]{platform}[/]"
             false
-
         | Mode.CommandHelp false -> true
-
-        | Mode.Execution -> RuntimeInformation.IsOSPlatform platform
+        | Mode.Verification ->
+            if getResult () then
+                AnsiConsole.MarkupLine $"✅ {ctx.BuildIndent()}when platform is [green]{platform}[/]"
+            else
+                AnsiConsole.MarkupLine $"❌ {ctx.BuildIndent()}[red]when platform is {platform}[/]"
+            false
+        | Mode.Execution -> getResult ()
 
 
 type ConditionsBuilder() =
@@ -291,9 +320,13 @@ type WhenAnyBuilder() =
     member inline _.Run([<InlineIfLambda>] builder: BuildConditions) =
         BuildStageIsActive(fun ctx ->
             match ctx.Mode with
-            | Mode.CommandHelp verbose ->
-                if verbose then
-                    AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}when any below conditions are met[/]"
+            | Mode.Execution -> builder.Invoke [] |> Seq.exists (fun fn -> fn ctx)
+            | _ ->
+                match ctx.Mode with
+                | Mode.Verification
+                | Mode.CommandHelp true -> AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}when any below conditions are met[/]"
+                | _ -> ()
+
                 let indentCtx =
                     { StageContext.Create "  " with
                         ParentContext = ctx.ParentContext
@@ -304,8 +337,6 @@ type WhenAnyBuilder() =
                     }
                 builder.Invoke [] |> Seq.iter (fun fn -> fn newCtx |> ignore)
                 false
-
-            | Mode.Execution -> builder.Invoke [] |> Seq.exists (fun fn -> fn ctx)
         )
 
 
@@ -315,9 +346,13 @@ type WhenAllBuilder() =
     member inline _.Run([<InlineIfLambda>] builder: BuildConditions) =
         BuildStageIsActive(fun ctx ->
             match ctx.Mode with
-            | Mode.CommandHelp verbose ->
-                if verbose then
-                    AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}when all below conditions are met[/]"
+            | Mode.Execution -> builder.Invoke [] |> Seq.map (fun fn -> fn ctx) |> Seq.reduce (fun x y -> x && y)
+            | _ ->
+                match ctx.Mode with
+                | Mode.Verification
+                | Mode.CommandHelp true -> AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}when all below conditions are met[/]"
+                | _ -> ()
+
                 let indentCtx =
                     { StageContext.Create "  " with
                         ParentContext = ctx.ParentContext
@@ -328,8 +363,6 @@ type WhenAllBuilder() =
                     }
                 builder.Invoke [] |> Seq.iter (fun fn -> fn newCtx |> ignore)
                 false
-
-            | Mode.Execution -> builder.Invoke [] |> Seq.map (fun fn -> fn ctx) |> Seq.reduce (fun x y -> x && y)
         )
 
 
@@ -339,6 +372,7 @@ type WhenNotBuilder() =
     member inline _.Run([<InlineIfLambda>] builder: BuildConditions) =
         BuildStageIsActive(fun ctx ->
             match ctx.Mode with
+            | Mode.Verification
             | Mode.CommandHelp true ->
                 AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}when all below conditions are [bold red]NOT[/] met[/]"
                 let indentCtx =

@@ -113,7 +113,7 @@ pipeline "pipeline-verify-demo" {
     whenCmdArg "verify"
     whenAll {
         cmdArg "v1"
-        branch "verify"
+        branch "master"
     }
     runIfOnlySpecified
 }
