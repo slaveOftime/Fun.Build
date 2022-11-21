@@ -70,16 +70,9 @@ type PipelineContext with
 
         while i < stages.Length && (not failfast || not hasError) do
             let stage = stages[i]
-            let isActive = stage.IsActive stage
-
-            if isActive then
-                let isSuccess, exns = stage.Run(StageIndex.Stage i, cancelToken)
-                stageExns.AddRange exns
-                hasError <- hasError || not isSuccess
-            else
-                AnsiConsole.Write(Rule())
-                AnsiConsole.MarkupLine $"STAGE #{i} [bold turquoise4]{stage.Name}[/] is inactive"
-                AnsiConsole.Write(Rule())
+            let isSuccess, exns = stage.Run(StageIndex.Stage i, cancelToken)
+            stageExns.AddRange exns
+            hasError <- hasError || not isSuccess
 
             i <- i + 1
 

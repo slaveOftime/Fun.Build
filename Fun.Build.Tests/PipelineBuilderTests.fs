@@ -304,3 +304,50 @@ let ``Verification should work`` () =
             runImmediate
         }
     )
+
+
+[<Fact>]
+let ``Should fail if stage is ignored`` () =
+    Assert.Throws<PipelineFailedException>(fun _ ->
+        shouldNotBeCalled (fun call ->
+            pipeline "" {
+                stage "" {
+                    whenCmdArg "123"
+                    failIfIgnored
+                    run call
+                }
+                runImmediate
+            }
+        )
+    )
+    |> ignore
+
+    Assert.Throws<PipelineFailedException>(fun _ ->
+        shouldNotBeCalled (fun call ->
+            pipeline "" {
+                stage "" {
+                    stage "" {
+                        whenCmdArg "123"
+                        failIfIgnored
+                        run call
+                    }
+                }
+                runImmediate
+            }
+        )
+    )
+    |> ignore
+
+    shouldBeCalled (fun call ->
+        pipeline "1" {
+            cmdArgs [ "123" ]
+            stage "2" {
+                stage "3" {
+                    whenCmdArg "123"
+                    failIfIgnored
+                    run call
+                }
+            }
+            runImmediate
+        }
+    )

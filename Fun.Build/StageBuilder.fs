@@ -90,6 +90,14 @@ type StageBuilder(name: string) =
             { ctx with AcceptableExitCodes = Set.ofSeq codes }
         )
 
+    /// If the stage is ignored (inactive) then it will throw exception
+    [<CustomOperation("failIfIgnored")>]
+    member inline _.failIfIgnored([<InlineIfLambda>] build: BuildStage, ?flag) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with FailIfIgnored = defaultArg flag true }
+        )
+
     /// Set timeout for every step under the current stage.
     /// Unit is second.
     [<CustomOperation("timeout")>]

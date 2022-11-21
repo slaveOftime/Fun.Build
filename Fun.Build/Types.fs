@@ -40,6 +40,7 @@ type StageContext = {
     WorkingDir: string voption
     EnvVars: Map<string, string>
     AcceptableExitCodes: Set<int>
+    FailIfIgnored: bool
     ParentContext: StageParent voption
     Steps: Step list
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.2.9] - 2022-11-21
+
+Add failIfIgnored to stage
+
 ## [0.2.8] - 2022-11-11
 
 Fix pipeline failing message

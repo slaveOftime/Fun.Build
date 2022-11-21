@@ -109,6 +109,11 @@ pipeline "Fun.Build" {
         openBrowser "https://github.com/slaveOftime/Fun.Build"
         run (fun ctx -> ctx.OpenBrowser "https://github.com/slaveOftime/Fun.Build")
     }
+    stage "FailIfIgnored" {
+        failIfIgnored // When set this, the stage cannot be ignored
+        whenCmdArg "-f"
+        echo "Got here!"
+    }
     post [ // Post stages are optional. It will run even other normal stages are failed.
         stage "Post stage" {
             echo "You are finished 😂"

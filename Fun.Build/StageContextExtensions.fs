@@ -17,6 +17,7 @@ type StageContext with
         WorkingDir = ValueNone
         EnvVars = Map.empty
         AcceptableExitCodes = set [| 0 |]
+        FailIfIgnored = false
         ParentContext = ValueNone
         Steps = []
     }
@@ -172,7 +173,11 @@ type StageContext with
         let isActive = stage.IsActive stage
         let namePath = stage.GetNamePath()
 
-        if isActive then
+        if not isActive && stage.FailIfIgnored then
+            isSuccess <- false
+            stepExns.Add(exn $"Stage ({stage.GetNamePath()}) cannot be ignored (inactive)")
+
+        else if isActive then
             let stageSW = Stopwatch.StartNew()
             let isParallel = stage.IsParallel
             let timeoutForStep = stage.GetTimeoutForStep()
