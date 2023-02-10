@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.3.1] - 2023-02-10
+
+- Do not throw for PipelineCancelledException in runIfOnlySpecified
+
 ## [0.3.0] - 2023-02-10
 
 - Add noPrefixForStep to make the command print cleaner: https://github.com/slaveOftime/Fun.Build/issues/22

@@ -238,7 +238,9 @@ type PipelineBuilder(name: string) =
                 | Some index when List.length args > index + 1 -> if args[index + 1] = ctx.Name then ctx.Run()
                 | None when not specified -> ctx.Run()
                 | _ -> ()
-        with :? PipelineFailedException ->
+        with
+        | :? PipelineFailedException
+        | :? PipelineCancelledException ->
             // Because this operation is mainly used for command only, as we already printed error messages, so there is no need to throw this exception to cause console to print duplicate message.
             Environment.Exit(1)
 

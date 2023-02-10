@@ -161,6 +161,7 @@ type PipelineContext with
                 AnsiConsole.WriteLine()
             raise (PipelineFailedException("Pipeline is failed because of exception", pipelineExns[0]))
         else if hasError then
+            AnsiConsole.MarkupLine "[red]Pipeline is failed because result is not indicating as successful[/]"
             raise (PipelineFailedException "Pipeline is failed because result is not indicating as successful")
 
 
