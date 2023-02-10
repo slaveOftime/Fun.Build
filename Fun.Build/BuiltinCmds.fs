@@ -97,7 +97,7 @@ type StageContext with
         let noPrefixForStep = ctx.GetNoPrefixForStep()
 
         if noPrefixForStep then
-            AnsiConsole.MarkupLine "Open {url} in browser"
+            AnsiConsole.MarkupLine $"Open {url} in browser"
         else
             let prefix =
                 match step with
