@@ -388,7 +388,10 @@ type StageBuilder(name: string) =
                     ctx.Steps
                     @ [
                         Step.StepFn(fun (ctx, i) -> async {
-                            printfn "%s %s" (ctx.BuildStepPrefix i) (msg ctx)
+                            if ctx.GetNoPrefixForStep() then
+                                printfn "%s" (msg ctx)
+                            else
+                                printfn "%s %s" (ctx.BuildStepPrefix i) (msg ctx)
                             return Ok()
                         }
                         )
