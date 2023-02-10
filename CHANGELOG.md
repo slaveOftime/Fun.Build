@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.3.0] - 2023-02-10
+
+- Add noPrefixForStep to make the command print cleaner: https://github.com/slaveOftime/Fun.Build/issues/22
+- Use Environment.Exit(1) instead of throw exception: https://github.com/slaveOftime/Fun.Build/issues/25
+
 ## [0.2.9] - 2022-11-21
 
 Add failIfIgnored to stage

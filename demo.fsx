@@ -48,6 +48,9 @@ pipeline "Fun.Build" {
     // You can also override the accept exit code for success. By default 0 is for success.
     // But if your external program is using other code you can add it here.
     acceptExitCodes [ 0; 2 ]
+    // By default steps will add prefix for printing information, with below flag we can remove it to make it cleaner for some use cases.
+    // You can also set the flag on each stage.
+    noPrefixForStep
     demo1
     stage "Demo2" {
         // whenAny, whenNot, whenAll. They can also be composed.
@@ -67,8 +70,6 @@ pipeline "Fun.Build" {
     }
     // You can also nest stages, the stage will be treated as a single stage for parent stage.
     stage "Demo3" {
-        // By default steps will add prefix for printing information, with below flag we can remove it to make it cleaner for some use case.
-        noPrefixForStep
         stage "Platform" {
             workingDir @"C:\Users"
             whenWindows
