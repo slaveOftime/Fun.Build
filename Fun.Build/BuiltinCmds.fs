@@ -125,6 +125,7 @@ type StageContext with
 
 
 /// Create a command with a formattable string which will encode the arguments as * when print to console.
+[<Obsolete("Please use runSensitive instead")>]
 let cmd (commandStr: FormattableString) = BuildStep(fun ctx i -> ctx.RunSensitiveCommand(commandStr, i))
 
 /// Create a command with a formattable string which will encode the arguments as * when print to console.
