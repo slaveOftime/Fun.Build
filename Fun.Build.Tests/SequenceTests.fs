@@ -63,18 +63,15 @@ let ``steps should run in sequence`` () =
             BuildStep(fun _ _ -> async {
                 calls.Add 1
                 return Ok()
-            }
-            )
+            })
             BuildStep(fun _ _ -> async {
                 calls.Add 2
                 return Ok()
-            }
-            )
+            })
             BuildStep(fun _ _ -> async {
                 calls.Add 3
                 return Ok()
-            }
-            )
+            })
         }
         runImmediate
     }
@@ -87,19 +84,16 @@ let ``steps should run in sequence`` () =
             BuildStep(fun _ _ -> async {
                 calls.Add 1
                 return Ok()
-            }
-            )
+            })
             BuildStep(fun _ _ -> async {
                 calls.Add 2
                 return Ok()
-            }
-            )
+            })
             timeout 10
             BuildStep(fun _ _ -> async {
                 calls.Add 3
                 return Ok()
-            }
-            )
+            })
             timeout 10
         }
         runImmediate

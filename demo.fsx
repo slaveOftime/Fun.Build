@@ -1,5 +1,5 @@
 #r "nuget: Fun.Result"
-#r "nuget: Spectre.Console"
+#r "nuget: Spectre.Console, 0.46.0"
 #r "Fun.Build/bin/Debug/netstandard2.0/Fun.Build.dll"
 
 open Fun.Result
@@ -23,8 +23,7 @@ let demo1 =
         run (fun ctx -> asyncResult {
             do! ctx.RunCommand "dotnet --version"
             do! ctx.RunCommand "dotnet --version"
-        }
-        )
+        })
         // You can run async functions
         run (Async.Sleep 1000)
         run (fun _ -> Async.Sleep 1000)
@@ -49,6 +48,9 @@ pipeline "Fun.Build" {
     // You can also override the accept exit code for success. By default 0 is for success.
     // But if your external program is using other code you can add it here.
     acceptExitCodes [ 0; 2 ]
+    // By default steps will add prefix for printing information, with below flag we can remove it to make it cleaner for some use cases.
+    // You can also set the flag on each stage.
+    noPrefixForStep
     demo1
     stage "Demo2" {
         // whenAny, whenNot, whenAll. They can also be composed.
@@ -96,8 +98,7 @@ pipeline "Fun.Build" {
             echo (fun ctx -> sprintf "You are finished here: %A" (ctx.GetWorkingDir()))
             run (fun _ -> async {
                 return 0 // do something
-            }
-            )
+            })
         }
     ]
     // You can have multiple pipelines, sometimes you only want to run it only if the command specified the pipeline name.

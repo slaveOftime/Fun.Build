@@ -41,14 +41,12 @@ let ``exception handling should work for parallel steps`` () =
                         do! Async.Sleep 10
                         failwith "test"
                         ()
-                    }
-                    )
+                    })
                     stage "" {
                         run (fun _ -> async {
                             do! Async.Sleep 100
                             call ()
-                        }
-                        )
+                        })
                     }
                 }
                 runImmediate

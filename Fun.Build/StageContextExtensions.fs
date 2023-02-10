@@ -18,6 +18,7 @@ type StageContext with
         EnvVars = Map.empty
         AcceptableExitCodes = set [| 0 |]
         FailIfIgnored = false
+        NoPrefixForStep = false
         ParentContext = ValueNone
         Steps = []
     }
@@ -37,9 +38,15 @@ type StageContext with
     member ctx.Mode =
         match ctx.ParentContext with
         | ValueNone -> Mode.Execution
-        | ValueSome (StageParent.Stage s) -> s.Mode
-        | ValueSome (StageParent.Pipeline p) -> p.Mode
+        | ValueSome(StageParent.Stage s) -> s.Mode
+        | ValueSome(StageParent.Pipeline p) -> p.Mode
 
+    member ctx.GetNoPrefixForStep() =
+        match ctx.ParentContext with
+        | ValueNone -> ctx.NoPrefixForStep
+        | _ when ctx.NoPrefixForStep -> ctx.NoPrefixForStep
+        | ValueSome(StageParent.Stage s) -> s.GetNoPrefixForStep()
+        | ValueSome(StageParent.Pipeline p) -> p.NoPrefixForStep
 
     member ctx.GetWorkingDir() =
         ctx.WorkingDir
@@ -89,14 +96,14 @@ type StageContext with
             | StageParent.Pipeline x -> x.EnvVars
         )
         |> ValueOption.iter (fun kvs ->
-            for KeyValue (k, v) in kvs do
+            for KeyValue(k, v) in kvs do
                 vars[k] <- v
         )
 
-        for KeyValue (k, v) in ctx.EnvVars do
+        for KeyValue(k, v) in ctx.EnvVars do
             vars[k] <- v
 
-        vars |> Seq.map (fun (KeyValue (k, v)) -> k, v) |> Map.ofSeq
+        vars |> Seq.map (fun (KeyValue(k, v)) -> k, v) |> Map.ofSeq
 
 
     member ctx.TryGetEnvVar(key: string) =
@@ -153,8 +160,8 @@ type StageContext with
         let parentAcceptableExitCodes =
             match stage.ParentContext with
             | ValueNone -> Set.empty
-            | ValueSome (StageParent.Pipeline pipeline) -> pipeline.AcceptableExitCodes
-            | ValueSome (StageParent.Stage parentStage) -> parentStage.AcceptableExitCodes
+            | ValueSome(StageParent.Pipeline pipeline) -> pipeline.AcceptableExitCodes
+            | ValueSome(StageParent.Stage parentStage) -> parentStage.AcceptableExitCodes
 
         Set.contains exitCode stage.AcceptableExitCodes || Set.contains exitCode parentAcceptableExitCodes
 
@@ -196,8 +203,8 @@ type StageContext with
             AnsiConsole.Write(
                 let extraInfo = $"Stage timeout: {timeoutForStage}ms. Step timeout: {timeoutForStep}ms."
                 match index with
-                | StageIndex.Stage i -> Rule($"STAGE #{i} [bold teal]{namePath}[/] started. {extraInfo}").LeftAligned()
-                | StageIndex.Step i -> Rule($"SUBSTAGE [bold teal]{stage.BuildStepPrefix i}[/]. {extraInfo}").LeftAligned()
+                | StageIndex.Stage i -> Rule($"STAGE #{i} [bold teal]{namePath}[/] started. {extraInfo}").LeftJustified()
+                | StageIndex.Step i -> Rule($"SUBSTAGE [bold teal]{stage.BuildStepPrefix i}[/]. {extraInfo}").LeftJustified()
             )
             AnsiConsole.WriteLine()
 
@@ -216,7 +223,10 @@ type StageContext with
                                 match! fn (stage, i) with
                                 | Error e ->
                                     if String.IsNullOrEmpty e |> not then
-                                        AnsiConsole.MarkupLine $"""{prefix} error: [red]{e}[/]"""
+                                        if stage.GetNoPrefixForStep() then
+                                            AnsiConsole.MarkupLine $"""[red]{e}[/]"""
+                                        else
+                                            AnsiConsole.MarkupLine $"""{prefix} error: [red]{e}[/]"""
                                     return false
                                 | Ok _ -> return true
                               }
@@ -243,8 +253,7 @@ type StageContext with
                         stepExns.Add ex
                         stepErrorCTS.Cancel()
                         return false
-                }
-                )
+                })
 
             try
                 let ts =
@@ -288,10 +297,10 @@ type StageContext with
             AnsiConsole.Write(
                 let color = if isSuccess then "teal" else "red"
                 match index with
-                | StageIndex.Stage i -> Rule($"""STAGE #{i} [bold {color}]{namePath}[/] finished. {stageSW.ElapsedMilliseconds}ms.""").LeftAligned()
+                | StageIndex.Stage i -> Rule($"""STAGE #{i} [bold {color}]{namePath}[/] finished. {stageSW.ElapsedMilliseconds}ms.""").LeftJustified()
                 | StageIndex.Step i ->
                     Rule($"""SUBSTAGE [bold {color}]{stage.BuildStepPrefix i}[/] finished. {stageSW.ElapsedMilliseconds}ms.""")
-                        .LeftAligned()
+                        .LeftJustified()
             )
             AnsiConsole.WriteLine()
 

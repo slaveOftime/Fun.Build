@@ -1,9 +1,9 @@
-name: Build and publish nuget packages
+name: Run tests for PR
 
-on:
-  push:
+on:  
+  pull_request:
     branches:
-    - master
+      - master
     
 jobs:
   build:
@@ -19,6 +19,4 @@ jobs:
         dotnet-version: 6.0.x
 
     - name: Use Fun.Build
-      env:
-        NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-      run: dotnet fsi ./build.fsx
+      run: dotnet fsi ./build.fsx -- -p test

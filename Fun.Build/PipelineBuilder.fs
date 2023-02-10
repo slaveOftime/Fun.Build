@@ -189,6 +189,14 @@ type PipelineBuilder(name: string) =
     member inline _.workingDir([<InlineIfLambda>] build: BuildPipeline, dir: string) =
         BuildPipeline(fun ctx -> { build.Invoke ctx with WorkingDir = ValueSome dir })
 
+    /// Set if step should print prefix when running, default value is true.
+    [<CustomOperation("noPrefixForStep")>]
+    member inline _.noPrefixForStep([<InlineIfLambda>] build: BuildPipeline, ?value: bool) =
+        BuildPipeline(fun ctx ->
+            { build.Invoke ctx with
+                NoPrefixForStep = defaultArg value true
+            }
+        )
 
     [<CustomOperation("post")>]
     member inline _.post([<InlineIfLambda>] build: BuildPipeline, stages: StageContext list) =
@@ -220,15 +228,19 @@ type PipelineBuilder(name: string) =
 
         runIfOnlySpecifiedPipelines.Add ctx
 
-        if isHelp then
-            match pipelineIndex with
-            | Some index when List.length args > index + 1 && args[index + 1] = ctx.Name -> ctx.RunCommandHelp(verbose)
-            | _ -> ()
-        else
-            match pipelineIndex with
-            | Some index when List.length args > index + 1 -> if args[index + 1] = ctx.Name then ctx.Run()
-            | None when not specified -> ctx.Run()
-            | _ -> ()
+        try
+            if isHelp then
+                match pipelineIndex with
+                | Some index when List.length args > index + 1 && args[index + 1] = ctx.Name -> ctx.RunCommandHelp(verbose)
+                | _ -> ()
+            else
+                match pipelineIndex with
+                | Some index when List.length args > index + 1 -> if args[index + 1] = ctx.Name then ctx.Run()
+                | None when not specified -> ctx.Run()
+                | _ -> ()
+        with :? PipelineFailedException ->
+            // Because this operation is mainly used for command only, as we already printed error messages, so there is no need to throw this exception to cause console to print duplicate message.
+            Environment.Exit(1)
 
 
 /// Build a pipeline with a specific name.
@@ -249,7 +261,7 @@ let tryPrintPipelineCommandHelp () =
     if isHelp && not isSpecifiedPipeline then
         if runIfOnlySpecifiedPipelines.Count = 1 then
             let verbose = args |> Seq.exists (fun arg -> arg = "-v" || arg = "--verbose")
-            runIfOnlySpecifiedPipelines[ 0 ].RunCommandHelp(verbose)
+            runIfOnlySpecifiedPipelines[0].RunCommandHelp(verbose)
 
         else
             AnsiConsole.WriteLine "Descriptions:"

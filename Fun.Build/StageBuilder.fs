@@ -144,6 +144,15 @@ type StageBuilder(name: string) =
     member inline _.workingDir([<InlineIfLambda>] build: BuildStage, dir: string) =
         BuildStage(fun ctx -> { build.Invoke ctx with WorkingDir = ValueSome dir })
 
+    /// Set if step should print prefix when running, default value is true.
+    [<CustomOperation("noPrefixForStep")>]
+    member inline _.noPrefixForStep([<InlineIfLambda>] build: BuildStage, ?value: bool) =
+        BuildStage(fun ctx ->
+            { build.Invoke ctx with
+                NoPrefixForStep = defaultArg value true
+            }
+        )
+
 
     /// Add a step.
     [<CustomOperation("run")>]
@@ -157,8 +166,7 @@ type StageBuilder(name: string) =
                         Step.StepFn(fun (ctx, i) -> async {
                             let builder = buildStep ctx
                             return! builder.Invoke(ctx, i)
-                        }
-                        )
+                        })
                     ]
             }
         )
@@ -196,8 +204,7 @@ type StageBuilder(name: string) =
                         Step.StepFn(fun _ -> async {
                             do! step
                             return Ok()
-                        }
-                        )
+                        })
                     ]
             }
         )
@@ -214,8 +221,7 @@ type StageBuilder(name: string) =
                         Step.StepFn(fun (ctx, _) -> async {
                             let! exitCode = step
                             return ctx.MapExitCodeToResult exitCode
-                        }
-                        )
+                        })
                     ]
             }
         )
@@ -233,8 +239,7 @@ type StageBuilder(name: string) =
                         Step.StepFn(fun (ctx, _) -> async {
                             step ctx
                             return Ok()
-                        }
-                        )
+                        })
                     ]
             }
         )
@@ -262,8 +267,7 @@ type StageBuilder(name: string) =
                         Step.StepFn(fun (ctx, _) -> async {
                             do! step ctx
                             return Ok()
-                        }
-                        )
+                        })
                     ]
             }
         )
@@ -280,8 +284,7 @@ type StageBuilder(name: string) =
                         Step.StepFn(fun (ctx, _) -> async {
                             let! exitCode = step ctx
                             return ctx.MapExitCodeToResult exitCode
-                        }
-                        )
+                        })
                     ]
             }
         )
@@ -330,8 +333,7 @@ type StageBuilder(name: string) =
                         Step.StepFn(fun (ctx, _) -> async {
                             do! step ctx |> Async.AwaitTask
                             return Ok()
-                        }
-                        )
+                        })
                     ]
             }
         )
@@ -348,8 +350,7 @@ type StageBuilder(name: string) =
                         Step.StepFn(fun (ctx, _) -> async {
                             do! step ctx |> Async.AwaitTask
                             return Ok()
-                        }
-                        )
+                        })
                     ]
             }
         )
@@ -366,8 +367,7 @@ type StageBuilder(name: string) =
                         Step.StepFn(fun (ctx, _) -> async {
                             let! exitCode = step ctx |> Async.AwaitTask
                             return ctx.MapExitCodeToResult exitCode
-                        }
-                        )
+                        })
                     ]
             }
         )
@@ -383,10 +383,12 @@ type StageBuilder(name: string) =
                     ctx.Steps
                     @ [
                         Step.StepFn(fun (ctx, i) -> async {
-                            printfn "%s %s" (ctx.BuildStepPrefix i) (msg ctx)
+                            if ctx.GetNoPrefixForStep() then
+                                printfn "%s" (msg ctx)
+                            else
+                                printfn "%s %s" (ctx.BuildStepPrefix i) (msg ctx)
                             return Ok()
-                        }
-                        )
+                        })
                     ]
             }
         )

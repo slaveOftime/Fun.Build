@@ -25,12 +25,13 @@ type PipelineContext with
             Mode = Mode.Execution
             Verify = fun _ -> true
             CmdArgs = Seq.toList (Environment.GetCommandLineArgs())
-            EnvVars = envVars |> Seq.map (fun (KeyValue (k, v)) -> k, v) |> Map.ofSeq
+            EnvVars = envVars |> Seq.map (fun (KeyValue(k, v)) -> k, v) |> Map.ofSeq
             AcceptableExitCodes = set [| 0 |]
             Timeout = ValueNone
             TimeoutForStep = ValueNone
             TimeoutForStage = ValueNone
             WorkingDir = ValueNone
+            NoPrefixForStep = false
             Stages = []
             PostStages = []
         }
@@ -85,7 +86,7 @@ type PipelineContext with
 
         if String.IsNullOrEmpty this.Name |> not then
             let title = FigletText this.Name
-            title.LeftAligned() |> ignore
+            title.LeftJustified() |> ignore
             title.Color <- Color.Red
             AnsiConsole.Write title
 

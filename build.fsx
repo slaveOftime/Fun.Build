@@ -6,8 +6,7 @@ open Fake.IO.Globbing.Operators
 open Fun.Build
 
 
-pipeline "Fun.Build" {
-    description "Build and deploy to nuget"
+let envCheckStage =
     stage "Check environment" {
         paralle
         run "dotnet --version"
@@ -15,6 +14,8 @@ pipeline "Fun.Build" {
         run "dotnet tool restore"
         run (fun ctx -> printfn $"""GITHUB_ACTION: {ctx.GetEnvVar "GITHUB_ACTION"}""")
     }
+
+let lintStage =
     stage "Lint" {
         stage "Format" {
             whenNot { envVar "GITHUB_ACTION" }
@@ -25,7 +26,15 @@ pipeline "Fun.Build" {
             run "dotnet fantomas . -r --check"
         }
     }
-    stage "Run unit tests" { run "dotnet test" }
+
+let testStage = stage "Run unit tests" { run "dotnet test" }
+
+
+pipeline "Fun.Build" {
+    description "Build and deploy to nuget"
+    envCheckStage
+    lintStage
+    testStage
     stage "Build packages" { run "dotnet pack -c Release Fun.Build/Fun.Build.fsproj -o ." }
     stage "Publish packages to nuget" {
         whenAll {
@@ -47,6 +56,14 @@ pipeline "Fun.Build" {
         }
     ]
     runIfOnlySpecified false
+}
+
+pipeline "test" {
+    description "Run tests"
+    envCheckStage
+    lintStage
+    testStage
+    runIfOnlySpecified
 }
 
 

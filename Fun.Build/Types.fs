@@ -41,6 +41,7 @@ type StageContext = {
     EnvVars: Map<string, string>
     AcceptableExitCodes: Set<int>
     FailIfIgnored: bool
+    NoPrefixForStep: bool
     ParentContext: StageParent voption
     Steps: Step list
 }
@@ -59,6 +60,7 @@ type PipelineContext = {
     TimeoutForStep: TimeSpan voption
     TimeoutForStage: TimeSpan voption
     WorkingDir: string voption
+    NoPrefixForStep: bool
     Stages: StageContext list
     PostStages: StageContext list
 }

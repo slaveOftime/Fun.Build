@@ -29,7 +29,7 @@ type StageContext with
 
         ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command.WorkingDirectory <- x)
 
-        ctx.BuildEnvVars() |> Map.iter (fun k v -> command.Environment[ k ] <- v)
+        ctx.BuildEnvVars() |> Map.iter (fun k v -> command.Environment[k] <- v)
 
         command.StandardOutputEncoding <- Encoding.UTF8
         command.RedirectStandardOutput <- true
@@ -39,13 +39,16 @@ type StageContext with
     /// Run a command string with current context
     member ctx.RunCommand(commandStr: string, ?step: int) = async {
         let command = ctx.BuildCommand(commandStr)
-
+        let noPrefixForStep = ctx.GetNoPrefixForStep()
         let prefix =
-            match step with
-            | Some i -> ctx.BuildStepPrefix i
-            | None -> ctx.GetNamePath()
+            if noPrefixForStep then
+                ""
+            else
+                match step with
+                | Some i -> ctx.BuildStepPrefix i
+                | None -> ctx.GetNamePath()
 
-        AnsiConsole.Markup $"[green]{prefix}[/] "
+        if not noPrefixForStep then AnsiConsole.Markup $"[green]{prefix}[/] "
         AnsiConsole.MarkupLine $"{commandStr}"
 
         let! exitCode = Process.StartAsync(command, commandStr, prefix)
@@ -56,15 +59,19 @@ type StageContext with
     /// Run a command string with current context, and encrypt the string for logging
     member ctx.RunSensitiveCommand(commandStr: FormattableString, ?step: int) = async {
         let command = ctx.BuildCommand(commandStr.ToString())
+        let noPrefixForStep = ctx.GetNoPrefixForStep()
         let args: obj[] = Array.create commandStr.ArgumentCount "*"
         let encryptiedStr = String.Format(commandStr.Format, args)
 
         let prefix =
-            match step with
-            | Some i -> ctx.BuildStepPrefix i
-            | None -> ctx.GetNamePath()
+            if noPrefixForStep then
+                ""
+            else
+                match step with
+                | Some i -> ctx.BuildStepPrefix i
+                | None -> ctx.GetNamePath()
 
-        AnsiConsole.Markup $"[green]{prefix}[/] "
+        if not noPrefixForStep then AnsiConsole.Markup $"[green]{prefix}[/] "
         AnsiConsole.MarkupLine $"{encryptiedStr}"
 
         let! exitCode = Process.StartAsync(command, encryptiedStr, prefix)
@@ -81,19 +88,23 @@ type StageContext with
                     Step.StepFn(fun (ctx, i) -> async {
                         let! commandStr = commandStrFn ctx
                         return! ctx.RunCommand(commandStr, i)
-                    }
-                    )
+                    })
                 ]
         }
 
 
     member ctx.OpenBrowser(url: string, ?step: int) = async {
-        let prefix =
-            match step with
-            | Some i -> ctx.BuildStepPrefix i
-            | None -> ctx.GetNamePath()
+        let noPrefixForStep = ctx.GetNoPrefixForStep()
 
-        AnsiConsole.MarkupLine $"{prefix} Open {url} in browser"
+        if noPrefixForStep then
+            AnsiConsole.MarkupLine $"Open {url} in browser"
+        else
+            let prefix =
+                match step with
+                | Some i -> ctx.BuildStepPrefix i
+                | None -> ctx.GetNamePath()
+            AnsiConsole.MarkupLine $"{prefix} Open {url} in browser"
+
         try
             Process.Start(url) |> ignore
             return Ok()
@@ -115,6 +126,9 @@ type StageContext with
 
 /// Create a command with a formattable string which will encode the arguments as * when print to console.
 let cmd (commandStr: FormattableString) = BuildStep(fun ctx i -> ctx.RunSensitiveCommand(commandStr, i))
+
+/// Create a command with a formattable string which will encode the arguments as * when print to console.
+let runSensitive (commandStr: FormattableString) = BuildStep(fun ctx i -> ctx.RunSensitiveCommand(commandStr, i))
 
 /// Open url in browser
 let openBrowser (url: string) = BuildStep(fun ctx i -> ctx.OpenBrowser(url, i))
