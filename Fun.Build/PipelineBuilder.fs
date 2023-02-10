@@ -192,7 +192,11 @@ type PipelineBuilder(name: string) =
     /// Set if step should print prefix when running, default value is true.
     [<CustomOperation("noPrefixForStep")>]
     member inline _.noPrefixForStep([<InlineIfLambda>] build: BuildPipeline, ?value: bool) =
-        BuildPipeline(fun ctx -> { build.Invoke ctx with NoPrefixForStep = defaultArg value true })
+        BuildPipeline(fun ctx ->
+            { build.Invoke ctx with
+                NoPrefixForStep = defaultArg value true
+            }
+        )
 
     [<CustomOperation("post")>]
     member inline _.post([<InlineIfLambda>] build: BuildPipeline, stages: StageContext list) =
@@ -257,7 +261,7 @@ let tryPrintPipelineCommandHelp () =
     if isHelp && not isSpecifiedPipeline then
         if runIfOnlySpecifiedPipelines.Count = 1 then
             let verbose = args |> Seq.exists (fun arg -> arg = "-v" || arg = "--verbose")
-            runIfOnlySpecifiedPipelines[ 0 ].RunCommandHelp(verbose)
+            runIfOnlySpecifiedPipelines[0].RunCommandHelp(verbose)
 
         else
             AnsiConsole.WriteLine "Descriptions:"

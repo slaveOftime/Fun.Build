@@ -29,7 +29,7 @@ type StageContext with
 
         ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command.WorkingDirectory <- x)
 
-        ctx.BuildEnvVars() |> Map.iter (fun k v -> command.Environment[ k ] <- v)
+        ctx.BuildEnvVars() |> Map.iter (fun k v -> command.Environment[k] <- v)
 
         command.StandardOutputEncoding <- Encoding.UTF8
         command.RedirectStandardOutput <- true
@@ -41,14 +41,14 @@ type StageContext with
         let command = ctx.BuildCommand(commandStr)
         let noPrefixForStep = ctx.GetNoPrefixForStep()
         let prefix =
-            if noPrefixForStep then ""
+            if noPrefixForStep then
+                ""
             else
                 match step with
                 | Some i -> ctx.BuildStepPrefix i
                 | None -> ctx.GetNamePath()
 
-        if not noPrefixForStep then
-            AnsiConsole.Markup $"[green]{prefix}[/] "
+        if not noPrefixForStep then AnsiConsole.Markup $"[green]{prefix}[/] "
         AnsiConsole.MarkupLine $"{commandStr}"
 
         let! exitCode = Process.StartAsync(command, commandStr, prefix)
@@ -64,14 +64,14 @@ type StageContext with
         let encryptiedStr = String.Format(commandStr.Format, args)
 
         let prefix =
-            if noPrefixForStep then ""
+            if noPrefixForStep then
+                ""
             else
                 match step with
                 | Some i -> ctx.BuildStepPrefix i
                 | None -> ctx.GetNamePath()
 
-        if not noPrefixForStep then
-            AnsiConsole.Markup $"[green]{prefix}[/] "
+        if not noPrefixForStep then AnsiConsole.Markup $"[green]{prefix}[/] "
         AnsiConsole.MarkupLine $"{encryptiedStr}"
 
         let! exitCode = Process.StartAsync(command, encryptiedStr, prefix)
@@ -88,8 +88,7 @@ type StageContext with
                     Step.StepFn(fun (ctx, i) -> async {
                         let! commandStr = commandStrFn ctx
                         return! ctx.RunCommand(commandStr, i)
-                    }
-                    )
+                    })
                 ]
         }
 
@@ -105,7 +104,7 @@ type StageContext with
                 | Some i -> ctx.BuildStepPrefix i
                 | None -> ctx.GetNamePath()
             AnsiConsole.MarkupLine $"{prefix} Open {url} in browser"
-        
+
         try
             Process.Start(url) |> ignore
             return Ok()

@@ -34,7 +34,7 @@ module internal Utils =
     let getFsiFileName () =
         let args = Environment.GetCommandLineArgs()
 
-        if args.Length >= 2 && args[ 1 ].EndsWith(".fsx", StringComparison.OrdinalIgnoreCase) then
+        if args.Length >= 2 && args[1].EndsWith(".fsx", StringComparison.OrdinalIgnoreCase) then
             args[1]
         else
             "your_script.fsx"
@@ -83,7 +83,7 @@ module ProcessExtensions =
         static member StartAsync(startInfo: ProcessStartInfo, commandLogString: string, logPrefix: string) = async {
             use result = Process.Start startInfo
             let noPrefix = String.IsNullOrEmpty logPrefix
-            result.OutputDataReceived.Add(fun e -> 
+            result.OutputDataReceived.Add(fun e ->
                 if noPrefix then
                     Console.WriteLine(e.Data)
                 else
@@ -92,8 +92,7 @@ module ProcessExtensions =
 
             use! cd =
                 Async.OnCancel(fun _ ->
-                    if not noPrefix then
-                        AnsiConsole.Markup $"[yellow]{logPrefix}[/] "
+                    if not noPrefix then AnsiConsole.Markup $"[yellow]{logPrefix}[/] "
                     AnsiConsole.WriteLine $"{commandLogString} is cancelled or timeouted and the process will be killed."
                     result.Kill()
                 )

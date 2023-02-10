@@ -23,8 +23,7 @@ let demo1 =
         run (fun ctx -> asyncResult {
             do! ctx.RunCommand "dotnet --version"
             do! ctx.RunCommand "dotnet --version"
-        }
-        )
+        })
         // You can run async functions
         run (Async.Sleep 1000)
         run (fun _ -> Async.Sleep 1000)
@@ -98,8 +97,7 @@ pipeline "Fun.Build" {
             echo (fun ctx -> sprintf "You are finished here: %A" (ctx.GetWorkingDir()))
             run (fun _ -> async {
                 return 0 // do something
-            }
-            )
+            })
         }
     ]
     // You can have multiple pipelines, sometimes you only want to run it only if the command specified the pipeline name.
