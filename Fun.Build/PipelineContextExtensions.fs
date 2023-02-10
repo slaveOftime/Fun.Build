@@ -86,7 +86,7 @@ type PipelineContext with
 
         if String.IsNullOrEmpty this.Name |> not then
             let title = FigletText this.Name
-            title.LeftAligned() |> ignore
+            title.LeftJustified() |> ignore
             title.Color <- Color.Red
             AnsiConsole.Write title
 

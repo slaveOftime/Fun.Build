@@ -203,8 +203,8 @@ type StageContext with
             AnsiConsole.Write(
                 let extraInfo = $"Stage timeout: {timeoutForStage}ms. Step timeout: {timeoutForStep}ms."
                 match index with
-                | StageIndex.Stage i -> Rule($"STAGE #{i} [bold teal]{namePath}[/] started. {extraInfo}").LeftAligned()
-                | StageIndex.Step i -> Rule($"SUBSTAGE [bold teal]{stage.BuildStepPrefix i}[/]. {extraInfo}").LeftAligned()
+                | StageIndex.Stage i -> Rule($"STAGE #{i} [bold teal]{namePath}[/] started. {extraInfo}").LeftJustified()
+                | StageIndex.Step i -> Rule($"SUBSTAGE [bold teal]{stage.BuildStepPrefix i}[/]. {extraInfo}").LeftJustified()
             )
             AnsiConsole.WriteLine()
 
@@ -297,10 +297,10 @@ type StageContext with
             AnsiConsole.Write(
                 let color = if isSuccess then "teal" else "red"
                 match index with
-                | StageIndex.Stage i -> Rule($"""STAGE #{i} [bold {color}]{namePath}[/] finished. {stageSW.ElapsedMilliseconds}ms.""").LeftAligned()
+                | StageIndex.Stage i -> Rule($"""STAGE #{i} [bold {color}]{namePath}[/] finished. {stageSW.ElapsedMilliseconds}ms.""").LeftJustified()
                 | StageIndex.Step i ->
                     Rule($"""SUBSTAGE [bold {color}]{stage.BuildStepPrefix i}[/] finished. {stageSW.ElapsedMilliseconds}ms.""")
-                        .LeftAligned()
+                        .LeftJustified()
             )
             AnsiConsole.WriteLine()
 
