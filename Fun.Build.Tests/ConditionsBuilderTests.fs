@@ -174,6 +174,7 @@ let ``when compose should work`` () =
             whenAny {
                 platformWindows
                 platformLinux
+                platformOSX
             }
         }
     }
