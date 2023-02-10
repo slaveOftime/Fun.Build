@@ -189,6 +189,10 @@ type PipelineBuilder(name: string) =
     member inline _.workingDir([<InlineIfLambda>] build: BuildPipeline, dir: string) =
         BuildPipeline(fun ctx -> { build.Invoke ctx with WorkingDir = ValueSome dir })
 
+    /// Set if step should print prefix when running, default value is true.
+    [<CustomOperation("noPrefixForStep")>]
+    member inline _.noPrefixForStep([<InlineIfLambda>] build: BuildPipeline, ?value: bool) =
+        BuildPipeline(fun ctx -> { build.Invoke ctx with NoPrefixForStep = defaultArg value true })
 
     [<CustomOperation("post")>]
     member inline _.post([<InlineIfLambda>] build: BuildPipeline, stages: StageContext list) =

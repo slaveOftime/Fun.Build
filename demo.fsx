@@ -68,6 +68,8 @@ pipeline "Fun.Build" {
     }
     // You can also nest stages, the stage will be treated as a single stage for parent stage.
     stage "Demo3" {
+        // By default steps will add prefix for printing information, with below flag we can remove it to make it cleaner for some use case.
+        noPrefixForStep
         stage "Platform" {
             workingDir @"C:\Users"
             whenWindows

@@ -31,6 +31,7 @@ type PipelineContext with
             TimeoutForStep = ValueNone
             TimeoutForStage = ValueNone
             WorkingDir = ValueNone
+            NoPrefixForStep = false
             Stages = []
             PostStages = []
         }

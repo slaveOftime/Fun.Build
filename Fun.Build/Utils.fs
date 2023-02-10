@@ -82,12 +82,18 @@ module ProcessExtensions =
 
         static member StartAsync(startInfo: ProcessStartInfo, commandLogString: string, logPrefix: string) = async {
             use result = Process.Start startInfo
-
-            result.OutputDataReceived.Add(fun e -> Console.WriteLine(logPrefix + " " + e.Data))
+            let noPrefix = String.IsNullOrEmpty logPrefix
+            result.OutputDataReceived.Add(fun e -> 
+                if noPrefix then
+                    Console.WriteLine(e.Data)
+                else
+                    Console.WriteLine(logPrefix + " " + e.Data)
+            )
 
             use! cd =
                 Async.OnCancel(fun _ ->
-                    AnsiConsole.Markup $"[yellow]{logPrefix}[/] "
+                    if not noPrefix then
+                        AnsiConsole.Markup $"[yellow]{logPrefix}[/] "
                     AnsiConsole.WriteLine $"{commandLogString} is cancelled or timeouted and the process will be killed."
                     result.Kill()
                 )

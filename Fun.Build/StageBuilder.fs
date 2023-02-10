@@ -144,6 +144,11 @@ type StageBuilder(name: string) =
     member inline _.workingDir([<InlineIfLambda>] build: BuildStage, dir: string) =
         BuildStage(fun ctx -> { build.Invoke ctx with WorkingDir = ValueSome dir })
 
+    /// Set if step should print prefix when running, default value is true.
+    [<CustomOperation("noPrefixForStep")>]
+    member inline _.noPrefixForStep([<InlineIfLambda>] build: BuildStage, ?value: bool) =
+        BuildStage(fun ctx -> { build.Invoke ctx with NoPrefixForStep = defaultArg value true })
+
 
     /// Add a step.
     [<CustomOperation("run")>]

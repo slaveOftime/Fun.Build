@@ -18,6 +18,7 @@ type StageContext with
         EnvVars = Map.empty
         AcceptableExitCodes = set [| 0 |]
         FailIfIgnored = false
+        NoPrefixForStep = false
         ParentContext = ValueNone
         Steps = []
     }
@@ -40,6 +41,12 @@ type StageContext with
         | ValueSome (StageParent.Stage s) -> s.Mode
         | ValueSome (StageParent.Pipeline p) -> p.Mode
 
+    member ctx.GetNoPrefixForStep() =
+        match ctx.ParentContext with
+        | ValueNone -> ctx.NoPrefixForStep
+        | _ when ctx.NoPrefixForStep -> ctx.NoPrefixForStep
+        | ValueSome (StageParent.Stage s) -> s.GetNoPrefixForStep()
+        | ValueSome (StageParent.Pipeline p) -> p.NoPrefixForStep
 
     member ctx.GetWorkingDir() =
         ctx.WorkingDir
@@ -216,7 +223,10 @@ type StageContext with
                                 match! fn (stage, i) with
                                 | Error e ->
                                     if String.IsNullOrEmpty e |> not then
-                                        AnsiConsole.MarkupLine $"""{prefix} error: [red]{e}[/]"""
+                                        if stage.GetNoPrefixForStep() then
+                                            AnsiConsole.MarkupLine $"""[red]{e}[/]"""
+                                        else
+                                            AnsiConsole.MarkupLine $"""{prefix} error: [red]{e}[/]"""
                                     return false
                                 | Ok _ -> return true
                               }
