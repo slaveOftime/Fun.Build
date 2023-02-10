@@ -168,10 +168,6 @@ let ``when compose should work`` () =
             cmdArg "test2"
             whenNot { cmdArg "test3" }
             whenAny {
-                branch "dev"
-                branch "master"
-            }
-            whenAny {
                 platformWindows
                 platformLinux
                 platformOSX

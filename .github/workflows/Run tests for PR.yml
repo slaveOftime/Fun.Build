@@ -18,5 +18,5 @@ jobs:
       with:
         dotnet-version: 6.0.x
 
-    - name: Use Fun.Build
+    - name: Use build.fsx
       run: dotnet fsi ./build.fsx -- -p test
