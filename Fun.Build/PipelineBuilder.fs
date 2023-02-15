@@ -191,12 +191,12 @@ type PipelineBuilder(name: string) =
 
     /// Set if step should print prefix when running, default value is true.
     [<CustomOperation("noPrefixForStep")>]
-    member inline _.noPrefixForStep([<InlineIfLambda>] build: BuildPipeline, ?value: bool) =
-        BuildPipeline(fun ctx ->
-            { build.Invoke ctx with
-                NoPrefixForStep = defaultArg value true
-            }
-        )
+    member inline _.noPrefixForStep([<InlineIfLambda>] build: BuildPipeline, value: bool) =
+        BuildPipeline(fun ctx -> { build.Invoke ctx with NoPrefixForStep = value })
+
+    [<CustomOperation("noPrefixForStep")>]
+    member inline this.noPrefixForStep([<InlineIfLambda>] build: BuildPipeline) = this.noPrefixForStep (build, true)
+
 
     [<CustomOperation("post")>]
     member inline _.post([<InlineIfLambda>] build: BuildPipeline, stages: StageContext list) =

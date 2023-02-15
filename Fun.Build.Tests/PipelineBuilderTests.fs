@@ -261,7 +261,7 @@ let ``Syntax check`` () =
             run (fun _ -> task { return 0 })
             run (fun _ -> Task.Delay 10)
             run (Async.Sleep 10)
-            cmd $""
+            runSensitive $""
             run (Async.Sleep 10)
             BuildStep(fun ctx _ -> async { return Ok() })
         }

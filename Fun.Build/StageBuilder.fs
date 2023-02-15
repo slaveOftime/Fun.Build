@@ -92,11 +92,15 @@ type StageBuilder(name: string) =
 
     /// If the stage is ignored (inactive) then it will throw exception
     [<CustomOperation("failIfIgnored")>]
-    member inline _.failIfIgnored([<InlineIfLambda>] build: BuildStage, ?flag) =
+    member inline _.failIfIgnored([<InlineIfLambda>] build: BuildStage, flag) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with FailIfIgnored = defaultArg flag true }
+            { ctx with FailIfIgnored = flag }
         )
+
+    /// If the stage is ignored (inactive) then it will throw exception
+    [<CustomOperation("failIfIgnored")>]
+    member inline this.failIfIgnored([<InlineIfLambda>] build: BuildStage) = this.failIfIgnored (build, true)
 
     /// Set timeout for every step under the current stage.
     /// Unit is second.
@@ -136,8 +140,11 @@ type StageBuilder(name: string) =
 
     /// Set if the steps in current stage should run in parallel, default value is true.
     [<CustomOperation("paralle")>]
-    member inline _.paralle([<InlineIfLambda>] build: BuildStage, ?value: bool) =
-        BuildStage(fun ctx -> { build.Invoke ctx with IsParallel = defaultArg value true })
+    member inline _.paralle([<InlineIfLambda>] build: BuildStage, value: bool) = BuildStage(fun ctx -> { build.Invoke ctx with IsParallel = value })
+
+    /// Set if the steps in current stage should run in parallel, default value is true.
+    [<CustomOperation("paralle")>]
+    member inline this.paralle([<InlineIfLambda>] build: BuildStage) = this.paralle (build, true)
 
     /// Set workding dir for all steps under the stage.
     [<CustomOperation("workingDir")>]
@@ -146,12 +153,12 @@ type StageBuilder(name: string) =
 
     /// Set if step should print prefix when running, default value is true.
     [<CustomOperation("noPrefixForStep")>]
-    member inline _.noPrefixForStep([<InlineIfLambda>] build: BuildStage, ?value: bool) =
-        BuildStage(fun ctx ->
-            { build.Invoke ctx with
-                NoPrefixForStep = defaultArg value true
-            }
-        )
+    member inline _.noPrefixForStep([<InlineIfLambda>] build: BuildStage, value: bool) =
+        BuildStage(fun ctx -> { build.Invoke ctx with NoPrefixForStep = value })
+
+    /// Set if step should print prefix when running, default value is true.
+    [<CustomOperation("noPrefixForStep")>]
+    member inline this.noPrefixForStep([<InlineIfLambda>] build: BuildStage) = this.noPrefixForStep (build, true)
 
 
     /// Add a step.

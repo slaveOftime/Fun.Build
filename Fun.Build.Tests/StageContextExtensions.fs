@@ -65,9 +65,21 @@ let ``RunCommandCaptureOutput should work`` () =
 
     pipeline "" {
         stage "" {
+            whenAny {
+                platformOSX
+                platformLinux
+            }
             run (fun ctx -> async {
                 let! result = ctx.RunCommandCaptureOutput "echo 42"
-
+                match result with
+                | Ok x -> output <- x
+                | Error _ -> ()
+            })
+        }
+        stage "" {
+            whenWindows
+            run (fun ctx -> async {
+                let! result = ctx.RunCommandCaptureOutput "powershell echo 42"
                 match result with
                 | Ok x -> output <- x
                 | Error _ -> ()
