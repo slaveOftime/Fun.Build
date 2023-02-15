@@ -93,7 +93,7 @@ module ProcessExtensions =
             use! cd =
                 Async.OnCancel(fun _ ->
                     if not noPrefix then AnsiConsole.Markup $"[yellow]{logPrefix}[/] "
-                    AnsiConsole.WriteLine $"{commandLogString} is cancelled or timeouted and the process will be killed."
+                    AnsiConsole.WriteLine $"{commandLogString} is cancelled or timed out and the process will be killed."
                     result.Kill()
                 )
 
@@ -101,4 +101,35 @@ module ProcessExtensions =
             result.WaitForExit()
 
             return result.ExitCode
+        }
+
+        static member StartAsyncCaptureOutput(startInfo: ProcessStartInfo, commandLogString: string, logPrefix: string) = async {
+            use result = Process.Start startInfo
+            let noPrefix = String.IsNullOrEmpty logPrefix
+            let standardOutputSb = System.Text.StringBuilder()
+
+            result.OutputDataReceived.Add(fun e ->
+                standardOutputSb.Append e.Data |> ignore
+                if noPrefix then
+                    Console.WriteLine(e.Data)
+                else
+                    Console.WriteLine(logPrefix + " " + e.Data)
+            )
+
+            use! cd =
+                Async.OnCancel(fun _ ->
+                    AnsiConsole.Markup $"[yellow]{logPrefix}[/] "
+
+                    AnsiConsole.WriteLine $"{commandLogString} is cancelled or timed out and the process will be killed."
+
+                    result.Kill()
+                )
+
+            result.BeginOutputReadLine()
+            result.WaitForExit()
+
+            return {|
+                ExitCode = result.ExitCode
+                StandardOutput = standardOutputSb.ToString()
+            |}
         }

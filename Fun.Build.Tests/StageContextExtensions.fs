@@ -58,3 +58,43 @@ let ``noPrefixForStep should work`` () =
 
     Assert.Equal(true, pipeline2.Stages[0].GetNoPrefixForStep())
     Assert.Equal(false, pipeline2.Stages[1].GetNoPrefixForStep())
+
+[<Fact>]
+let ``RunCommandCaptureOutput should work`` () =
+    let mutable output = ""
+
+    pipeline "" {
+        stage "" {
+            run (fun ctx ->
+                async {
+                    let! result = ctx.RunCommandCaptureOutput "echo 42"
+
+                    match result with
+                    | Ok x -> output <- x
+                    | Error _ -> ()
+                }
+            )
+        }
+        runImmediate
+    }
+
+    Assert.Equal("42", output)
+
+[<Fact>]
+let ``RunCommandCaptureOutput should return an error if command failed`` () =
+    Assert.Throws<PipelineFailedException>(fun _ ->
+        shouldBeCalled (fun call ->
+            pipeline "" {
+                stage "" {
+                    run (fun ctx ->
+                        async {
+                            let! result = ctx.RunCommandCaptureOutput "thisCmdDoesNotExist"
+                            return ()
+                        }
+                    )
+                }
+                runImmediate
+            }
+        )
+    )
+    |> ignore
