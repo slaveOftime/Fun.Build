@@ -65,15 +65,13 @@ let ``RunCommandCaptureOutput should work`` () =
 
     pipeline "" {
         stage "" {
-            run (fun ctx ->
-                async {
-                    let! result = ctx.RunCommandCaptureOutput "echo 42"
+            run (fun ctx -> async {
+                let! result = ctx.RunCommandCaptureOutput "echo 42"
 
-                    match result with
-                    | Ok x -> output <- x
-                    | Error _ -> ()
-                }
-            )
+                match result with
+                | Ok x -> output <- x
+                | Error _ -> ()
+            })
         }
         runImmediate
     }
@@ -86,12 +84,10 @@ let ``RunCommandCaptureOutput should return an error if command failed`` () =
         shouldBeCalled (fun call ->
             pipeline "" {
                 stage "" {
-                    run (fun ctx ->
-                        async {
-                            let! result = ctx.RunCommandCaptureOutput "thisCmdDoesNotExist"
-                            return ()
-                        }
-                    )
+                    run (fun ctx -> async {
+                        let! result = ctx.RunCommandCaptureOutput "thisCmdDoesNotExist"
+                        return ()
+                    })
                 }
                 runImmediate
             }
