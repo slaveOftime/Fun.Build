@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2] - 2023-02-15
+
+- Add Obsolete to cmd
+- Add RunCommandCaptureOutput to StageContext
+- Improve inline by using overloads instead of option parameters
+- Do not throw for PipelineCancelledException in runIfOnlySpecified
+
 ## [0.3.1] - 2023-02-10
 
 - Do not throw for PipelineCancelledException in runIfOnlySpecified
