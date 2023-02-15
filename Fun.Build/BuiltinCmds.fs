@@ -55,6 +55,31 @@ type StageContext with
         return ctx.MapExitCodeToResult exitCode
     }
 
+    /// <summary>
+    /// Run a command string with current context, and return the standard output if the exit code is acceptable.
+    /// </summary>
+    /// <param name="commandStr">Command to run</param>
+    /// <param name="step">Current step rank</param>
+    member ctx.RunCommandCaptureOutput(commandStr: string, ?step: int) = async {
+        let command = ctx.BuildCommand(commandStr)
+        let noPrefixForStep = ctx.GetNoPrefixForStep()
+        let prefix =
+            if noPrefixForStep then
+                ""
+            else
+                match step with
+                | Some i -> ctx.BuildStepPrefix i
+                | None -> ctx.GetNamePath()
+
+        if not noPrefixForStep then AnsiConsole.Markup $"[green]{prefix}[/] "
+        AnsiConsole.MarkupLine $"{commandStr}"
+
+        let! result = Process.StartAsyncCaptureOutput(command, commandStr, prefix)
+        if ctx.IsAcceptableExitCode result.ExitCode then
+            return Ok result.StandardOutput
+        else
+            return Error "Exit code is not indicating as successful."
+    }
 
     /// Run a command string with current context, and encrypt the string for logging
     member ctx.RunSensitiveCommand(commandStr: FormattableString, ?step: int) = async {
