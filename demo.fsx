@@ -14,7 +14,7 @@ let demo1 =
         envVars [ "envKey", "envValue" ] // You can add or override environment variables
         // Use cmd, so we can encrypt sensitive argument for formatable string
         runSensitive $"dotnet --version"
-        run (fun ctx -> cmd $"""dotnet {"--version"}""")
+        run (fun ctx -> ctx.RunSensitiveCommand $"""dotnet {"--version"}""")
         // You can run command directly with a string
         run "dotnet --version"
         run (fun ctx -> "dotnet --version")

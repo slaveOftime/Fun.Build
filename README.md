@@ -24,11 +24,10 @@ Below example covered most of the apis and usage example, take it as the documen
 
 ```fsharp
 #r "nuget: Fun.Result"
-#r "nuget: Fun.Build, 0.3.0"
+#r "nuget: Fun.Build, 0.3.3"
 
 open Fun.Result
 open Fun.Build
-
 
 // You can create a stage and reuse it in any pipeline or nested stages
 let demo1 =
@@ -37,8 +36,8 @@ let demo1 =
         timeoutForStep 30 // You can set default timeout for step under the stage
         envVars [ "envKey", "envValue" ] // You can add or override environment variables
         // Use cmd, so we can encrypt sensitive argument for formatable string
-        cmd $"dotnet --version"
-        run (fun ctx -> cmd $"""dotnet {"--version"}""")
+        runSensitive $"dotnet --version"
+        run (fun ctx -> ctx.RunSensitiveCommand $"""dotnet {"--version"}""")
         // You can run command directly with a string
         run "dotnet --version"
         run (fun ctx -> "dotnet --version")
@@ -57,7 +56,6 @@ let demo1 =
         run (fun ctx -> 0) // return an exit code to indicate if it successful
         // You can also use the low level api
         step (fun ctx _ -> async { return Ok() })
-        BuildStep(fun ctx _ -> async { return Ok() })
     }
 
 
@@ -144,6 +142,32 @@ pipeline "pipeline-verify-demo" {
     whenAll {
         cmdArg "v1"
         branch "master"
+    }
+    runIfOnlySpecified
+}
+
+
+let demoCondition = whenAll {
+    // You can use whenCmd CE for more complex situation.
+    whenCmd {
+        name "-w"
+        alias "--watch"
+        // Description can also support multiple lines
+        description "watch cool stuff \n dasd asdad \n asdasd as123"
+    }
+    whenCmd {
+        name "run"
+        description "run cool stuff"
+        acceptValues [ "v1"; "v2" ]
+    }
+}
+
+pipeline "cmd-info" {
+    description "Check cmd info build style"
+    demoCondition
+    stage "" {
+        demoCondition
+        echo "here we are"
     }
     runIfOnlySpecified
 }

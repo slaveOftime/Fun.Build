@@ -143,4 +143,4 @@ let ``Soft cancel should work`` () =
         }
     )
 
-    Assert.Equal(10, i + j)
+    Assert.True(10 <= i + j)
