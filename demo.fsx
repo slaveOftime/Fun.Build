@@ -33,7 +33,6 @@ let demo1 =
         run (fun ctx -> 0) // return an exit code to indicate if it successful
         // You can also use the low level api
         step (fun ctx _ -> async { return Ok() })
-        BuildStep(fun ctx _ -> async { return Ok() })
     }
 
 
@@ -125,21 +124,24 @@ pipeline "pipeline-verify-demo" {
 }
 
 
+let demoCondition = whenAll {
+    whenCmd {
+        name "-w"
+        alias "--watch"
+        description "watch cool stuff \n dasd asdad \n asdasd as123"
+    }
+    whenCmd {
+        name "run"
+        description "run cool stuff"
+        acceptValues [ "v1"; "v2" ]
+    }
+}
+
 pipeline "cmd-info" {
     description "Check cmd info build style"
+    demoCondition
     stage "" {
-        whenAny {
-            whenCmd {
-                name "-w"
-                alias "--watch"
-                description "watch cool stuff"
-            }
-            whenCmd {
-                name "run"
-                description "run cool stuff"
-                acceptValues [ "v1"; "v2" ]
-            }
-        }
+        demoCondition
         echo "here we are"
     }
     runIfOnlySpecified

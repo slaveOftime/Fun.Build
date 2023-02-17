@@ -50,29 +50,31 @@ module Internal =
                     | Some alias -> isValueMatch alias
                 )
 
-            let makeNameAndValues () =
-                info.Name
-                + (info.Alias |> Option.map (sprintf ", %s") |> Option.defaultValue "")
-                + (
-                    match info.Values with
-                    | [] -> ""
-                    | _ -> "  (" + String.concat ", " info.Values + ")"
-                )
+            let makeNameForPrint () = info.Name + (info.Alias |> Option.map (sprintf ", %s") |> Option.defaultValue "")
 
-            let getPrintInfo () = makeCommandOption (ctx.BuildIndent() + "cmd: ") (makeNameAndValues ()) (defaultArg info.Description "")
+            let makeValuesForPrint () =
+                match info.Values with
+                | [] -> ""
+                | _ -> "\n[[choices: " + String.concat ", " (info.Values |> Seq.map (sprintf "\"%s\"")) + "]]"
+
+            let getPrintInfo (prefix: string) =
+                makeCommandOption
+                    (prefix + ctx.BuildIndent() + "cmd: ")
+                    (makeNameForPrint ())
+                    (defaultArg info.Description "" + makeValuesForPrint ())
 
             match ctx.GetMode() with
             | Mode.CommandHelp true ->
-                AnsiConsole.WriteLine(getPrintInfo ())
+                AnsiConsole.MarkupLine(getPrintInfo "")
                 false
             | Mode.CommandHelp false ->
-                printCommandOption "  " (makeNameAndValues ()) (defaultArg info.Description "")
+                AnsiConsole.MarkupLine(makeCommandOption "  " (makeNameForPrint ()) (defaultArg info.Description "" + makeValuesForPrint ()))
                 false
             | Mode.Verification ->
                 if getResult () then
-                    AnsiConsole.WriteLine("✅ " + getPrintInfo ())
+                    AnsiConsole.MarkupLine $"""[green]{getPrintInfo "✓ "}[/]"""
                 else
-                    AnsiConsole.MarkupLine $"❌ [red]{getPrintInfo ()}[/]"
+                    AnsiConsole.MarkupLine $"""[red]{getPrintInfo "✕ "}[/]"""
                 false
             | Mode.Execution -> getResult ()
 

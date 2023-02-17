@@ -116,23 +116,23 @@ let ``Soft cancel should work`` () =
 
     shouldBeCalled (fun call ->
         pipeline "" {
-            timeout 10
+            timeout 2
             stage "" {
                 paralle
                 run (fun _ -> async {
                     while true do
-                        do! Async.Sleep 1000
+                        do! Async.Sleep 100
                 })
                 run (fun ctx -> async {
                     while true do
-                        do! Async.Sleep 1000
+                        do! Async.Sleep 100
                         j <- j + 1
                         printfn $"task2 {i}"
                         if i > 3 then ctx.SoftCancelStep()
                 })
                 run (fun ctx -> async {
                     while true do
-                        do! Async.Sleep 1000
+                        do! Async.Sleep 100
                         i <- i + 1
                         printfn $"task1 {i}"
                         if i > 5 then ctx.SoftCancelStage()
