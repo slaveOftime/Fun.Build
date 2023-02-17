@@ -60,15 +60,15 @@ let ``steps should run in sequence`` () =
     calls.Clear()
     pipeline "" {
         stage "" {
-            BuildStep(fun _ _ -> async {
+            step (fun _ _ -> async {
                 calls.Add 1
                 return Ok()
             })
-            BuildStep(fun _ _ -> async {
+            step (fun _ _ -> async {
                 calls.Add 2
                 return Ok()
             })
-            BuildStep(fun _ _ -> async {
+            step (fun _ _ -> async {
                 calls.Add 3
                 return Ok()
             })
@@ -81,16 +81,16 @@ let ``steps should run in sequence`` () =
     pipeline "" {
         stage "" {
             timeout 10
-            BuildStep(fun _ _ -> async {
+            step (fun _ _ -> async {
                 calls.Add 1
                 return Ok()
             })
-            BuildStep(fun _ _ -> async {
+            step (fun _ _ -> async {
                 calls.Add 2
                 return Ok()
             })
             timeout 10
-            BuildStep(fun _ _ -> async {
+            step (fun _ _ -> async {
                 calls.Add 3
                 return Ok()
             })

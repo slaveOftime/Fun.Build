@@ -4,98 +4,136 @@ module Fun.Build.ConditionsBuilder
 open System.Diagnostics
 open System.Runtime.InteropServices
 open Spectre.Console
+open Fun.Build.Internal
+open Fun.Build.BuiltinCmdsInternal
+open Fun.Build.StageContextExtensions
+open Fun.Build.StageContextExtensionsInternal
+open Fun.Build.PipelineContextExtensionsInternal
 
 
-type StageContext with
+module Internal =
 
-    member ctx.WhenEnvArg(envKey: string, envValue: string, description) =
-        let getResult () =
-            match ctx.TryGetEnvVar envKey with
-            | ValueSome v when envValue = "" || v = envValue -> true
-            | _ -> false
+    type StageContext with
 
-        let getPrintInfo () = makeCommandOption (ctx.BuildIndent() + "env: ") (envKey + " = " + envValue) (defaultArg description "")
+        member ctx.WhenEnvArg(envKey: string, envValue: string, description) =
+            let getResult () =
+                match ctx.TryGetEnvVar envKey with
+                | ValueSome v when envValue = "" || v = envValue -> true
+                | _ -> false
 
-        match ctx.Mode with
-        | Mode.CommandHelp true ->
-            AnsiConsole.WriteLine(getPrintInfo ())
-            false
-        | Mode.CommandHelp false -> true
-        | Mode.Verification ->
-            if getResult () then
-                AnsiConsole.WriteLine("✅ " + getPrintInfo ())
-            else
-                AnsiConsole.MarkupLine $"❌ [red]{getPrintInfo ()}[/]"
-            false
-        | Mode.Execution -> getResult ()
+            let getPrintInfo () = makeCommandOption (ctx.BuildIndent() + "env: ") (envKey + " = " + envValue) (defaultArg description "")
 
-
-    member ctx.WhenCmdArg(argKey: string, argValue: string, description) =
-        let getResult () =
-            match ctx.TryGetCmdArg argKey with
-            | ValueSome v when argValue = "" || v = argValue -> true
-            | _ -> false
-
-        let getPrintInfo () = makeCommandOption (ctx.BuildIndent() + "cmd: ") (argKey + " = " + argValue) (defaultArg description "")
-
-        match ctx.Mode with
-        | Mode.CommandHelp true ->
-            AnsiConsole.WriteLine(getPrintInfo ())
-            false
-        | Mode.CommandHelp false ->
-            printCommandOption "  " (argKey + " = " + argValue) (defaultArg description "")
-            false
-        | Mode.Verification ->
-            if getResult () then
-                AnsiConsole.WriteLine("✅ " + getPrintInfo ())
-            else
-                AnsiConsole.MarkupLine $"❌ [red]{getPrintInfo ()}[/]"
-            false
-        | Mode.Execution -> getResult ()
-
-
-    member ctx.WhenBranch(branch: string) =
-        let getResult () =
-            try
-                let command = ctx.BuildCommand("git branch --show-current")
-                ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command.WorkingDirectory <- x)
-
-                let result = Process.Start command
-                result.WaitForExit()
-                result.StandardOutput.ReadLine() = branch
-            with ex ->
-                AnsiConsole.MarkupLine $"[red]Run git to get branch info failed: {ex.Message}[/]"
+            match ctx.GetMode() with
+            | Mode.CommandHelp true ->
+                AnsiConsole.WriteLine(getPrintInfo ())
                 false
-
-        match ctx.Mode with
-        | Mode.CommandHelp verbose ->
-            if verbose then
-                AnsiConsole.MarkupLine $"{ctx.BuildIndent()}when branch is [green]{branch}[/]"
-            false
-        | Mode.Verification ->
-            if getResult () then
-                AnsiConsole.MarkupLine $"✅ {ctx.BuildIndent()}when branch is [green]{branch}[/]"
-            else
-                AnsiConsole.MarkupLine $"❌ {ctx.BuildIndent()}[red]when branch is {branch}[/]"
-            false
-        | Mode.Execution -> getResult ()
+            | Mode.CommandHelp false -> true
+            | Mode.Verification ->
+                if getResult () then
+                    AnsiConsole.WriteLine("✅ " + getPrintInfo ())
+                else
+                    AnsiConsole.MarkupLine $"❌ [red]{getPrintInfo ()}[/]"
+                false
+            | Mode.Execution -> getResult ()
 
 
-    member ctx.WhenPlatform(platform: OSPlatform) =
-        let getResult () = RuntimeInformation.IsOSPlatform platform
+        member ctx.WhenCmd(info: CmdInfo) =
+            let getResult () =
+                let isValueMatch v =
+                    match ctx.TryGetCmdArg v with
+                    | ValueSome v when info.Values.Length = 0 || List.contains v info.Values -> true
+                    | _ -> false
+                isValueMatch info.Name
+                || (
+                    match info.Alias with
+                    | None -> false
+                    | Some alias -> isValueMatch alias
+                )
 
-        match ctx.Mode with
-        | Mode.CommandHelp true ->
-            AnsiConsole.MarkupLine $"{ctx.BuildIndent()}when platform is [green]{platform}[/]"
-            false
-        | Mode.CommandHelp false -> true
-        | Mode.Verification ->
-            if getResult () then
-                AnsiConsole.MarkupLine $"✅ {ctx.BuildIndent()}when platform is [green]{platform}[/]"
-            else
-                AnsiConsole.MarkupLine $"❌ {ctx.BuildIndent()}[red]when platform is {platform}[/]"
-            false
-        | Mode.Execution -> getResult ()
+            let makeNameForPrint () = info.Name + (info.Alias |> Option.map (sprintf ", %s") |> Option.defaultValue "")
+
+            let makeValuesForPrint () =
+                match info.Values with
+                | [] -> ""
+                | _ -> "\n[[choices: " + String.concat ", " (info.Values |> Seq.map (sprintf "\"%s\"")) + "]]"
+
+            let getPrintInfo (prefix: string) =
+                makeCommandOption
+                    (prefix + ctx.BuildIndent() + "cmd: ")
+                    (makeNameForPrint ())
+                    (defaultArg info.Description "" + makeValuesForPrint ())
+
+            match ctx.GetMode() with
+            | Mode.CommandHelp true ->
+                AnsiConsole.MarkupLine(getPrintInfo "")
+                false
+            | Mode.CommandHelp false ->
+                AnsiConsole.MarkupLine(makeCommandOption "  " (makeNameForPrint ()) (defaultArg info.Description "" + makeValuesForPrint ()))
+                false
+            | Mode.Verification ->
+                if getResult () then
+                    AnsiConsole.MarkupLine $"""[green]{getPrintInfo "✓ "}[/]"""
+                else
+                    AnsiConsole.MarkupLine $"""[red]{getPrintInfo "✕ "}[/]"""
+                false
+            | Mode.Execution -> getResult ()
+
+
+        member ctx.WhenCmdArg(argKey: string, argValue: string, description) =
+            ctx.WhenCmd
+                {
+                    Name = argKey
+                    Alias = None
+                    Description = description
+                    Values = [ argValue ]
+                }
+
+
+        member ctx.WhenBranch(branch: string) =
+            let getResult () =
+                try
+                    let command = ctx.BuildCommand("git branch --show-current")
+                    ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command.WorkingDirectory <- x)
+
+                    let result = Process.Start command
+                    result.WaitForExit()
+                    result.StandardOutput.ReadLine() = branch
+                with ex ->
+                    AnsiConsole.MarkupLine $"[red]Run git to get branch info failed: {ex.Message}[/]"
+                    false
+
+            match ctx.GetMode() with
+            | Mode.CommandHelp verbose ->
+                if verbose then
+                    AnsiConsole.MarkupLine $"{ctx.BuildIndent()}when branch is [green]{branch}[/]"
+                false
+            | Mode.Verification ->
+                if getResult () then
+                    AnsiConsole.MarkupLine $"✅ {ctx.BuildIndent()}when branch is [green]{branch}[/]"
+                else
+                    AnsiConsole.MarkupLine $"❌ {ctx.BuildIndent()}[red]when branch is {branch}[/]"
+                false
+            | Mode.Execution -> getResult ()
+
+
+        member ctx.WhenPlatform(platform: OSPlatform) =
+            let getResult () = RuntimeInformation.IsOSPlatform platform
+
+            match ctx.GetMode() with
+            | Mode.CommandHelp true ->
+                AnsiConsole.MarkupLine $"{ctx.BuildIndent()}when platform is [green]{platform}[/]"
+                false
+            | Mode.CommandHelp false -> true
+            | Mode.Verification ->
+                if getResult () then
+                    AnsiConsole.MarkupLine $"✅ {ctx.BuildIndent()}when platform is [green]{platform}[/]"
+                else
+                    AnsiConsole.MarkupLine $"❌ {ctx.BuildIndent()}[red]when platform is {platform}[/]"
+                false
+            | Mode.Execution -> getResult ()
+
+
+open Internal
 
 
 type ConditionsBuilder() =
@@ -441,10 +479,10 @@ type WhenAnyBuilder() =
 
     member inline _.Run([<InlineIfLambda>] builder: BuildConditions) =
         BuildStageIsActive(fun ctx ->
-            match ctx.Mode with
+            match ctx.GetMode() with
             | Mode.Execution -> builder.Invoke [] |> Seq.exists (fun fn -> fn ctx)
             | _ ->
-                match ctx.Mode with
+                match ctx.GetMode() with
                 | Mode.Verification
                 | Mode.CommandHelp true -> AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}when any below conditions are met[/]"
                 | _ -> ()
@@ -467,10 +505,10 @@ type WhenAllBuilder() =
 
     member inline _.Run([<InlineIfLambda>] builder: BuildConditions) =
         BuildStageIsActive(fun ctx ->
-            match ctx.Mode with
+            match ctx.GetMode() with
             | Mode.Execution -> builder.Invoke [] |> Seq.map (fun fn -> fn ctx) |> Seq.reduce (fun x y -> x && y)
             | _ ->
-                match ctx.Mode with
+                match ctx.GetMode() with
                 | Mode.Verification
                 | Mode.CommandHelp true -> AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}when all below conditions are met[/]"
                 | _ -> ()
@@ -493,7 +531,7 @@ type WhenNotBuilder() =
 
     member inline _.Run([<InlineIfLambda>] builder: BuildConditions) =
         BuildStageIsActive(fun ctx ->
-            match ctx.Mode with
+            match ctx.GetMode() with
             | Mode.Verification
             | Mode.CommandHelp true ->
                 AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}when all below conditions are [bold red]NOT[/] met[/]"
@@ -514,9 +552,41 @@ type WhenNotBuilder() =
         )
 
 
+type WhenCmdBuilder() =
+
+    member _.Run(build: BuildCmdInfo) =
+        BuildStageIsActive(fun ctx ->
+            let cmdInfo = build.Invoke { Name = ""; Alias = None; Description = None; Values = [] }
+            ctx.WhenCmd(cmdInfo)
+        )
+
+    member inline _.Yield(_: unit) = BuildCmdInfo(fun x -> x)
+    member inline _.Yield(x: BuildCmdInfo) = x
+    member inline _.Delay([<InlineIfLambda>] fn: unit -> BuildCmdInfo) = BuildCmdInfo(fun x -> fn().Invoke(x))
+
+    [<CustomOperation "name">]
+    member inline _.name([<InlineIfLambda>] build: BuildCmdInfo, x: string) = BuildCmdInfo(fun info -> { build.Invoke(info) with Name = x })
+
+    [<CustomOperation "alias">]
+    member inline _.alias([<InlineIfLambda>] build: BuildCmdInfo, x: string) = BuildCmdInfo(fun info -> { build.Invoke(info) with Alias = Some x })
+
+    [<CustomOperation "description">]
+    member inline _.description([<InlineIfLambda>] build: BuildCmdInfo, x: string) =
+        BuildCmdInfo(fun info -> { build.Invoke(info) with Description = Some x })
+
+    [<CustomOperation "value">]
+    member inline _.value([<InlineIfLambda>] build: BuildCmdInfo, x: string) = BuildCmdInfo(fun info -> { build.Invoke(info) with Values = [ x ] })
+
+    [<CustomOperation "acceptValues">]
+    member inline _.acceptValues([<InlineIfLambda>] build: BuildCmdInfo, values: string list) =
+        BuildCmdInfo(fun info -> { build.Invoke(info) with Values = values })
+
+
 /// When any of the added conditions are satisified, the stage will be active
 let whenAny = WhenAnyBuilder()
 /// When all of the added conditions are satisified, the stage will be active
 let whenAll = WhenAllBuilder()
 /// When all of the added conditions are not satisified, the stage will be active
 let whenNot = WhenNotBuilder()
+/// When the cmd is matched, the stage will be active
+let whenCmd = WhenCmdBuilder()

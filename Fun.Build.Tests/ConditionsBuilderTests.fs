@@ -2,6 +2,64 @@ module Fun.Build.Tests.ConditionsBuilderTests
 
 open Xunit
 open Fun.Build
+open Fun.Build.Internal
+open Fun.Build.StageContextExtensionsInternal
+open Fun.Build.PipelineContextExtensionsInternal
+
+
+[<Fact>]
+let ``whenCmd should work`` () =
+    shouldNotBeCalled (fun call ->
+        pipeline "" {
+            stage "" {
+                whenCmd { name "test1" }
+                run call
+            }
+            runImmediate
+        }
+    )
+
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            cmdArgs [ "test1" ]
+            stage "" {
+                whenCmd { name "test1" }
+                run call
+            }
+            runImmediate
+        }
+    )
+
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            cmdArgs [ "test1"; "v1" ]
+            stage "" {
+                whenCmd {
+                    name "test1"
+                    acceptValues [ "v1"; "v2" ]
+                }
+                run call
+            }
+            runImmediate
+        }
+    )
+
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            cmdArgs [ "-t"; "v1" ]
+            stage "" {
+                whenAll {
+                    whenCmd {
+                        name "test1"
+                        alias "-t"
+                        acceptValues [ "v1"; "v2" ]
+                    }
+                }
+                run call
+            }
+            runImmediate
+        }
+    )
 
 
 [<Fact>]

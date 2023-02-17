@@ -1,135 +1,66 @@
-﻿namespace Fun.Build
+﻿[<AutoOpen>]
+module Fun.Build.Internal.Utils
 
 open System
 open System.IO
-open System.Diagnostics
-open System.Runtime.InteropServices
-open Spectre.Console
+open System.Text
 
 
-[<AutoOpen>]
-module internal Utils =
-
-    let windowsEnvPaths =
-        lazy
-            (fun () ->
-                let envPath = Environment.GetEnvironmentVariable("PATH")
-                if String.IsNullOrEmpty envPath |> not then
-                    envPath.Split Path.PathSeparator |> Seq.toList
-                else
-                    []
-            )
-
-
-    let windowsExeExts = [ "exe"; "cmd"; "bat" ]
-
-
-    let makeCommandOption prefix (argInfo: string) (argDescription: string) = sprintf "%s%-30s  %s" prefix argInfo argDescription
-
-    let printCommandOption prefix (argInfo: string) (argDescription: string) = printfn "%s" (makeCommandOption prefix argInfo argDescription)
-
-    let printHelpOptions () = printCommandOption "  " "-h, --help" "Show help and usage information"
-
-
-    let getFsiFileName () =
-        let args = Environment.GetCommandLineArgs()
-
-        if args.Length >= 2 && args[1].EndsWith(".fsx", StringComparison.OrdinalIgnoreCase) then
-            args[1]
-        else
-            "your_script.fsx"
-
-
-    module ValueOption =
-
-        let inline defaultWithVOption (fn: unit -> 'T voption) (data: 'T voption) = if data.IsSome then data else fn ()
-
-        let inline ofOption (data: 'T option) =
-            match data with
-            | Some x -> ValueSome x
-            | _ -> ValueNone
-
-
-[<AutoOpen>]
-module ProcessExtensions =
-    type Process with
-
-        static member GetQualifiedFileName(cmd: string) =
-            if
-                not (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                || Path.IsPathRooted(cmd)
-                || not (String.IsNullOrWhiteSpace(Path.GetExtension cmd))
-            then
-                cmd
+let windowsEnvPaths =
+    lazy
+        (fun () ->
+            let envPath = Environment.GetEnvironmentVariable("PATH")
+            if String.IsNullOrEmpty envPath |> not then
+                envPath.Split Path.PathSeparator |> Seq.toList
             else
-                seq {
-                    use ps = Process.GetCurrentProcess()
-                    if ps.MainModule <> null then ps.MainModule.FileName
-
-                    Directory.GetCurrentDirectory()
-
-                    yield! windowsEnvPaths.Value()
-                }
-                |> Seq.tryPick (fun path ->
-                    windowsExeExts
-                    |> Seq.tryPick (fun ext ->
-                        let file = Path.ChangeExtension(Path.Combine(path, cmd), ext)
-                        if File.Exists file then Some file else None
-                    )
-                )
-                |> Option.defaultValue cmd
+                []
+        )
 
 
-        static member StartAsync(startInfo: ProcessStartInfo, commandLogString: string, logPrefix: string) = async {
-            use result = Process.Start startInfo
-            let noPrefix = String.IsNullOrEmpty logPrefix
-            result.OutputDataReceived.Add(fun e ->
-                if noPrefix then
-                    Console.WriteLine(e.Data)
-                else
-                    Console.WriteLine(logPrefix + " " + e.Data)
-            )
+let windowsExeExts = [ "exe"; "cmd"; "bat" ]
 
-            use! cd =
-                Async.OnCancel(fun _ ->
-                    if not noPrefix then AnsiConsole.Markup $"[yellow]{logPrefix}[/] "
-                    AnsiConsole.WriteLine $"{commandLogString} is cancelled or timed out and the process will be killed."
-                    result.Kill()
-                )
 
-            result.BeginOutputReadLine()
-            result.WaitForExit()
+let makeCommandOption prefix (argInfo: string) (argDescription: string) =
+    let descriptions =
+        argDescription.Split([| Environment.NewLine; "\n" |], StringSplitOptions.RemoveEmptyEntries) |> Seq.toList
 
-            return result.ExitCode
-        }
+    match descriptions with
+    | []
+    | [ _ ] -> sprintf "%s%-30s  %s" prefix argInfo argDescription
+    | h :: rest ->
+        let sb = StringBuilder()
+        let prefixPlaceholder = String(' ', prefix.Length)
+        let argInfoPlaceholder = String(' ', argInfo.Length)
 
-        static member StartAsyncCaptureOutput(startInfo: ProcessStartInfo, commandLogString: string, logPrefix: string) = async {
-            use result = Process.Start startInfo
-            let noPrefix = String.IsNullOrEmpty logPrefix
-            let standardOutputSb = System.Text.StringBuilder()
+        sb.AppendLine(sprintf "%s%-30s  %s" prefix argInfo (h.Trim())) |> ignore
+        for i, r in List.indexed rest do
+            let str = sprintf "%s%-30s  %s" prefixPlaceholder argInfoPlaceholder (r.Trim())
+            if i = rest.Length - 1 then
+                sb.Append(str) |> ignore
+            else
+                sb.AppendLine(str) |> ignore
+        sb.ToString()
 
-            result.OutputDataReceived.Add(fun e ->
-                standardOutputSb.Append e.Data |> ignore
-                if noPrefix then
-                    Console.WriteLine(e.Data)
-                else
-                    Console.WriteLine(logPrefix + " " + e.Data)
-            )
 
-            use! cd =
-                Async.OnCancel(fun _ ->
-                    AnsiConsole.Markup $"[yellow]{logPrefix}[/] "
+let printCommandOption prefix (argInfo: string) (argDescription: string) = printfn "%s" (makeCommandOption prefix argInfo argDescription)
 
-                    AnsiConsole.WriteLine $"{commandLogString} is cancelled or timed out and the process will be killed."
+let printHelpOptions () = printCommandOption "  " "-h, --help" "Show help and usage information"
 
-                    result.Kill()
-                )
 
-            result.BeginOutputReadLine()
-            result.WaitForExit()
+let getFsiFileName () =
+    let args = Environment.GetCommandLineArgs()
 
-            return {|
-                ExitCode = result.ExitCode
-                StandardOutput = standardOutputSb.ToString()
-            |}
-        }
+    if args.Length >= 2 && args[1].EndsWith(".fsx", StringComparison.OrdinalIgnoreCase) then
+        args[1]
+    else
+        "your_script.fsx"
+
+
+module ValueOption =
+
+    let inline defaultWithVOption (fn: unit -> 'T voption) (data: 'T voption) = if data.IsSome then data else fn ()
+
+    let inline ofOption (data: 'T option) =
+        match data with
+        | Some x -> ValueSome x
+        | _ -> ValueNone
