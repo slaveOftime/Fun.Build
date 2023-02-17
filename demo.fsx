@@ -125,6 +125,27 @@ pipeline "pipeline-verify-demo" {
 }
 
 
+pipeline "cmd-info" {
+    description "Check cmd info build style"
+    stage "" {
+        whenAny {
+            whenCmd {
+                name "-w"
+                alias "--watch"
+                description "watch cool stuff"
+            }
+            whenCmd {
+                name "run"
+                description "run cool stuff"
+                acceptValues [ "v1"; "v2" ]
+            }
+        }
+        echo "here we are"
+    }
+    runIfOnlySpecified
+}
+
+
 // This will collect command line help information for you
 // You can run: dotnet demo.fsx -- -h
 tryPrintPipelineCommandHelp ()

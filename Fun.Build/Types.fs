@@ -66,6 +66,15 @@ type PipelineContext = {
 }
 
 
+[<Struct>]
+type CmdInfo = {
+    Name: string
+    Alias: string option
+    Values: string list
+    Description: string option
+}
+
+
 type BuildPipeline = delegate of ctx: PipelineContext -> PipelineContext
 
 type BuildConditions = delegate of conditions: (StageContext -> bool) list -> (StageContext -> bool) list
@@ -75,6 +84,8 @@ type BuildStage = delegate of ctx: StageContext -> StageContext
 type BuildStageIsActive = delegate of ctx: StageContext -> bool
 
 type BuildStep = delegate of ctx: StageContext * index: StepIndex -> Async<Result<unit, string>>
+
+type BuildCmdInfo = delegate of CmdInfo -> CmdInfo
 
 
 type PipelineCancelledException(msg: string) =

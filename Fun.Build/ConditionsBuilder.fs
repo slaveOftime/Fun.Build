@@ -30,20 +30,36 @@ type StageContext with
         | Mode.Execution -> getResult ()
 
 
-    member ctx.WhenCmdArg(argKey: string, argValue: string, description) =
+    member ctx.WhenCmd(info: CmdInfo) =
         let getResult () =
-            match ctx.TryGetCmdArg argKey with
-            | ValueSome v when argValue = "" || v = argValue -> true
-            | _ -> false
+            let isValueMatch v =
+                match ctx.TryGetCmdArg v with
+                | ValueSome v when info.Values.Length = 0 || List.contains v info.Values -> true
+                | _ -> false
+            isValueMatch info.Name
+            || (
+                match info.Alias with
+                | None -> false
+                | Some alias -> isValueMatch alias
+            )
 
-        let getPrintInfo () = makeCommandOption (ctx.BuildIndent() + "cmd: ") (argKey + " = " + argValue) (defaultArg description "")
+        let makeNameAndValues () =
+            info.Name
+            + (info.Alias |> Option.map (sprintf ", %s") |> Option.defaultValue "")
+            + (
+                match info.Values with
+                | [] -> ""
+                | _ -> "  (" + String.concat ", " info.Values + ")"
+            )
+
+        let getPrintInfo () = makeCommandOption (ctx.BuildIndent() + "cmd: ") (makeNameAndValues ()) (defaultArg info.Description "")
 
         match ctx.Mode with
         | Mode.CommandHelp true ->
             AnsiConsole.WriteLine(getPrintInfo ())
             false
         | Mode.CommandHelp false ->
-            printCommandOption "  " (argKey + " = " + argValue) (defaultArg description "")
+            printCommandOption "  " (makeNameAndValues ()) (defaultArg info.Description "")
             false
         | Mode.Verification ->
             if getResult () then
@@ -52,6 +68,16 @@ type StageContext with
                 AnsiConsole.MarkupLine $"❌ [red]{getPrintInfo ()}[/]"
             false
         | Mode.Execution -> getResult ()
+
+
+    member ctx.WhenCmdArg(argKey: string, argValue: string, description) =
+        ctx.WhenCmd
+            {
+                Name = argKey
+                Alias = None
+                Description = description
+                Values = [ argValue ]
+            }
 
 
     member ctx.WhenBranch(branch: string) =
@@ -514,9 +540,41 @@ type WhenNotBuilder() =
         )
 
 
+type CmdInfoBuilder() =
+
+    member _.Run(build: BuildCmdInfo) =
+        BuildStageIsActive(fun ctx ->
+            let cmdInfo = build.Invoke { Name = ""; Alias = None; Description = None; Values = [] }
+            ctx.WhenCmd(cmdInfo)
+        )
+
+    member inline _.Yield(_: unit) = BuildCmdInfo(fun x -> x)
+    member inline _.Yield(x: BuildCmdInfo) = x
+    member inline _.Delay([<InlineIfLambda>] fn: unit -> BuildCmdInfo) = BuildCmdInfo(fun x -> fn().Invoke(x))
+
+    [<CustomOperation "name">]
+    member inline _.name([<InlineIfLambda>] build: BuildCmdInfo, x: string) = BuildCmdInfo(fun info -> { build.Invoke(info) with Name = x })
+
+    [<CustomOperation "alias">]
+    member inline _.alias([<InlineIfLambda>] build: BuildCmdInfo, x: string) = BuildCmdInfo(fun info -> { build.Invoke(info) with Alias = Some x })
+
+    [<CustomOperation "description">]
+    member inline _.description([<InlineIfLambda>] build: BuildCmdInfo, x: string) =
+        BuildCmdInfo(fun info -> { build.Invoke(info) with Description = Some x })
+
+    [<CustomOperation "value">]
+    member inline _.value([<InlineIfLambda>] build: BuildCmdInfo, x: string) = BuildCmdInfo(fun info -> { build.Invoke(info) with Values = [ x ] })
+
+    [<CustomOperation "acceptValues">]
+    member inline _.acceptValues([<InlineIfLambda>] build: BuildCmdInfo, values: string list) =
+        BuildCmdInfo(fun info -> { build.Invoke(info) with Values = values })
+
+
 /// When any of the added conditions are satisified, the stage will be active
 let whenAny = WhenAnyBuilder()
 /// When all of the added conditions are satisified, the stage will be active
 let whenAll = WhenAllBuilder()
 /// When all of the added conditions are not satisified, the stage will be active
 let whenNot = WhenNotBuilder()
+/// When the cmd is matched, the stage will be active
+let whenCmd = CmdInfoBuilder()
