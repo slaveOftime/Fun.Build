@@ -97,3 +97,10 @@ type PipelineFailedException =
 
     new(msg: string) = { inherit Exception(msg) }
     new(msg: string, ex: exn) = { inherit Exception(msg, ex) }
+
+
+type StepSoftCancelledException(msg: string) =
+    inherit Exception(msg)
+
+type StageSoftCancelledException(msg: string) =
+    inherit Exception(msg)

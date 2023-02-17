@@ -106,3 +106,40 @@ let ``RunCommandCaptureOutput should return an error if command failed`` () =
         )
     )
     |> ignore
+
+
+[<Fact>]
+let ``Soft cancel should work`` () =
+    let mutable i = 0
+    let mutable j = 0
+
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            timeout 10
+            stage "" {
+                paralle
+                run (fun _ -> async {
+                    while true do
+                        do! Async.Sleep 1000
+                })
+                run (fun ctx -> async {
+                    while true do
+                        do! Async.Sleep 1000
+                        j <- j + 1
+                        printfn $"task2 {i}"
+                        if i > 3 then ctx.SoftCancelStep()
+                })
+                run (fun ctx -> async {
+                    while true do
+                        do! Async.Sleep 1000
+                        i <- i + 1
+                        printfn $"task1 {i}"
+                        if i > 5 then ctx.SoftCancelStage()
+                })
+            }
+            stage "" { run call }
+            runImmediate
+        }
+    )
+
+    Assert.Equal(10, i + j)

@@ -172,6 +172,13 @@ type StageContext with
             Error "Exit code is not indicating as successful."
 
 
+    /// It will cancel current step but mark it as successful
+    member _.SoftCancelStep() = raise (StepSoftCancelledException "Step is soft cancelled")
+
+    /// It will cancel current stage but mark it as successful
+    member _.SoftCancelStage() = raise (StageSoftCancelledException "Stage is soft cancelled")
+
+
     /// Run the stage. If index is not provided then it will be treated as sub-stage.
     member stage.Run(index: StageIndex, cancelToken: Threading.CancellationToken) =
         let mutable isSuccess = true
@@ -189,6 +196,8 @@ type StageContext with
             let isParallel = stage.IsParallel
             let timeoutForStep = stage.GetTimeoutForStep()
             let timeoutForStage = stage.GetTimeoutForStage()
+
+            let mutable isStageSoftCancelled = false
 
             use cts = new Threading.CancellationTokenSource(timeoutForStage)
             use stepErrorCTS = new Threading.CancellationTokenSource()
@@ -247,7 +256,16 @@ type StageContext with
                         if not isSuccess then stepErrorCTS.Cancel()
                         return isSuccess
 
-                    with ex ->
+                    with
+                    | :? StepSoftCancelledException as ex ->
+                        AnsiConsole.MarkupLine $"[yellow]{prefix} {ex.Message}.[/]"
+                        return true
+                    | :? StageSoftCancelledException as ex ->
+                        AnsiConsole.MarkupLine $"[yellow]{prefix} {ex.Message}.[/]"
+                        isStageSoftCancelled <- true
+                        stepErrorCTS.Cancel()
+                        return true
+                    | ex ->
                         AnsiConsole.MarkupLine $"[red]{prefix} exception hanppened.[/]"
                         AnsiConsole.WriteException ex
                         stepExns.Add ex
@@ -284,7 +302,9 @@ type StageContext with
 
                 Async.RunSynchronously(ts, cancellationToken = linkedCTS.Token)
 
-            with ex ->
+            with
+            | _ when isStageSoftCancelled -> isSuccess <- true
+            | ex ->
                 isSuccess <- false
                 if linkedCTS.Token.IsCancellationRequested then
                     AnsiConsole.MarkupLine $"[yellow]Stage is cancelled or timeouted.[/]"
