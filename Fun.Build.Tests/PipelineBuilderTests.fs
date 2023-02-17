@@ -263,7 +263,7 @@ let ``Syntax check`` () =
             run (Async.Sleep 10)
             runSensitive $""
             run (Async.Sleep 10)
-            BuildStep(fun ctx _ -> async { return Ok() })
+            step (fun ctx _ -> async { return Ok() })
         }
     }
     |> ignore

@@ -3,7 +3,9 @@ module Fun.Build.StageBuilder
 
 open System
 open System.Threading.Tasks
-
+open Fun.Build.Internal
+open Fun.Build.StageContextExtensionsInternal
+open Fun.Build.BuiltinCmdsInternal
 
 type StageBuilder(name: string) =
 

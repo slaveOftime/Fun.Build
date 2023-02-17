@@ -9,8 +9,10 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<Compile Include="Utils.fs" />
 		<Compile Include="Types.fs" />
+		<Compile Include="Types.Internal.fs" />
+		<Compile Include="Utils.fs" />
+		<Compile Include="ProcessExtensions.fs" />
 		<Compile Include="StageContextExtensions.fs" />
 		<Compile Include="PipelineContextExtensions.fs" />
 		<Compile Include="BuiltinCmds.fs" />

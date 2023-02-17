@@ -3,8 +3,11 @@ module Fun.Build.PipelineBuilder
 
 open System
 open Spectre.Console
+open Fun.Build.Internal
+open Fun.Build.PipelineContextExtensionsInternal
 
 
+/// Used to keep registered data for later usage
 let private runIfOnlySpecifiedPipelines = System.Collections.Generic.List<PipelineContext>()
 
 

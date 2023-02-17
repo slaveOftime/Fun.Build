@@ -2,6 +2,7 @@ module Fun.Build.Tests.StageContextExtensions
 
 open Xunit
 open Fun.Build
+open Fun.Build.StageContextExtensionsInternal
 
 
 [<Fact>]

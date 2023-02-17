@@ -2,6 +2,9 @@ module Fun.Build.Tests.ConditionsBuilderTests
 
 open Xunit
 open Fun.Build
+open Fun.Build.Internal
+open Fun.Build.StageContextExtensionsInternal
+open Fun.Build.PipelineContextExtensionsInternal
 
 
 [<Fact>]
