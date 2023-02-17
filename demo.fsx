@@ -13,7 +13,7 @@ let demo1 =
         timeoutForStep 30 // You can set default timeout for step under the stage
         envVars [ "envKey", "envValue" ] // You can add or override environment variables
         // Use cmd, so we can encrypt sensitive argument for formatable string
-        cmd $"dotnet --version"
+        runSensitive $"dotnet --version"
         run (fun ctx -> cmd $"""dotnet {"--version"}""")
         // You can run command directly with a string
         run "dotnet --version"
@@ -125,9 +125,11 @@ pipeline "pipeline-verify-demo" {
 
 
 let demoCondition = whenAll {
+    // You can use whenCmd CE for more complex situation.
     whenCmd {
         name "-w"
         alias "--watch"
+        // Description can also support multiple lines
         description "watch cool stuff \n dasd asdad \n asdasd as123"
     }
     whenCmd {

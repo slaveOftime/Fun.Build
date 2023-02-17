@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.3] - 2023-02-18
+
+- Add whenCmd for more complex commandline use cases
+- Add SoftCancelStep and SoftCancelStage to the StageContext
+- Tidy up to make the default public APIs cleaner
+
 ## [0.3.2] - 2023-02-15
 
 - Add Obsolete to cmd
