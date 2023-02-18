@@ -50,6 +50,7 @@ type StageContext = {
     FailIfIgnored: bool
     NoPrefixForStep: bool
     NoStdRedirectForStep: bool
+    ShuffleExecuteSequence: bool
     ParentContext: StageParent voption
     Steps: Step list
 }

@@ -161,3 +161,22 @@ let ``custom exit code should pass for nested stage`` () =
         }
         runImmediate
     }
+
+
+[<Fact>]
+let ``shuffleExecuteSequence should work`` () =
+    let ls = System.Collections.Generic.List()
+
+    pipeline "" {
+        stage "" {
+            shuffleExecuteSequence
+            run (fun _ -> ls.Add 1)
+            run (fun _ -> ls.Add 2)
+            run (fun _ -> ls.Add 3)
+            run (fun _ -> ls.Add 4)
+            run (fun _ -> ls.Add 5)
+        }
+        runImmediate
+    }
+
+    Assert.False(List.ofSeq ls = [ 1; 2; 3; 4 ])

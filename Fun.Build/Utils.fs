@@ -64,3 +64,12 @@ module ValueOption =
         match data with
         | Some x -> ValueSome x
         | _ -> ValueNone
+
+
+module Seq =
+
+    let shuffle (seq: seq<'a>) =
+        let rnd = System.Random()
+        let arry = seq |> Seq.toArray
+        Array.sortInPlaceBy (fun _ -> rnd.Next()) arry
+        Array.toSeq arry

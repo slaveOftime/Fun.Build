@@ -173,6 +173,17 @@ type StageBuilder(name: string) =
     member inline this.noStdRedirectForStep([<InlineIfLambda>] build: BuildStage) = this.noStdRedirectForStep (build, true)
 
 
+    /// The stage will shuffle its steps executing sequence
+    [<CustomOperation("shuffleExecuteSequence")>]
+    member inline _.shuffleExecuteSequence([<InlineIfLambda>] build: BuildStage) =
+        BuildStage(fun ctx -> { build.Invoke ctx with ShuffleExecuteSequence = true })
+
+    /// If true, then the stage will shuffle its steps executing sequence
+    [<CustomOperation("shuffleExecuteSequence")>]
+    member inline _.shuffleExecuteSequence([<InlineIfLambda>] build: BuildStage, v) =
+        BuildStage(fun ctx -> { build.Invoke ctx with ShuffleExecuteSequence = v })
+
+
     /// Add a step.
     [<CustomOperation("run")>]
     member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] buildStep: StageContext -> BuildStep) =

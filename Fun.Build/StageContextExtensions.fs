@@ -23,6 +23,7 @@ module StageContextExtensionsInternal =
             FailIfIgnored = false
             NoPrefixForStep = false
             NoStdRedirectForStep = false
+            ShuffleExecuteSequence = false
             ParentContext = ValueNone
             Steps = []
         }
@@ -145,6 +146,7 @@ module StageContextExtensionsInternal =
 
                 let steps =
                     stage.Steps
+                    |> if stage.ShuffleExecuteSequence then Seq.shuffle else Seq.ofList
                     |> Seq.mapi (fun i step -> async {
                         let prefix = stage.BuildStepPrefix i
                         try
