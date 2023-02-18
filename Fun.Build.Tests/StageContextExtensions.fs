@@ -38,10 +38,7 @@ let ``noPrefixForStep should work`` () =
     let pipeline1 =
         pipeline "" {
             noPrefixForStep
-            stage "" {
-                noPrefixForStep
-                workingDir "test2"
-            }
+            stage "" { noPrefixForStep }
             stage "" { run ignore }
         }
 
@@ -50,15 +47,35 @@ let ``noPrefixForStep should work`` () =
 
     let pipeline2 =
         pipeline "" {
-            stage "" {
-                noPrefixForStep
-                workingDir "test2"
-            }
+            stage "" { noPrefixForStep }
             stage "" { run ignore }
         }
 
     Assert.Equal(true, pipeline2.Stages[0].GetNoPrefixForStep())
     Assert.Equal(false, pipeline2.Stages[1].GetNoPrefixForStep())
+
+
+[<Fact>]
+let ``noStdRedirectForStep should work`` () =
+    let pipeline1 =
+        pipeline "" {
+            noStdRedirectForStep
+            stage "" { noStdRedirectForStep }
+            stage "" { run ignore }
+        }
+
+    Assert.Equal(true, pipeline1.Stages[0].GetNoStdRedirectForStep())
+    Assert.Equal(true, pipeline1.Stages[1].GetNoStdRedirectForStep())
+
+    let pipeline2 =
+        pipeline "" {
+            stage "" { noStdRedirectForStep }
+            stage "" { run ignore }
+        }
+
+    Assert.Equal(true, pipeline2.Stages[0].GetNoStdRedirectForStep())
+    Assert.Equal(false, pipeline2.Stages[1].GetNoStdRedirectForStep())
+
 
 [<Fact>]
 let ``RunCommandCaptureOutput should work`` () =

@@ -76,8 +76,8 @@ module BuiltinCmds =
             if not noPrefixForStep then AnsiConsole.Markup $"[green]{prefix}[/] "
             AnsiConsole.MarkupLine $"{commandStr}"
 
-            let! exitCode = Process.StartAsync(command, commandStr, prefix)
-            return ctx.MapExitCodeToResult exitCode
+            let! result = Process.StartAsync(command, commandStr, prefix, printOutput = not (ctx.GetNoStdRedirectForStep()))
+            return ctx.MapExitCodeToResult result.ExitCode
         }
 
         /// <summary>
@@ -99,7 +99,7 @@ module BuiltinCmds =
             if not noPrefixForStep then AnsiConsole.Markup $"[green]{prefix}[/] "
             AnsiConsole.MarkupLine $"{commandStr}"
 
-            let! result = Process.StartAsyncCaptureOutput(command, commandStr, prefix)
+            let! result = Process.StartAsync(command, commandStr, prefix, printOutput = not (ctx.GetNoStdRedirectForStep()), captureOutput = true)
             if ctx.IsAcceptableExitCode result.ExitCode then
                 return Ok result.StandardOutput
             else
@@ -124,8 +124,8 @@ module BuiltinCmds =
             if not noPrefixForStep then AnsiConsole.Markup $"[green]{prefix}[/] "
             AnsiConsole.MarkupLine $"{encryptiedStr}"
 
-            let! exitCode = Process.StartAsync(command, encryptiedStr, prefix)
-            return ctx.MapExitCodeToResult exitCode
+            let! result = Process.StartAsync(command, encryptiedStr, prefix, printOutput = not (ctx.GetNoStdRedirectForStep()))
+            return ctx.MapExitCodeToResult result.ExitCode
         }
 
 

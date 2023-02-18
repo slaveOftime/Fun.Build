@@ -36,41 +36,23 @@ type Process with
             |> Option.defaultValue cmd
 
 
-    static member StartAsync(startInfo: ProcessStartInfo, commandLogString: string, logPrefix: string) = async {
+    static member StartAsync(startInfo: ProcessStartInfo, commandLogString: string, logPrefix: string, ?printOutput, ?captureOutput) = async {
         use result = Process.Start startInfo
         let noPrefix = String.IsNullOrEmpty logPrefix
-        result.OutputDataReceived.Add(fun e ->
-            if noPrefix then
-                Console.WriteLine(e.Data)
-            else
-                Console.WriteLine(logPrefix + " " + e.Data)
-        )
-
-        use! cd =
-            Async.OnCancel(fun _ ->
-                if not noPrefix then AnsiConsole.Markup $"[yellow]{logPrefix}[/] "
-                AnsiConsole.WriteLine $"{commandLogString} is cancelled or timed out and the process will be killed."
-                result.Kill()
-            )
-
-        result.BeginOutputReadLine()
-        result.WaitForExit()
-
-        return result.ExitCode
-    }
-
-    static member StartAsyncCaptureOutput(startInfo: ProcessStartInfo, commandLogString: string, logPrefix: string) = async {
-        use result = Process.Start startInfo
-        let noPrefix = String.IsNullOrEmpty logPrefix
+        let printOutput = defaultArg printOutput true
+        let captureOutput = defaultArg captureOutput false
+        let shouldRedirectOutput = printOutput || captureOutput
         let standardOutputSb = System.Text.StringBuilder()
 
-        result.OutputDataReceived.Add(fun e ->
-            standardOutputSb.Append e.Data |> ignore
-            if noPrefix then
-                Console.WriteLine(e.Data)
-            else
-                Console.WriteLine(logPrefix + " " + e.Data)
-        )
+        if shouldRedirectOutput then
+            result.OutputDataReceived.Add(fun e ->
+                if captureOutput then standardOutputSb.Append e.Data |> ignore
+                if printOutput then
+                    if noPrefix then
+                        Console.WriteLine(e.Data)
+                    else
+                        Console.WriteLine(logPrefix + " " + e.Data)
+            )
 
         use! cd =
             Async.OnCancel(fun _ ->
@@ -81,10 +63,11 @@ type Process with
                 result.Kill()
             )
 
-        result.BeginOutputReadLine()
+        if shouldRedirectOutput then result.BeginOutputReadLine()
+
         result.WaitForExit()
 
-        return {|
+        return struct {|
             ExitCode = result.ExitCode
             StandardOutput = standardOutputSb.ToString()
         |}

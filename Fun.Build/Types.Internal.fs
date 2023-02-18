@@ -49,6 +49,8 @@ type StageContext = {
     AcceptableExitCodes: Set<int>
     FailIfIgnored: bool
     NoPrefixForStep: bool
+    NoStdRedirectForStep: bool
+    ShuffleExecuteSequence: bool
     ParentContext: StageParent voption
     Steps: Step list
 }
@@ -68,6 +70,7 @@ type PipelineContext = {
     TimeoutForStage: TimeSpan voption
     WorkingDir: string voption
     NoPrefixForStep: bool
+    NoStdRedirectForStep: bool
     Stages: StageContext list
     PostStages: StageContext list
 }

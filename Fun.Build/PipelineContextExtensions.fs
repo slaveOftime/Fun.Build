@@ -35,6 +35,7 @@ module PipelineContextExtensionsInternal =
                 TimeoutForStage = ValueNone
                 WorkingDir = ValueNone
                 NoPrefixForStep = false
+                NoStdRedirectForStep = false
                 Stages = []
                 PostStages = []
             }
