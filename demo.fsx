@@ -137,6 +137,11 @@ let demoCondition = whenAll {
         description "run cool stuff"
         acceptValues [ "v1"; "v2" ]
     }
+    whenCmd {
+        name "run2"
+        acceptValues [ "v1"; "v2" ]
+    }
+    cmdArg "--foo"
 }
 
 pipeline "cmd-info" {
