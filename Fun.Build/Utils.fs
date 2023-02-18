@@ -3,7 +3,6 @@ module Fun.Build.Internal.Utils
 
 open System
 open System.IO
-open System.Text
 
 
 let windowsEnvPaths =
@@ -22,24 +21,21 @@ let windowsExeExts = [ "exe"; "cmd"; "bat" ]
 
 let makeCommandOption prefix (argInfo: string) (argDescription: string) =
     let descriptions =
-        argDescription.Split([| Environment.NewLine; "\n" |], StringSplitOptions.RemoveEmptyEntries) |> Seq.toList
+        argDescription.Split([| Environment.NewLine; "\n" |], StringSplitOptions.None)
+        |> Seq.filter (String.IsNullOrEmpty >> not)
+        |> Seq.toList
 
     match descriptions with
-    | []
-    | [ _ ] -> sprintf "%s%-30s  %s" prefix argInfo argDescription
+    | [] -> sprintf "%s%s" prefix argInfo
+    | [ h ] -> sprintf "%s%-30s  %s" prefix argInfo h
     | h :: rest ->
-        let sb = StringBuilder()
         let prefixPlaceholder = String(' ', prefix.Length)
         let argInfoPlaceholder = String(' ', argInfo.Length)
-
-        sb.AppendLine(sprintf "%s%-30s  %s" prefix argInfo (h.Trim())) |> ignore
-        for i, r in List.indexed rest do
-            let str = sprintf "%s%-30s  %s" prefixPlaceholder argInfoPlaceholder (r.Trim())
-            if i = rest.Length - 1 then
-                sb.Append(str) |> ignore
-            else
-                sb.AppendLine(str) |> ignore
-        sb.ToString()
+        let restFormatted =
+            rest
+            |> List.map (fun r -> sprintf "%s%-30s  %s" prefixPlaceholder argInfoPlaceholder (r.Trim()))
+            |> String.concat Environment.NewLine
+        sprintf "%s%-30s  %s%s%s" prefix argInfo (h.Trim()) Environment.NewLine restFormatted
 
 
 let printCommandOption prefix (argInfo: string) (argDescription: string) = printfn "%s" (makeCommandOption prefix argInfo argDescription)

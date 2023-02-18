@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.3.5] - 2023-02-18
+
+- Fix ConditionsBuilder order issue
+- Fix command help format
+
 ## [0.3.4] - 2023-02-18
 
 - Add noStdRedirectForStep
