@@ -63,9 +63,9 @@ pipeline "Fun.Build" {
                 whenNot { cmdArg "--not-demo" }
             }
         }
-        paralle
+        shuffleExecuteSequence // It can shuffle the sequence of steps executing sequence
         run "dotnet --version"
-        run "dotnet --version"
+        run "dotnet --list-sdks"
     }
     // You can also nest stages, the stage will be treated as a single stage for parent stage.
     stage "Demo3" {

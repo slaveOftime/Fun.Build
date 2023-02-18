@@ -24,7 +24,7 @@ Below example covered most of the apis and usage example, take it as the documen
 
 ```fsharp
 #r "nuget: Fun.Result"
-#r "nuget: Fun.Build, 0.3.3"
+#r "nuget: Fun.Build, 0.3.4"
 
 open Fun.Result
 open Fun.Build
@@ -86,9 +86,9 @@ pipeline "Fun.Build" {
                 whenNot { cmdArg "--not-demo" }
             }
         }
-        paralle
+        shuffleExecuteSequence // It can shuffle the sequence of steps executing sequence
         run "dotnet --version"
-        run "dotnet --version"
+        run "dotnet --list-sdks"
     }
     // You can also nest stages, the stage will be treated as a single stage for parent stage.
     stage "Demo3" {

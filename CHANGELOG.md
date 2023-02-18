@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.3.4] - 2023-02-18
+
+- Add noStdRedirectForStep
+- Add shuffleExecuteSequence
+
 ## [0.3.3] - 2023-02-18
 
 - Add whenCmd for more complex commandline use cases
