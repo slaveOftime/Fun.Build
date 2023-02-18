@@ -201,6 +201,16 @@ type PipelineBuilder(name: string) =
     member inline this.noPrefixForStep([<InlineIfLambda>] build: BuildPipeline) = this.noPrefixForStep (build, true)
 
 
+    /// Set if step should print external command standard output
+    [<CustomOperation("noStdRedirectForStep")>]
+    member inline _.noStdRedirectForStep([<InlineIfLambda>] build: BuildPipeline, value: bool) =
+        BuildPipeline(fun ctx -> { build.Invoke ctx with NoStdRedirectForStep = value })
+
+    /// Do not print external command standard output for step
+    [<CustomOperation("noStdRedirectForStep")>]
+    member inline this.noStdRedirectForStep([<InlineIfLambda>] build: BuildPipeline) = this.noStdRedirectForStep (build, true)
+
+
     [<CustomOperation("post")>]
     member inline _.post([<InlineIfLambda>] build: BuildPipeline, stages: StageContext list) =
         BuildPipeline(fun ctx ->

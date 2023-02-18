@@ -163,6 +163,16 @@ type StageBuilder(name: string) =
     member inline this.noPrefixForStep([<InlineIfLambda>] build: BuildStage) = this.noPrefixForStep (build, true)
 
 
+    /// Set if step should print external command standard output
+    [<CustomOperation("noStdRedirectForStep")>]
+    member inline _.noStdRedirectForStep([<InlineIfLambda>] build: BuildStage, value: bool) =
+        BuildStage(fun ctx -> { build.Invoke ctx with NoStdRedirectForStep = value })
+
+    /// Do not print external command standard output for step
+    [<CustomOperation("noStdRedirectForStep")>]
+    member inline this.noStdRedirectForStep([<InlineIfLambda>] build: BuildStage) = this.noStdRedirectForStep (build, true)
+
+
     /// Add a step.
     [<CustomOperation("run")>]
     member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] buildStep: StageContext -> BuildStep) =

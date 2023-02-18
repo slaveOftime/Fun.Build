@@ -22,6 +22,7 @@ module StageContextExtensionsInternal =
             AcceptableExitCodes = set [| 0 |]
             FailIfIgnored = false
             NoPrefixForStep = false
+            NoStdRedirectForStep = false
             ParentContext = ValueNone
             Steps = []
         }
@@ -51,6 +52,14 @@ module StageContextExtensionsInternal =
             | _ when ctx.NoPrefixForStep -> ctx.NoPrefixForStep
             | ValueSome(StageParent.Stage s) -> s.GetNoPrefixForStep()
             | ValueSome(StageParent.Pipeline p) -> p.NoPrefixForStep
+
+
+        member ctx.GetNoStdRedirectForStep() =
+            match ctx.ParentContext with
+            | ValueNone -> ctx.NoStdRedirectForStep
+            | _ when ctx.NoStdRedirectForStep -> true
+            | ValueSome(StageParent.Stage s) -> s.GetNoStdRedirectForStep()
+            | ValueSome(StageParent.Pipeline p) -> p.NoStdRedirectForStep
 
 
         member ctx.BuildEnvVars() =

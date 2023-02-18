@@ -143,8 +143,10 @@ pipeline "cmd-info" {
     description "Check cmd info build style"
     demoCondition
     stage "" {
+        noStdRedirectForStep
         demoCondition
         echo "here we are"
+        run "dotnet --list-sdks"
     }
     runIfOnlySpecified
 }
