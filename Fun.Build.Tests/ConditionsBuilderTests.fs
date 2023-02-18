@@ -273,3 +273,27 @@ let ``acceptExitCodes should override exit codes in stage`` () =
 
     let codes = stage.AcceptableExitCodes |> Seq.toArray
     Assert.Equal<int array>([| 4; 5; 6 |], codes)
+
+
+[<Fact>]
+let ``condition builder should follow the sequence`` () =
+    let ls = System.Collections.Generic.List()
+
+    let condition = whenAll {
+        BuildStageIsActive(fun _ ->
+            ls.Add(1)
+            false
+        )
+        BuildStageIsActive(fun _ ->
+            ls.Add(2)
+            true
+        )
+    }
+
+    { StageContext.Create "" with
+        ParentContext = PipelineContext.Create "" |> StageParent.Pipeline |> ValueSome
+    }
+    |> condition.Invoke
+    |> Assert.False
+
+    Assert.Equal<int>([ 1; 2 ], ls)

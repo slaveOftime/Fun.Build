@@ -1,6 +1,7 @@
 ﻿[<AutoOpen>]
 module Fun.Build.ConditionsBuilder
 
+open System
 open System.Diagnostics
 open System.Runtime.InteropServices
 open Spectre.Console
@@ -55,7 +56,7 @@ module Internal =
             let makeValuesForPrint () =
                 match info.Values with
                 | [] -> ""
-                | _ -> "\n[[choices: " + String.concat ", " (info.Values |> Seq.map (sprintf "\"%s\"")) + "]]"
+                | _ -> Environment.NewLine + "[[choices: " + String.concat ", " (info.Values |> Seq.map (sprintf "\"%s\"")) + "]]"
 
             let getPrintInfo (prefix: string) =
                 makeCommandOption
@@ -85,7 +86,9 @@ module Internal =
                     Name = argKey
                     Alias = None
                     Description = description
-                    Values = [ argValue ]
+                    Values = [
+                        if String.IsNullOrEmpty argValue |> not then argValue
+                    ]
                 }
 
 
@@ -147,14 +150,14 @@ type ConditionsBuilder() =
 
 
     member inline _.Combine([<InlineIfLambda>] buildStageIsActive: BuildStageIsActive, [<InlineIfLambda>] builder: BuildConditions) =
-        BuildConditions(fun conditions -> builder.Invoke(conditions) @ [ buildStageIsActive.Invoke ])
+        BuildConditions(fun conditions -> [ buildStageIsActive.Invoke ] @ builder.Invoke(conditions))
 
 
     member inline _.For([<InlineIfLambda>] builder: BuildConditions, [<InlineIfLambda>] fn: unit -> BuildConditions) =
         BuildConditions(fun conds -> fn().Invoke(builder.Invoke(conds)))
 
-    member inline _.For([<InlineIfLambda>] builder: BuildConditions, [<InlineIfLambda>] fn: unit -> BuildStageIsActive) =
-        BuildConditions(fun conds -> builder.Invoke(conds) @ [ fn().Invoke ])
+    member inline this.For([<InlineIfLambda>] builder: BuildConditions, [<InlineIfLambda>] fn: unit -> BuildStageIsActive) =
+        this.Combine(fn (), builder)
 
 
     [<CustomOperation("envVar")>]
