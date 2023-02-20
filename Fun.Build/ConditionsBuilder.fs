@@ -22,7 +22,11 @@ module Internal =
                 | ValueSome v when envValue = "" || v = envValue -> true
                 | _ -> false
 
-            let getPrintInfo () = makeCommandOption (ctx.BuildIndent() + "env: ") (envKey + " = " + envValue) (defaultArg description "")
+            let getPrintInfo () =
+                makeCommandOption
+                    (ctx.BuildIndent() + "env: ")
+                    (envKey + if String.IsNullOrEmpty envValue then "" else " = " + envValue)
+                    (defaultArg description "")
 
             match ctx.GetMode() with
             | Mode.CommandHelp true ->
