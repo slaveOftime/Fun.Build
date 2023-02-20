@@ -24,7 +24,7 @@ Below example covered most of the apis and usage example, take it as the documen
 
 ```fsharp
 #r "nuget: Fun.Result"
-#r "nuget: Fun.Build, 0.3.4"
+#r "nuget: Fun.Build, 0.3.6"
 
 open Fun.Result
 open Fun.Build

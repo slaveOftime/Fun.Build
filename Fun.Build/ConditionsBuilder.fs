@@ -22,18 +22,22 @@ module Internal =
                 | ValueSome v when envValue = "" || v = envValue -> true
                 | _ -> false
 
-            let getPrintInfo () = makeCommandOption (ctx.BuildIndent() + "env: ") (envKey + " = " + envValue) (defaultArg description "")
+            let getPrintInfo (prefix: string) =
+                makeCommandOption
+                    (prefix + "env: ")
+                    (envKey + if String.IsNullOrEmpty envValue then "" else " = " + envValue)
+                    (defaultArg description "")
 
             match ctx.GetMode() with
             | Mode.CommandHelp true ->
-                AnsiConsole.WriteLine(getPrintInfo ())
+                AnsiConsole.WriteLine(getPrintInfo (ctx.BuildIndent()))
                 false
             | Mode.CommandHelp false -> true
             | Mode.Verification ->
                 if getResult () then
-                    AnsiConsole.WriteLine("✅ " + getPrintInfo ())
+                    AnsiConsole.MarkupLine($"[green]✓ {getPrintInfo (ctx.BuildIndent().Substring(2))}[/]")
                 else
-                    AnsiConsole.MarkupLine $"❌ [red]{getPrintInfo ()}[/]"
+                    AnsiConsole.MarkupLine $"[red]✕ {getPrintInfo (ctx.BuildIndent().Substring(2))}[/]"
                 false
             | Mode.Execution -> getResult ()
 
@@ -58,24 +62,22 @@ module Internal =
                 | [] -> ""
                 | _ -> Environment.NewLine + "[[choices: " + String.concat ", " (info.Values |> Seq.map (sprintf "\"%s\"")) + "]]"
 
+
             let getPrintInfo (prefix: string) =
-                makeCommandOption
-                    (prefix + ctx.BuildIndent() + "cmd: ")
-                    (makeNameForPrint ())
-                    (defaultArg info.Description "" + makeValuesForPrint ())
+                makeCommandOption (prefix + "cmd: ") (makeNameForPrint ()) (defaultArg info.Description "" + makeValuesForPrint ())
 
             match ctx.GetMode() with
             | Mode.CommandHelp true ->
-                AnsiConsole.MarkupLine(getPrintInfo "")
+                AnsiConsole.MarkupLine(getPrintInfo (ctx.BuildIndent()))
                 false
             | Mode.CommandHelp false ->
                 AnsiConsole.MarkupLine(makeCommandOption "  " (makeNameForPrint ()) (defaultArg info.Description "" + makeValuesForPrint ()))
                 false
             | Mode.Verification ->
                 if getResult () then
-                    AnsiConsole.MarkupLine $"""[green]{getPrintInfo "✓ "}[/]"""
+                    AnsiConsole.MarkupLine $"""[green]{getPrintInfo ("✓ " + ctx.BuildIndent().Substring(2))}[/]"""
                 else
-                    AnsiConsole.MarkupLine $"""[red]{getPrintInfo "✕ "}[/]"""
+                    AnsiConsole.MarkupLine $"""[red]{getPrintInfo ("✕ " + ctx.BuildIndent().Substring(2))}[/]"""
                 false
             | Mode.Execution -> getResult ()
 
@@ -112,9 +114,9 @@ module Internal =
                 false
             | Mode.Verification ->
                 if getResult () then
-                    AnsiConsole.MarkupLine $"✅ {ctx.BuildIndent()}when branch is [green]{branch}[/]"
+                    AnsiConsole.MarkupLine $"[green]✓ [/]{ctx.BuildIndent().Substring(2)}when branch is [green]{branch}[/]"
                 else
-                    AnsiConsole.MarkupLine $"❌ {ctx.BuildIndent()}[red]when branch is {branch}[/]"
+                    AnsiConsole.MarkupLine $"[red]✕ [/]{ctx.BuildIndent().Substring(2)}when branch is [red]{branch}[/]"
                 false
             | Mode.Execution -> getResult ()
 
@@ -129,9 +131,9 @@ module Internal =
             | Mode.CommandHelp false -> true
             | Mode.Verification ->
                 if getResult () then
-                    AnsiConsole.MarkupLine $"✅ {ctx.BuildIndent()}when platform is [green]{platform}[/]"
+                    AnsiConsole.MarkupLine $"[green]✓ [/]{ctx.BuildIndent().Substring(2)}when platform is [green]{platform}[/]"
                 else
-                    AnsiConsole.MarkupLine $"❌ {ctx.BuildIndent()}[red]when platform is {platform}[/]"
+                    AnsiConsole.MarkupLine $"[red]✕ [/]{ctx.BuildIndent().Substring(2)}when platform is [red]{platform}[/]"
                 false
             | Mode.Execution -> getResult ()
 

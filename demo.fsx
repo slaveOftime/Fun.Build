@@ -124,32 +124,36 @@ pipeline "pipeline-verify-demo" {
 }
 
 
-let demoCondition = whenAll {
-    // You can use whenCmd CE for more complex situation.
-    whenCmd {
-        name "-w"
-        alias "--watch"
-        // Description can also support multiple lines
-        description "watch cool stuff \n dasd asdad \n asdasd as123"
-    }
-    whenCmd {
-        name "run"
-        description "run cool stuff"
-        acceptValues [ "v1"; "v2" ]
-    }
-    whenCmd {
-        name "run2"
-        acceptValues [ "v1"; "v2" ]
-    }
-    cmdArg "--foo"
-}
-
 pipeline "cmd-info" {
     description "Check cmd info build style"
-    demoCondition
-    stage "" {
+    stage "condition demo" {
         noStdRedirectForStep
-        demoCondition
+        failIfIgnored
+        whenAll {
+            // You can use whenCmd CE for more complex situation.
+            whenCmd {
+                name "-w"
+                alias "--watch"
+                // Description can also support multiple lines
+                description "watch cool stuff \n dasd asdad \n asdasd as123"
+            }
+            whenCmd {
+                name "run"
+                description "run cool stuff"
+                acceptValues [ "v1"; "v2" ]
+            }
+            whenCmd {
+                name "run2"
+                acceptValues [ "v1"; "v2" ]
+            }
+            whenAny {
+                cmdArg "--foo"
+                envVar "--bar"
+                platformLinux
+                platformWindows
+                branch "master"
+            }
+        }
         echo "here we are"
         run "dotnet --list-sdks"
     }

@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.3.6] - 2023-02-20
+
+- Improve help printing for env condition
+- Print detail info when stage is ignored but user mark it FailIfIgnored
+
 ## [0.3.5] - 2023-02-18
 
 - Fix ConditionsBuilder order issue

@@ -114,8 +114,17 @@ module StageContextExtensionsInternal =
             let namePath = stage.GetNamePath()
 
             if not isActive && stage.FailIfIgnored then
-                isSuccess <- false
-                stepExns.Add(exn $"Stage ({stage.GetNamePath()}) cannot be ignored (inactive)")
+                let msg = $"Stage ({stage.GetNamePath()}) cannot be ignored (inactive)"
+                AnsiConsole.MarkupLine $"[red]{msg}[/]"
+                let verifyStage =
+                    { stage with
+                        ParentContext =
+                            match stage.ParentContext with
+                            | ValueSome(StageParent.Pipeline p) -> ValueSome(StageParent.Pipeline { p with Mode = Mode.Verification })
+                            | x -> x
+                    }
+                stage.IsActive(verifyStage) |> ignore
+                raise (PipelineFailedException msg)
 
             else if isActive then
                 let stageSW = Stopwatch.StartNew()
