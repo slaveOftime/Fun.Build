@@ -141,6 +141,15 @@ module Internal =
 open Internal
 
 
+type StageContext with
+
+    member ctx.IsOSX = ctx.WhenPlatform(OSPlatform.OSX)
+    member ctx.IsLinux = ctx.WhenPlatform(OSPlatform.Linux)
+    member ctx.IsWindows = ctx.WhenPlatform(OSPlatform.Windows)
+
+    member ctx.IsBranch(branch) = ctx.WhenBranch(branch)
+
+
 type ConditionsBuilder() =
 
     member inline _.Yield(_: unit) = BuildConditions(fun x -> x)
