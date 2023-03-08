@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.7] - 2023-03-08
+
+- Change NoPrefixForStep default to true, because it is a little verbose
+- Expose some helper apis for conditions with StageContext
+- Improve markup print
+
 ## [0.3.6] - 2023-02-20
 
 - Improve help printing for env condition

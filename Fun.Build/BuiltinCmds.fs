@@ -74,7 +74,7 @@ module BuiltinCmds =
                     | None -> ctx.GetNamePath()
 
             if not noPrefixForStep then AnsiConsole.Markup $"[green]{prefix}[/] "
-            AnsiConsole.MarkupLine $"{commandStr}"
+            AnsiConsole.WriteLine commandStr
 
             let! result = Process.StartAsync(command, commandStr, prefix, printOutput = not (ctx.GetNoStdRedirectForStep()))
             return ctx.MapExitCodeToResult result.ExitCode
@@ -97,7 +97,7 @@ module BuiltinCmds =
                     | None -> ctx.GetNamePath()
 
             if not noPrefixForStep then AnsiConsole.Markup $"[green]{prefix}[/] "
-            AnsiConsole.MarkupLine $"{commandStr}"
+            AnsiConsole.WriteLine commandStr
 
             let! result = Process.StartAsync(command, commandStr, prefix, printOutput = not (ctx.GetNoStdRedirectForStep()), captureOutput = true)
             if ctx.IsAcceptableExitCode result.ExitCode then
@@ -122,7 +122,7 @@ module BuiltinCmds =
                     | None -> ctx.GetNamePath()
 
             if not noPrefixForStep then AnsiConsole.Markup $"[green]{prefix}[/] "
-            AnsiConsole.MarkupLine $"{encryptiedStr}"
+            AnsiConsole.WriteLine encryptiedStr
 
             let! result = Process.StartAsync(command, encryptiedStr, prefix, printOutput = not (ctx.GetNoStdRedirectForStep()))
             return ctx.MapExitCodeToResult result.ExitCode
@@ -133,13 +133,13 @@ module BuiltinCmds =
             let noPrefixForStep = ctx.GetNoPrefixForStep()
 
             if noPrefixForStep then
-                AnsiConsole.MarkupLine $"Open {url} in browser"
+                AnsiConsole.WriteLine $"Open {url} in browser"
             else
                 let prefix =
                     match step with
                     | Some i -> ctx.BuildStepPrefix i
                     | None -> ctx.GetNamePath()
-                AnsiConsole.MarkupLine $"{prefix} Open {url} in browser"
+                AnsiConsole.WriteLine $"{prefix} Open {url} in browser"
 
             try
                 Process.Start(url) |> ignore

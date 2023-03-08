@@ -34,7 +34,7 @@ module PipelineContextExtensionsInternal =
                 TimeoutForStep = ValueNone
                 TimeoutForStage = ValueNone
                 WorkingDir = ValueNone
-                NoPrefixForStep = false
+                NoPrefixForStep = true
                 NoStdRedirectForStep = false
                 Stages = []
                 PostStages = []
@@ -91,7 +91,7 @@ module PipelineContextExtensionsInternal =
             if String.IsNullOrEmpty this.Name |> not then
                 let title = FigletText this.Name
                 title.LeftJustified() |> ignore
-                title.Color <- Color.Red
+                title.Color <- Color.Lime
                 AnsiConsole.Write title
 
 
@@ -107,7 +107,7 @@ module PipelineContextExtensionsInternal =
 
             let timeoutForPipeline = this.Timeout |> ValueOption.map (fun x -> int x.TotalMilliseconds) |> ValueOption.defaultValue -1
 
-            AnsiConsole.MarkupLine $"[bold lime]Run PIPELINE {this.Name}[/]. Total timeout: {timeoutForPipeline}ms."
+            AnsiConsole.MarkupLineInterpolated $"Run PIPELINE [bold lime]{this.Name}[/]. Total timeout: {timeoutForPipeline}ms."
             AnsiConsole.WriteLine()
 
 
@@ -152,7 +152,7 @@ module PipelineContextExtensionsInternal =
             let exitText = if cts.IsCancellationRequested then "canncelled" else "finished"
 
 
-            AnsiConsole.MarkupLine $"""PIPELINE [bold {color}]{this.Name}[/] is {exitText} in {sw.ElapsedMilliseconds} ms"""
+            AnsiConsole.MarkupLineInterpolated $"""PIPELINE [bold {color}]{this.Name}[/] is {exitText} in {sw.ElapsedMilliseconds} ms"""
             AnsiConsole.WriteLine()
 
 
@@ -180,9 +180,9 @@ module PipelineContextExtensionsInternal =
             AnsiConsole.MarkupLine $"Description:"
 
             if verbose then
-                AnsiConsole.MarkupLine $"  Pipeline [green]{pipeline.Name}[/] (stages execution options/conditions)"
+                AnsiConsole.MarkupLineInterpolated $"  Pipeline [green]{pipeline.Name}[/] (stages execution options/conditions)"
             else
-                AnsiConsole.MarkupLine $"  Pipeline [green]{pipeline.Name}[/] (command only help information)"
+                AnsiConsole.MarkupLineInterpolated $"  Pipeline [green]{pipeline.Name}[/] (command only help information)"
 
             match pipeline.Description with
             | ValueNone -> ()
@@ -201,7 +201,8 @@ module PipelineContextExtensionsInternal =
                 AnsiConsole.WriteLine "Options(collected from stages):"
 
             let rec run (stage: StageContext) =
-                if verbose then AnsiConsole.MarkupLine $"  [grey]{stage.GetNamePath()}[/]"
+                if verbose then
+                    AnsiConsole.MarkupLineInterpolated $"  [grey]{stage.GetNamePath()}[/]"
 
                 if stage.IsActive stage && verbose then
                     AnsiConsole.Console.MarkupLine $"{stage.BuildIndent()}[grey]no options/conditions[/]"
