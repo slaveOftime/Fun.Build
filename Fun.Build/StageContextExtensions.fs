@@ -83,7 +83,7 @@ module StageContextExtensionsInternal =
             vars |> Seq.map (fun (KeyValue(k, v)) -> k, v) |> Map.ofSeq
 
 
-        member inline ctx.BuildStepPrefix(i: int) = sprintf "%s/step-%d>" (ctx.GetNamePath()) i
+        member inline ctx.BuildStepPrefix(i: int) = sprintf "%s/step-%s>" (ctx.GetNamePath()) (string i)
 
         member ctx.BuildIndent() = String(' ', ctx.GetNamePath().Length - ctx.Name.Length + 4)
 
@@ -115,7 +115,7 @@ module StageContextExtensionsInternal =
 
             if not isActive && stage.FailIfIgnored then
                 let msg = $"Stage ({stage.GetNamePath()}) cannot be ignored (inactive)"
-                AnsiConsole.MarkupLine $"[red]{msg}[/]"
+                AnsiConsole.MarkupLineInterpolated $"[red]{msg}[/]"
                 let verifyStage =
                     { stage with
                         ParentContext =
@@ -160,7 +160,7 @@ module StageContextExtensionsInternal =
                         let prefix = stage.BuildStepPrefix i
                         try
                             let sw = Stopwatch.StartNew()
-                            AnsiConsole.MarkupLine $"""[turquoise4]{prefix} started{if isParallel then " in parallel -->" else ""}[/]"""
+                            AnsiConsole.MarkupLineInterpolated $"""[turquoise4]{prefix} started{if isParallel then " in parallel -->" else ""}[/]"""
 
                             let! isSuccess =
                                 match step with
@@ -169,9 +169,9 @@ module StageContextExtensionsInternal =
                                     | Error e ->
                                         if String.IsNullOrEmpty e |> not then
                                             if stage.GetNoPrefixForStep() then
-                                                AnsiConsole.MarkupLine $"""[red]{e}[/]"""
+                                                AnsiConsole.MarkupLineInterpolated $"""[red]{e}[/]"""
                                             else
-                                                AnsiConsole.MarkupLine $"""{prefix} error: [red]{e}[/]"""
+                                                AnsiConsole.MarkupLineInterpolated $"""{prefix} error: [red]{e}[/]"""
                                         return false
                                     | Ok _ -> return true
                                   }
@@ -185,7 +185,7 @@ module StageContextExtensionsInternal =
                                     return isSuccess
                                   }
 
-                            AnsiConsole.MarkupLine
+                            AnsiConsole.MarkupLineInterpolated
                                 $"""[turquoise4]{prefix} finished{if isParallel then " in parallel." else "."} {sw.ElapsedMilliseconds}ms.[/]"""
                             AnsiConsole.WriteLine()
 
@@ -194,15 +194,15 @@ module StageContextExtensionsInternal =
 
                         with
                         | :? StepSoftCancelledException as ex ->
-                            AnsiConsole.MarkupLine $"[yellow]{prefix} {ex.Message}.[/]"
+                            AnsiConsole.MarkupLineInterpolated $"[yellow]{prefix} {ex.Message}.[/]"
                             return true
                         | :? StageSoftCancelledException as ex ->
-                            AnsiConsole.MarkupLine $"[yellow]{prefix} {ex.Message}.[/]"
+                            AnsiConsole.MarkupLineInterpolated $"[yellow]{prefix} {ex.Message}.[/]"
                             isStageSoftCancelled <- true
                             stepErrorCTS.Cancel()
                             return true
                         | ex ->
-                            AnsiConsole.MarkupLine $"[red]{prefix} exception hanppened.[/]"
+                            AnsiConsole.MarkupLineInterpolated $"[red]{prefix} exception hanppened.[/]"
                             AnsiConsole.WriteException ex
                             stepExns.Add ex
                             stepErrorCTS.Cancel()
@@ -246,7 +246,7 @@ module StageContextExtensionsInternal =
                         AnsiConsole.MarkupLine $"[yellow]Stage is cancelled or timeouted.[/]"
                         AnsiConsole.WriteLine()
                     else
-                        AnsiConsole.MarkupLine $"[red]Stage's step is failed: {ex.Message}[/]"
+                        AnsiConsole.MarkupLine $"[red]Stage's step is failed[/]"
                         AnsiConsole.WriteException ex
                         AnsiConsole.WriteLine()
 

@@ -35,9 +35,9 @@ module Internal =
             | Mode.CommandHelp false -> true
             | Mode.Verification ->
                 if getResult () then
-                    AnsiConsole.MarkupLine($"[green]✓ {getPrintInfo (ctx.BuildIndent().Substring(2))}[/]")
+                    AnsiConsole.MarkupLineInterpolated($"[green]✓ {getPrintInfo (ctx.BuildIndent().Substring(2))}[/]")
                 else
-                    AnsiConsole.MarkupLine $"[red]✕ {getPrintInfo (ctx.BuildIndent().Substring(2))}[/]"
+                    AnsiConsole.MarkupLineInterpolated($"[red]✕ {getPrintInfo (ctx.BuildIndent().Substring(2))}[/]")
                 false
             | Mode.Execution -> getResult ()
 
@@ -68,16 +68,16 @@ module Internal =
 
             match ctx.GetMode() with
             | Mode.CommandHelp true ->
-                AnsiConsole.MarkupLine(getPrintInfo (ctx.BuildIndent()))
+                AnsiConsole.WriteLine(getPrintInfo (ctx.BuildIndent()))
                 false
             | Mode.CommandHelp false ->
-                AnsiConsole.MarkupLine(makeCommandOption "  " (makeNameForPrint ()) (defaultArg info.Description "" + makeValuesForPrint ()))
+                AnsiConsole.WriteLine(makeCommandOption "  " (makeNameForPrint ()) (defaultArg info.Description "" + makeValuesForPrint ()))
                 false
             | Mode.Verification ->
                 if getResult () then
-                    AnsiConsole.MarkupLine $"""[green]{getPrintInfo ("✓ " + ctx.BuildIndent().Substring(2))}[/]"""
+                    AnsiConsole.MarkupLineInterpolated $"""[green]{getPrintInfo ("✓ " + ctx.BuildIndent().Substring(2))}[/]"""
                 else
-                    AnsiConsole.MarkupLine $"""[red]{getPrintInfo ("✕ " + ctx.BuildIndent().Substring(2))}[/]"""
+                    AnsiConsole.MarkupLineInterpolated $"""[red]{getPrintInfo ("✕ " + ctx.BuildIndent().Substring(2))}[/]"""
                 false
             | Mode.Execution -> getResult ()
 
@@ -104,19 +104,19 @@ module Internal =
                     result.WaitForExit()
                     result.StandardOutput.ReadLine() = branch
                 with ex ->
-                    AnsiConsole.MarkupLine $"[red]Run git to get branch info failed: {ex.Message}[/]"
+                    AnsiConsole.MarkupLineInterpolated $"[red]Run git to get branch info failed: {ex.Message}[/]"
                     false
 
             match ctx.GetMode() with
             | Mode.CommandHelp verbose ->
                 if verbose then
-                    AnsiConsole.MarkupLine $"{ctx.BuildIndent()}when branch is [green]{branch}[/]"
+                    AnsiConsole.MarkupLineInterpolated $"{ctx.BuildIndent()}when branch is [green]{branch}[/]"
                 false
             | Mode.Verification ->
                 if getResult () then
-                    AnsiConsole.MarkupLine $"[green]✓ [/]{ctx.BuildIndent().Substring(2)}when branch is [green]{branch}[/]"
+                    AnsiConsole.MarkupLineInterpolated $"[green]✓ [/]{ctx.BuildIndent().Substring(2)}when branch is [green]{branch}[/]"
                 else
-                    AnsiConsole.MarkupLine $"[red]✕ [/]{ctx.BuildIndent().Substring(2)}when branch is [red]{branch}[/]"
+                    AnsiConsole.MarkupLineInterpolated $"[red]✕ [/]{ctx.BuildIndent().Substring(2)}when branch is [red]{branch}[/]"
                 false
             | Mode.Execution -> getResult ()
 
