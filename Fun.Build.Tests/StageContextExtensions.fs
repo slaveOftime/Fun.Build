@@ -37,22 +37,22 @@ let ``workingDir should work`` () =
 let ``noPrefixForStep should work`` () =
     let pipeline1 =
         pipeline "" {
-            noPrefixForStep
-            stage "" { noPrefixForStep }
+            noPrefixForStep false
+            stage "" { noPrefixForStep false }
             stage "" { run ignore }
         }
 
-    Assert.Equal(true, pipeline1.Stages[0].GetNoPrefixForStep())
-    Assert.Equal(true, pipeline1.Stages[1].GetNoPrefixForStep())
+    Assert.Equal(false, pipeline1.Stages[0].GetNoPrefixForStep())
+    Assert.Equal(false, pipeline1.Stages[1].GetNoPrefixForStep())
 
     let pipeline2 =
         pipeline "" {
-            stage "" { noPrefixForStep }
+            stage "" { noPrefixForStep false }
             stage "" { run ignore }
         }
 
-    Assert.Equal(true, pipeline2.Stages[0].GetNoPrefixForStep())
-    Assert.Equal(false, pipeline2.Stages[1].GetNoPrefixForStep())
+    Assert.Equal(false, pipeline2.Stages[0].GetNoPrefixForStep())
+    Assert.Equal(true, pipeline2.Stages[1].GetNoPrefixForStep())
 
 
 [<Fact>]

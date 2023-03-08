@@ -50,7 +50,7 @@ module StageContextExtensionsInternal =
         member ctx.GetNoPrefixForStep() =
             match ctx.ParentContext with
             | ValueNone -> ctx.NoPrefixForStep
-            | _ when ctx.NoPrefixForStep -> ctx.NoPrefixForStep
+            | _ when not ctx.NoPrefixForStep -> ctx.NoPrefixForStep
             | ValueSome(StageParent.Stage s) -> s.GetNoPrefixForStep()
             | ValueSome(StageParent.Pipeline p) -> p.NoPrefixForStep
 
