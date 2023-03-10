@@ -18,13 +18,44 @@ Every **step** is just a **async<Result<unit, string>>**, string is for the erro
 - Generate command line help information automatically
 
 
+## Minimal example and conventions
+
+```fsharp
+#r "nuget: Fun.Build, 0.3.7"
+open Fun.Build
+
+pipeline "demo" {
+    // configuration for pipeline itself goes first, like timeout, description etc.
+    description "xxxx"
+    
+    // stages goes here
+    stage "foo" {
+        // configuration for stage itself goes first
+        paralle     
+        // steps or nested stages goes here
+        run ...
+    }
+    
+    // post stages goes here if you have any
+    // post []
+    
+    // For script command usage, you can add below helper 
+    runIfOnlySpecified
+}
+
+// For script command usage, you can add below helper
+// You can run: dotnet demo.fsx -- -h
+tryPrintPipelineCommandHelp ()
+```
+
+
 ## Example:
 
 Below example covered most of the apis and usage example, take it as the documents😊:
 
 ```fsharp
 #r "nuget: Fun.Result"
-#r "nuget: Fun.Build, 0.3.6"
+#r "nuget: Fun.Build, 0.3.7"
 
 open Fun.Result
 open Fun.Build
