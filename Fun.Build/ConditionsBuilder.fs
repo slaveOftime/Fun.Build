@@ -60,7 +60,7 @@ module Internal =
             let makeValuesForPrint () =
                 match info.Values with
                 | [] -> ""
-                | _ -> Environment.NewLine + "[[choices: " + String.concat ", " (info.Values |> Seq.map (sprintf "\"%s\"")) + "]]"
+                | _ -> Environment.NewLine + "[choices: " + String.concat ", " (info.Values |> Seq.map (sprintf "\"%s\"")) + "]"
 
 
             let getPrintInfo (prefix: string) =
