@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.8] - 2023-03-27
+
+- Make case insensitive for run specified pipeline
+- Print error message when specified pipeline is not found
+- Fix printing command information for choices
+
 ## [0.3.7] - 2023-03-08
 
 - Change NoPrefixForStep default to true, because it is a little verbose
