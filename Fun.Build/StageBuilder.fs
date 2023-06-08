@@ -222,6 +222,17 @@ type StageBuilder(name: string) =
     member _.run(build: BuildStage, step: StageContext -> Async<string>) = BuildStage(fun ctx -> build.Invoke(ctx).AddCommandStep(step))
 
 
+    /// Add a step to run command. This will encrypt information which is provided as formattable arguments when print to console.
+    [<CustomOperation("runSensitive")>]
+    member inline _.runSensitive([<InlineIfLambda>] build: BuildStage, command: FormattableString) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with
+                Steps = ctx.Steps @ [ Step.StepFn(fun (ctx, step) -> ctx.RunSensitiveCommand(command, step)) ]
+            }
+        )
+
+
     /// Add a step to run a async.
     [<CustomOperation("run")>]
     member inline _.run([<InlineIfLambda>] build: BuildStage, step: Async<unit>) =

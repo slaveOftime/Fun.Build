@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.3.9] - 2023-06-08
+
+Move runSensitive as a CE operator from BuildinCmds
+
 ## [0.3.8] - 2023-03-27
 
 - Make case insensitive for run specified pipeline

@@ -13,7 +13,7 @@ let demo1 =
         timeoutForStep 30 // You can set default timeout for step under the stage
         envVars [ "envKey", "envValue" ] // You can add or override environment variables
         // Use cmd, so we can encrypt sensitive argument for formatable string
-        runSensitive $"dotnet --version"
+        runSensitive ($"""dotnet {"--version"}""")
         run (fun ctx -> ctx.RunSensitiveCommand $"""dotnet {"--version"}""")
         // You can run command directly with a string
         run "dotnet --version"

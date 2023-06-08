@@ -164,8 +164,5 @@ module BuiltinCmds =
     [<Obsolete("Please use runSensitive instead")>]
     let cmd (commandStr: FormattableString) = BuildStep(fun ctx i -> ctx.RunSensitiveCommand(commandStr, i))
 
-    /// Create a command with a formattable string which will encode the arguments as * when print to console.
-    let runSensitive (commandStr: FormattableString) = BuildStep(fun ctx i -> ctx.RunSensitiveCommand(commandStr, i))
-
     /// Open url in browser
     let openBrowser (url: string) = BuildStep(fun ctx i -> ctx.OpenBrowser(url, i))
