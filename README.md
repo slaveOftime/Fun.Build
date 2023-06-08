@@ -1,7 +1,5 @@
 # Fun.Build [![Nuget](https://img.shields.io/nuget/vpre/Fun.Build)](https://www.nuget.org/packages/Fun.Build)
 
-<p style="color: red;">Current it is under development, use it carefully</p>
-
 This is a project mainly used for CICD, you can use it in a fsharp project or as a script. You can check the **build.fsx** or **demo.fsx** under the root folder to check how the Fun.Build project itself is built and published to nuget.
 
 The basic idea is you have **pipeline** which can contain multiple stages.  
@@ -21,7 +19,7 @@ Every **step** is just a **async<Result<unit, string>>**, string is for the erro
 ## Minimal example and conventions
 
 ```fsharp
-#r "nuget: Fun.Build, 0.3.8"
+#r "nuget: Fun.Build, 0.3.9"
 open Fun.Build
 
 pipeline "demo" {
@@ -49,16 +47,31 @@ tryPrintPipelineCommandHelp ()
 ```
 
 
+## Print command line help information
+
+You can call **tryPrintPipelineCommandHelp ()** at the end of your script to get some help infomation.  
+Then you can run below command to get the help info: 
+```bash
+dotnet fsi build.fsx -- -h
+```
+
+You can also run below command without call **tryPrintPipelineCommandHelp** to get help info for  pipeline which is set with **runIfOnlySpecified**:
+```bash 
+dotnet fsi build.fsx -- -p your_pipeline -h
+```
+
+
 ## Example:
 
 Below example covered most of the apis and usage example, take it as the documents😊:
 
 ```fsharp
 #r "nuget: Fun.Result"
-#r "nuget: Fun.Build, 0.3.8"
+#r "nuget: Fun.Build, 0.3.9"
 
 open Fun.Result
 open Fun.Build
+
 
 // You can create a stage and reuse it in any pipeline or nested stages
 let demo1 =
@@ -67,7 +80,7 @@ let demo1 =
         timeoutForStep 30 // You can set default timeout for step under the stage
         envVars [ "envKey", "envValue" ] // You can add or override environment variables
         // Use cmd, so we can encrypt sensitive argument for formatable string
-        runSensitive $"dotnet --version"
+        runSensitive ($"""dotnet {"--version"}""")
         run (fun ctx -> ctx.RunSensitiveCommand $"""dotnet {"--version"}""")
         // You can run command directly with a string
         run "dotnet --version"
@@ -178,27 +191,38 @@ pipeline "pipeline-verify-demo" {
 }
 
 
-let demoCondition = whenAll {
-    // You can use whenCmd CE for more complex situation.
-    whenCmd {
-        name "-w"
-        alias "--watch"
-        // Description can also support multiple lines
-        description "watch cool stuff \n dasd asdad \n asdasd as123"
-    }
-    whenCmd {
-        name "run"
-        description "run cool stuff"
-        acceptValues [ "v1"; "v2" ]
-    }
-}
-
 pipeline "cmd-info" {
     description "Check cmd info build style"
-    demoCondition
-    stage "" {
-        demoCondition
+    stage "condition demo" {
+        noStdRedirectForStep
+        failIfIgnored
+        whenAll {
+            // You can use whenCmd CE for more complex situation.
+            whenCmd {
+                name "-w"
+                alias "--watch"
+                // Description can also support multiple lines
+                description "watch cool stuff \n dasd asdad \n asdasd as123"
+            }
+            whenCmd {
+                name "run"
+                description "run cool stuff"
+                acceptValues [ "v1"; "v2" ]
+            }
+            whenCmd {
+                name "run2"
+                acceptValues [ "v1"; "v2" ]
+            }
+            whenAny {
+                cmdArg "--foo"
+                envVar "--bar"
+                platformLinux
+                platformWindows
+                branch "master"
+            }
+        }
         echo "here we are"
+        run "dotnet --list-sdks"
     }
     runIfOnlySpecified
 }
@@ -207,18 +231,4 @@ pipeline "cmd-info" {
 // This will collect command line help information for you
 // You can run: dotnet demo.fsx -- -h
 tryPrintPipelineCommandHelp ()
-```
-
-
-## Print command line help information
-
-You can call **tryPrintPipelineCommandHelp ()** at the end of your script to get some help infomation.  
-Then you can run below command to get the help info: 
-```bash
-dotnet fsi build.fsx -- -h
-```
-
-You can also run below command without call **tryPrintPipelineCommandHelp** to get help info for  pipeline which is set with **runIfOnlySpecified**:
-```bash 
-dotnet fsi build.fsx -- -p your_pipeline -h
 ```
