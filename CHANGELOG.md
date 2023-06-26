@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.4.0] - 2023-06-26
+
+Tidy up print format and simplify color
+
 ## [0.3.9] - 2023-06-08
 
 Move runSensitive as a CE operator from BuildinCmds

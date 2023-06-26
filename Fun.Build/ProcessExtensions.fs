@@ -47,7 +47,7 @@ type Process with
         if shouldRedirectOutput then
             result.OutputDataReceived.Add(fun e ->
                 if captureOutput then standardOutputSb.Append e.Data |> ignore
-                if printOutput then
+                if printOutput && not (String.IsNullOrEmpty e.Data) then
                     if noPrefix then
                         Console.WriteLine(e.Data)
                     else

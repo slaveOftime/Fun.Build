@@ -47,9 +47,9 @@ pipeline "Fun.Build" {
     // You can also override the accept exit code for success. By default 0 is for success.
     // But if your external program is using other code you can add it here.
     acceptExitCodes [ 0; 2 ]
-    // By default steps will add prefix for printing information, with below flag we can remove it to make it cleaner for some use cases.
+    // By default steps will not add prefix for printing information.
     // You can also set the flag on each stage.
-    noPrefixForStep
+    noPrefixForStep false
     demo1
     stage "Demo2" {
         // whenAny, whenNot, whenAll. They can also be composed.
@@ -75,8 +75,13 @@ pipeline "Fun.Build" {
             run "powershell pwd"
         }
         stage "Demo nested" {
+            shuffleExecuteSequence
             echo "cool nested"
             stage "Deeper" { echo "cooller" }
+            stage "in-active" {
+                whenCmdArg "arg3"
+                echo "Got here!"
+            }
         }
         stage "Exit code" {
             acceptExitCodes [ 123 ]
@@ -89,6 +94,10 @@ pipeline "Fun.Build" {
     stage "FailIfIgnored" {
         failIfIgnored // When set this, the stage cannot be ignored
         whenCmdArg "arg2"
+        echo "Got here!"
+    }
+    stage "in-active" {
+        whenCmdArg "arg3"
         echo "Got here!"
     }
     post [ // Post stages are optional. It will run even other normal stages are failed.

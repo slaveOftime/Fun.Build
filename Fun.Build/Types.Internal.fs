@@ -39,6 +39,8 @@ type Mode =
 
 
 type StageContext = {
+    /// This id will be used internally for finding its index under its parent
+    Id: int
     Name: string
     IsActive: StageContext -> bool
     IsParallel: bool

@@ -12,6 +12,7 @@ module StageContextExtensionsInternal =
     type StageContext with
 
         static member Create(name: string) = {
+            Id = Random().Next()
             Name = name
             IsActive = fun _ -> true
             IsParallel = false
@@ -83,7 +84,33 @@ module StageContextExtensionsInternal =
             vars |> Seq.map (fun (KeyValue(k, v)) -> k, v) |> Map.ofSeq
 
 
-        member inline ctx.BuildStepPrefix(i: int) = sprintf "%s/step-%s>" (ctx.GetNamePath()) (string i)
+        /// Will try to build the full path with nested sub stage index
+        member ctx.BuildCurrentStepPrefix() =
+            let mutable isSubStage = false
+            let prefix =
+                match ctx.ParentContext with
+                | ValueNone -> ""
+                | ValueSome(StageParent.Pipeline _) -> ""
+                | ValueSome(StageParent.Stage parentStage) ->
+                    let postfix =
+                        parentStage.Steps
+                        |> List.tryFindIndex (
+                            function
+                            | Step.StepOfStage x -> x.Id = ctx.Id
+                            | _ -> false
+                        )
+                        |> Option.defaultValue 0
+                        |> string
+                    isSubStage <- true
+                    sprintf "%s/step-%s" (parentStage.BuildCurrentStepPrefix()) postfix
+
+            if String.IsNullOrEmpty prefix then ctx.Name
+            else if isSubStage then sprintf "%s/%s" prefix ctx.Name
+            else sprintf "%s/%s" prefix ctx.Name
+
+
+        member inline ctx.BuildStepPrefix(i: int) = sprintf "%s/step-%s>" (ctx.BuildCurrentStepPrefix()) (string i)
+
 
         member ctx.BuildIndent() = String(' ', ctx.GetNamePath().Length - ctx.Name.Length + 4)
 
@@ -142,25 +169,31 @@ module StageContextExtensionsInternal =
                 use stepCTS = new Threading.CancellationTokenSource(timeoutForStep)
                 use linkedStepCTS = Threading.CancellationTokenSource.CreateLinkedTokenSource(stepCTS.Token, linkedCTS.Token)
 
-
-                AnsiConsole.WriteLine()
-                AnsiConsole.Write(
-                    let extraInfo = $"Stage timeout: {timeoutForStage}ms. Step timeout: {timeoutForStep}ms."
-                    match index with
-                    | StageIndex.Stage i -> Rule($"STAGE #{i} [bold teal]{namePath}[/] started. {extraInfo}").LeftJustified()
-                    | StageIndex.Step i -> Rule($"SUBSTAGE [bold teal]{stage.BuildStepPrefix i}[/]. {extraInfo}").LeftJustified()
-                )
                 AnsiConsole.WriteLine()
 
+                let extraInfo = $"timeout: {timeoutForStage}ms. step timeout: {timeoutForStep}ms."
+                match index with
+                | StageIndex.Stage i ->
+                    AnsiConsole.Write(Rule($"[grey50]STAGE #{i} [bold turquoise4]{namePath}[/] started. {extraInfo}[/]").LeftJustified())
+                | StageIndex.Step _ ->
+                    AnsiConsole.MarkupLineInterpolated($"[grey50]{stage.BuildCurrentStepPrefix()}> (sub-stage) started. {extraInfo}[/]")
+
+                let stage =
+                    if stage.ShuffleExecuteSequence && stage.GetMode() = Mode.Execution then
+                        { stage with
+                            Steps = stage.Steps |> Seq.shuffle |> Seq.toList
+                        }
+                    else
+                        stage
 
                 let steps =
                     stage.Steps
-                    |> if stage.ShuffleExecuteSequence then Seq.shuffle else Seq.ofList
                     |> Seq.mapi (fun i step -> async {
-                        let prefix = stage.BuildStepPrefix i
+                        let prefix = stage.BuildStepPrefix(i)
                         try
                             let sw = Stopwatch.StartNew()
-                            AnsiConsole.MarkupLineInterpolated $"""[turquoise4]{prefix} started{if isParallel then " in parallel -->" else ""}[/]"""
+                            AnsiConsole.WriteLine()
+                            AnsiConsole.MarkupLineInterpolated $"""[grey50]{prefix} started{if isParallel then " in parallel -->" else ""}[/]"""
 
                             let! isSuccess =
                                 match step with
@@ -185,9 +218,10 @@ module StageContextExtensionsInternal =
                                     return isSuccess
                                   }
 
-                            AnsiConsole.MarkupLineInterpolated
-                                $"""[turquoise4]{prefix} finished{if isParallel then " in parallel." else "."} {sw.ElapsedMilliseconds}ms.[/]"""
-                            AnsiConsole.WriteLine()
+                            AnsiConsole.MarkupLineInterpolated(
+                                $"""[grey50]{prefix} finished{if isParallel then " in parallel." else "."} {sw.ElapsedMilliseconds}ms.[/]"""
+                            )
+                            if i = stage.Steps.Length - 1 then AnsiConsole.WriteLine()
 
                             if not isSuccess then stepErrorCTS.Cancel()
                             return isSuccess
@@ -250,24 +284,29 @@ module StageContextExtensionsInternal =
                         AnsiConsole.WriteException ex
                         AnsiConsole.WriteLine()
 
-                AnsiConsole.Write(
-                    let color = if isSuccess then "teal" else "red"
-                    match index with
-                    | StageIndex.Stage i ->
-                        Rule($"""STAGE #{i} [bold {color}]{namePath}[/] finished. {stageSW.ElapsedMilliseconds}ms.""").LeftJustified()
-                    | StageIndex.Step i ->
-                        Rule($"""SUBSTAGE [bold {color}]{stage.BuildStepPrefix i}[/] finished. {stageSW.ElapsedMilliseconds}ms.""")
+
+                let color = if isSuccess then "turquoise4" else "red"
+                match index with
+                | StageIndex.Stage i ->
+                    AnsiConsole.Write(
+                        Rule($"""[grey50]STAGE #{i} [bold {color}]{namePath}[/] finished. {stageSW.ElapsedMilliseconds}ms.[/]""")
                             .LeftJustified()
-                )
+                    )
+                | StageIndex.Step _ ->
+                    AnsiConsole.MarkupLineInterpolated(
+                        $"""[grey50]{stage.BuildCurrentStepPrefix()}> (sub-stage) finished. {stageSW.ElapsedMilliseconds}ms.[/]"""
+                    )
+
                 AnsiConsole.WriteLine()
 
             else
                 AnsiConsole.WriteLine()
-                AnsiConsole.MarkupLine(
-                    match index with
-                    | StageIndex.Stage i -> $"STAGE #{i} [bold turquoise4]{namePath}[/] is inactive"
-                    | StageIndex.Step i -> $"SUBSTAGE [bold turquoise4]{stage.BuildStepPrefix i}[/] is inactive"
-                )
+
+                match index with
+                | StageIndex.Stage i -> AnsiConsole.Write(Rule($"[grey50]STAGE #{i} {namePath} is [yellow]in-active[/][/]").LeftJustified())
+                | StageIndex.Step _ ->
+                    AnsiConsole.MarkupLineInterpolated($"[grey50]{stage.BuildCurrentStepPrefix()}> (sub-stage) is [yellow]in-active[/][/]")
+
                 AnsiConsole.WriteLine()
 
             isSuccess, stepExns
