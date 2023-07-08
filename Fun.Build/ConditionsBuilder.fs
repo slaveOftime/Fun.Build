@@ -42,13 +42,13 @@ module Internal =
             | Mode.Execution -> getResult ()
 
 
-        member ctx.WhenCmd(info: CmdInfo) =
+        member ctx.WhenCmd(info: CmdArg) =
             let mode = ctx.GetMode()
             if info.Name.Names |> Seq.filter (String.IsNullOrEmpty >> not) |> Seq.isEmpty then
                 failwith "Cmd name cannot be empty"
 
             let getResult () =
-                let isValueMatch v =
+                let isValueMatch (v: string) =
                     match ctx.TryGetCmdArg v with
                     | ValueSome v when info.Values.Length = 0 || List.contains v info.Values -> true
                     | _ -> false
@@ -215,6 +215,14 @@ type ConditionsBuilder() =
             ]
         )
 
+    [<CustomOperation("cmdArg")>]
+    member inline _.cmdArg([<InlineIfLambda>] builder: BuildConditions, arg: CmdArg) =
+        BuildConditions(fun conditions ->
+            builder.Invoke(conditions)
+            @ [
+                fun ctx -> ctx.WhenCmd arg
+            ]
+        )
 
     [<CustomOperation("cmdArg")>]
     member inline _.cmdArg([<InlineIfLambda>] builder: BuildConditions, argKeyLongName: string) =
@@ -320,6 +328,16 @@ type StageBuilder with
             }
         )
 
+
+    /// Set if stage is active or should run by check the command line args.
+    /// Only the last condition will take effect.
+    [<CustomOperation("whenCmdArg")>]
+    member inline _.whenCmdArg([<InlineIfLambda>] build: BuildStage, arg: CmdArg) =
+        BuildStage(fun ctx ->
+            { build.Invoke ctx with
+                IsActive = fun ctx -> ctx.WhenCmd arg
+            }
+        )
 
     /// Set if stage is active or should run by check the command line args.
     /// Only the last condition will take effect.
@@ -432,6 +450,15 @@ type PipelineBuilder with
             }
         )
 
+    /// Set if stage is active or should run by check the command line args.
+    /// Only the last condition will take effect.
+    [<CustomOperation("whenCmdArg")>]
+    member inline _.whenCmdArg([<InlineIfLambda>] build: BuildPipeline, arg: CmdArg) =
+        BuildPipeline(fun ctx ->
+            { build.Invoke ctx with
+                Verify = fun ctx -> ctx.MakeVerificationStage().WhenCmd(arg)
+            }
+        )
 
     /// Set if stage is active or should run by check the command line args.
     /// Only the last condition will take effect.

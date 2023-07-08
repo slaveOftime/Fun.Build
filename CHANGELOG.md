@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+
+- Support CmdArg directly for whenCmdArg and cmdArg
+
 ## [0.4.1] - 2023-07-08
 
 - Fix missing information for pipeline options/conditions

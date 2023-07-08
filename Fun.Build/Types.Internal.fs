@@ -1,6 +1,7 @@
 ﻿namespace rec Fun.Build.Internal
 
 open System
+open Fun.Build
 
 type StepSoftCancelledException(msg: string) =
     inherit Exception(msg)
@@ -33,7 +34,7 @@ type StageIndex =
 type CommandHelpContext = {
     Verbose: bool
     /// When we find some CmdInfo we can add it here, with this we can remove duplicates for simple printing
-    CmdInfos: Collections.Generic.List<CmdInfo>
+    CmdInfos: Collections.Generic.List<CmdArg>
 }
 
 [<Struct; RequireQualifiedAccess>]
@@ -82,25 +83,6 @@ type PipelineContext = {
     PostStages: StageContext list
 }
 
-[<Struct>]
-type CmdInfo = {
-    Name: CmdName
-    Values: string list
-    Description: string option
-}
-
-[<Struct; RequireQualifiedAccess>]
-type CmdName =
-    | ShortName of shortName: string
-    | LongName of longName: string
-    | FullName of short: string * long: string
-
-    member this.Names =
-        match this with
-        | ShortName x -> [ x ]
-        | LongName x -> [ x ]
-        | FullName(s, l) -> [ s; l ]
-
 
 type BuildPipeline = delegate of ctx: PipelineContext -> PipelineContext
 
@@ -112,4 +94,4 @@ type BuildStageIsActive = delegate of ctx: StageContext -> bool
 
 type BuildStep = delegate of ctx: StageContext * index: StepIndex -> Async<Result<unit, string>>
 
-type BuildCmdInfo = delegate of CmdInfo -> CmdInfo
+type BuildCmdInfo = delegate of CmdArg -> CmdArg

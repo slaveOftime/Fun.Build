@@ -1,4 +1,4 @@
-#r "nuget: Fun.Result"
+#r "nuget: Fun.Result, 0.2.1"
 #r "nuget: Spectre.Console, 0.46.0"
 #r "Fun.Build/bin/Debug/netstandard2.0/Fun.Build.dll"
 

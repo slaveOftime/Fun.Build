@@ -388,7 +388,16 @@ module StageContextExtensions =
                     | _ -> ValueNone
             )
 
-        member inline ctx.GetCmdArg(key) = ctx.TryGetCmdArg key |> ValueOption.defaultValue ""
+        member ctx.TryGetCmdArg(arg: CmdArg) =
+            arg.Name.Names
+            |> Seq.tryPick (fun x ->
+                match ctx.TryGetCmdArg x with
+                | ValueSome x -> Some x
+                | ValueNone -> None
+            )
+
+        member inline ctx.GetCmdArg(key: string) = ctx.TryGetCmdArg key |> ValueOption.defaultValue ""
+        member inline ctx.GetCmdArg(arg: CmdArg) = ctx.TryGetCmdArg arg |> Option.defaultValue ""
 
 
         member inline ctx.TryGetCmdArgOrEnvVar(key: string) =
