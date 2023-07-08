@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.4.2] - 2023-07-08
+
 - Support CmdArg directly for whenCmdArg and cmdArg
 - Simplify printing
 
