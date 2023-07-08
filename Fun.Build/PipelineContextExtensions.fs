@@ -216,6 +216,13 @@ module PipelineContextExtensionsInternal =
                                 ParentContext = ValueSome(StageParent.Stage stage)
                             }
 
+            if verbose then AnsiConsole.Console.MarkupLine "> pipeline verification:"
+
+            if pipeline.Verify(pipeline) && verbose then
+                AnsiConsole.Console.MarkupLine "  [grey]no options/conditions[/]"
+                
+            if verbose then AnsiConsole.Console.MarkupLine "> stages activation:"
+
             pipeline.Stages
             |> List.iter (fun stage ->
                 run

@@ -135,6 +135,12 @@ pipeline "pipeline-verify-demo" {
 
 pipeline "cmd-info" {
     description "Check cmd info build style"
+    whenCmd {
+        name "-w"
+        alias "--watch"
+        // Description can also support multiple lines
+        description "watch cool stuff \n dasd asdad \n asdasd as123"
+    }
     stage "condition demo" {
         noStdRedirectForStep
         failIfIgnored
