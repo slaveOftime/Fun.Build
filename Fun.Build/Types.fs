@@ -33,7 +33,7 @@ type CmdArg =
         Description: string option
     }
 
-    static member Create(?shortName: string, ?longName: string, ?values, ?description: string) = {
+    static member Create(?shortName: string, ?longName: string, ?description: string, ?values) = {
         Name =
             match shortName, longName with
             | Some s, Some l -> CmdName.FullName(s, l)

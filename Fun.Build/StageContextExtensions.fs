@@ -176,7 +176,7 @@ module StageContextExtensionsInternal =
                 | StageIndex.Stage i ->
                     AnsiConsole.Write(Rule($"[grey50]STAGE #{i} [bold turquoise4]{namePath}[/] started. {extraInfo}[/]").LeftJustified())
                 | StageIndex.Step _ ->
-                    AnsiConsole.MarkupLineInterpolated($"[grey50]{stage.BuildCurrentStepPrefix()}> (sub-stage) started. {extraInfo}[/]")
+                    AnsiConsole.MarkupLineInterpolated($"[grey50]{stage.BuildCurrentStepPrefix()}> sub-stage started. {extraInfo}[/]")
 
                 let stage =
                     if stage.ShuffleExecuteSequence && stage.GetMode() = Mode.Execution then
@@ -294,7 +294,7 @@ module StageContextExtensionsInternal =
                     )
                 | StageIndex.Step _ ->
                     AnsiConsole.MarkupLineInterpolated(
-                        $"""[grey50]{stage.BuildCurrentStepPrefix()}> (sub-stage) finished. {stageSW.ElapsedMilliseconds}ms.[/]"""
+                        $"""[grey50]{stage.BuildCurrentStepPrefix()}> sub-stage finished. {stageSW.ElapsedMilliseconds}ms.[/]"""
                     )
 
                 AnsiConsole.WriteLine()
@@ -305,7 +305,7 @@ module StageContextExtensionsInternal =
                 match index with
                 | StageIndex.Stage i -> AnsiConsole.Write(Rule($"[grey50]STAGE #{i} {namePath} is [yellow]in-active[/][/]").LeftJustified())
                 | StageIndex.Step _ ->
-                    AnsiConsole.MarkupLineInterpolated($"[grey50]{stage.BuildCurrentStepPrefix()}> (sub-stage) is [yellow]in-active[/][/]")
+                    AnsiConsole.MarkupLineInterpolated($"[grey50]{stage.BuildCurrentStepPrefix()}> sub-stage is [yellow]in-active[/][/]")
 
                 AnsiConsole.WriteLine()
 
