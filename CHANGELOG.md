@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.4.1] - 2023-07-08
+
+- Fix missing information for pipeline options/conditions
+- Do not print duplicate cmd info in none verbose mode
+
 ## [0.4.0] - 2023-06-26
 
 Tidy up print format and simplify color

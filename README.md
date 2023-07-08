@@ -67,7 +67,7 @@ Below example covered most of the apis and usage example, take it as the documen
 
 ```fsharp
 #r "nuget: Fun.Result"
-#r "nuget: Fun.Build, 0.3.9"
+#r "nuget: Fun.Build, 0.4.1"
 
 open Fun.Result
 open Fun.Build
@@ -142,8 +142,13 @@ pipeline "Fun.Build" {
             run "powershell pwd"
         }
         stage "Demo nested" {
+            shuffleExecuteSequence
             echo "cool nested"
             stage "Deeper" { echo "cooller" }
+            stage "in-active" {
+                whenCmdArg "arg3"
+                echo "Got here!"
+            }
         }
         stage "Exit code" {
             acceptExitCodes [ 123 ]
@@ -156,6 +161,10 @@ pipeline "Fun.Build" {
     stage "FailIfIgnored" {
         failIfIgnored // When set this, the stage cannot be ignored
         whenCmdArg "arg2"
+        echo "Got here!"
+    }
+    stage "in-active" {
+        whenCmdArg "arg3"
         echo "Got here!"
     }
     post [ // Post stages are optional. It will run even other normal stages are failed.
@@ -193,24 +202,29 @@ pipeline "pipeline-verify-demo" {
 
 pipeline "cmd-info" {
     description "Check cmd info build style"
+    whenCmd {
+        fullName "-w" "--watch"
+        // Description can also support multiple lines
+        description "watch cool stuff \n dasd asdad \n asdasd as123"
+    }
     stage "condition demo" {
         noStdRedirectForStep
         failIfIgnored
         whenAll {
             // You can use whenCmd CE for more complex situation.
             whenCmd {
-                name "-w"
-                alias "--watch"
+                shortName "-w"
                 // Description can also support multiple lines
                 description "watch cool stuff \n dasd asdad \n asdasd as123"
             }
             whenCmd {
-                name "run"
+                shortName "-r"
                 description "run cool stuff"
                 acceptValues [ "v1"; "v2" ]
             }
             whenCmd {
-                name "run2"
+                longName "--build"
+                description "build your dream"
                 acceptValues [ "v1"; "v2" ]
             }
             whenAny {
