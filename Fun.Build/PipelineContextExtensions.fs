@@ -201,7 +201,15 @@ module PipelineContextExtensionsInternal =
             if verbose then
                 AnsiConsole.WriteLine "Options/conditions:"
             else
-                AnsiConsole.WriteLine "Options(collected from stages):"
+                AnsiConsole.WriteLine "Options(collected from pipeline and stages):"
+
+            if verbose then AnsiConsole.Console.MarkupLine "> pipeline verification:"
+
+            if pipeline.Verify(pipeline) && verbose then
+                AnsiConsole.Console.MarkupLine "  [grey]no options/conditions[/]"
+
+            if verbose then AnsiConsole.Console.MarkupLine "> stages activation:"
+
 
             let rec run (stage: StageContext) =
                 if verbose then
@@ -218,13 +226,6 @@ module PipelineContextExtensionsInternal =
                             { s with
                                 ParentContext = ValueSome(StageParent.Stage stage)
                             }
-
-            if verbose then AnsiConsole.Console.MarkupLine "> pipeline verification:"
-
-            if pipeline.Verify(pipeline) && verbose then
-                AnsiConsole.Console.MarkupLine "  [grey]no options/conditions[/]"
-
-            if verbose then AnsiConsole.Console.MarkupLine "> stages activation:"
 
             pipeline.Stages
             |> List.iter (fun stage ->
