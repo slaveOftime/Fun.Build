@@ -2,7 +2,6 @@
 
 open System
 
-
 type StepSoftCancelledException(msg: string) =
     inherit Exception(msg)
 
@@ -31,10 +30,16 @@ type StageIndex =
     | Stage of stage: int
 
 
+type CommandHelpContext = {
+    Verbose: bool
+    /// When we find some CmdInfo we can add it here, with this we can remove duplicates for simple printing
+    CmdInfos: Collections.Generic.List<CmdInfo>
+}
+
 [<Struct; RequireQualifiedAccess>]
 type Mode =
     | Execution
-    | CommandHelp of verbose: bool
+    | CommandHelp of ctx: CommandHelpContext
     | Verification
 
 
@@ -79,11 +84,22 @@ type PipelineContext = {
 
 [<Struct>]
 type CmdInfo = {
-    Name: string
-    Alias: string option
+    Name: CmdName
     Values: string list
     Description: string option
 }
+
+[<Struct; RequireQualifiedAccess>]
+type CmdName =
+    | ShortName of shortName: string
+    | LongName of longName: string
+    | FullName of short: string * long: string
+
+    member this.Names =
+        match this with
+        | ShortName x -> [ x ]
+        | LongName x -> [ x ]
+        | FullName(s, l) -> [ s; l ]
 
 
 type BuildPipeline = delegate of ctx: PipelineContext -> PipelineContext

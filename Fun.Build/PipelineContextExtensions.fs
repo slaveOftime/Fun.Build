@@ -175,7 +175,10 @@ module PipelineContextExtensionsInternal =
 
             let scriptFile = getFsiFileName ()
 
-            let pipeline = { pipeline with Mode = Mode.CommandHelp verbose }
+            let pipeline =
+                { pipeline with
+                    Mode = Mode.CommandHelp { Verbose = verbose; CmdInfos = Collections.Generic.List() }
+                }
 
             AnsiConsole.MarkupLine $"Description:"
 
@@ -220,7 +223,7 @@ module PipelineContextExtensionsInternal =
 
             if pipeline.Verify(pipeline) && verbose then
                 AnsiConsole.Console.MarkupLine "  [grey]no options/conditions[/]"
-                
+
             if verbose then AnsiConsole.Console.MarkupLine "> stages activation:"
 
             pipeline.Stages

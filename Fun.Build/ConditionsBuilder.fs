@@ -29,10 +29,10 @@ module Internal =
                     (defaultArg description "")
 
             match ctx.GetMode() with
-            | Mode.CommandHelp true ->
+            | Mode.CommandHelp { Verbose = true } ->
                 AnsiConsole.WriteLine(getPrintInfo (ctx.BuildIndent()))
                 false
-            | Mode.CommandHelp false -> true
+            | Mode.CommandHelp _ -> true
             | Mode.Verification ->
                 if getResult () then
                     AnsiConsole.MarkupLineInterpolated($"[green]✓ {getPrintInfo (ctx.BuildIndent().Substring(2))}[/]")
@@ -43,19 +43,29 @@ module Internal =
 
 
         member ctx.WhenCmd(info: CmdInfo) =
+            let mode = ctx.GetMode()
+            if info.Name.Names |> Seq.filter (String.IsNullOrEmpty >> not) |> Seq.isEmpty then
+                failwith "Cmd name cannot be empty"
+
             let getResult () =
                 let isValueMatch v =
                     match ctx.TryGetCmdArg v with
                     | ValueSome v when info.Values.Length = 0 || List.contains v info.Values -> true
                     | _ -> false
-                isValueMatch info.Name
-                || (
-                    match info.Alias with
-                    | None -> false
-                    | Some alias -> isValueMatch alias
-                )
+                info.Name.Names |> Seq.exists isValueMatch
 
-            let makeNameForPrint () = info.Name + (info.Alias |> Option.map (sprintf ", %s") |> Option.defaultValue "")
+            let makeNameForPrint () =
+                match mode with
+                | Mode.CommandHelp { Verbose = false } ->
+                    match info.Name with
+                    | CmdName.ShortName x -> x
+                    | CmdName.LongName x -> $"    {x}"
+                    | CmdName.FullName(s, l) -> $"{s}, {l}"
+                | _ ->
+                    match info.Name with
+                    | CmdName.ShortName x -> x
+                    | CmdName.LongName x -> x
+                    | CmdName.FullName(s, l) -> $"{s}, {l}"
 
             let makeValuesForPrint () =
                 match info.Values with
@@ -66,13 +76,21 @@ module Internal =
             let getPrintInfo (prefix: string) =
                 makeCommandOption (prefix + "cmd: ") (makeNameForPrint ()) (defaultArg info.Description "" + makeValuesForPrint ())
 
-            match ctx.GetMode() with
-            | Mode.CommandHelp true ->
+            match mode with
+            | Mode.CommandHelp { Verbose = true } ->
                 AnsiConsole.WriteLine(getPrintInfo (ctx.BuildIndent()))
                 false
-            | Mode.CommandHelp false ->
-                AnsiConsole.WriteLine(makeCommandOption "  " (makeNameForPrint ()) (defaultArg info.Description "" + makeValuesForPrint ()))
-                false
+            | Mode.CommandHelp cmdHelpCtx ->
+                let isCmdInfoAlreadyAdded =
+                    cmdHelpCtx.CmdInfos
+                    |> Seq.exists (fun addedCmdInfo -> addedCmdInfo.Name.Names |> Seq.exists (fun n -> Seq.contains n info.Name.Names))
+                cmdHelpCtx.CmdInfos.Add info
+                if isCmdInfoAlreadyAdded then
+                    // No need to print duplicate cmd info when name is same in none verbose mode
+                    false
+                else
+                    AnsiConsole.WriteLine(makeCommandOption "  " (makeNameForPrint ()) (defaultArg info.Description "" + makeValuesForPrint ()))
+                    false
             | Mode.Verification ->
                 if getResult () then
                     AnsiConsole.MarkupLineInterpolated $"""[green]{getPrintInfo ("✓ " + ctx.BuildIndent().Substring(2))}[/]"""
@@ -82,11 +100,10 @@ module Internal =
             | Mode.Execution -> getResult ()
 
 
-        member ctx.WhenCmdArg(argKey: string, argValue: string, description) =
+        member ctx.WhenCmdArg(name: CmdName, argValue: string, description) =
             ctx.WhenCmd
                 {
-                    Name = argKey
-                    Alias = None
+                    Name = name
                     Description = description
                     Values = [
                         if String.IsNullOrEmpty argValue |> not then argValue
@@ -108,8 +125,8 @@ module Internal =
                     false
 
             match ctx.GetMode() with
-            | Mode.CommandHelp verbose ->
-                if verbose then
+            | Mode.CommandHelp cmdHelpCtx ->
+                if cmdHelpCtx.Verbose then
                     AnsiConsole.MarkupLineInterpolated $"{ctx.BuildIndent()}when branch is [green]{branch}[/]"
                 false
             | Mode.Verification ->
@@ -125,10 +142,10 @@ module Internal =
             let getResult () = RuntimeInformation.IsOSPlatform platform
 
             match ctx.GetMode() with
-            | Mode.CommandHelp true ->
+            | Mode.CommandHelp { Verbose = true } ->
                 AnsiConsole.MarkupLine $"{ctx.BuildIndent()}when platform is [green]{platform}[/]"
                 false
-            | Mode.CommandHelp false -> true
+            | Mode.CommandHelp _ -> true
             | Mode.Verification ->
                 if getResult () then
                     AnsiConsole.MarkupLine $"[green]✓ [/]{ctx.BuildIndent().Substring(2)}when platform is [green]{platform}[/]"
@@ -200,29 +217,29 @@ type ConditionsBuilder() =
 
 
     [<CustomOperation("cmdArg")>]
-    member inline _.cmdArg([<InlineIfLambda>] builder: BuildConditions, argKey: string) =
+    member inline _.cmdArg([<InlineIfLambda>] builder: BuildConditions, argKeyLongName: string) =
         BuildConditions(fun conditions ->
             builder.Invoke(conditions)
             @ [
-                fun ctx -> ctx.WhenCmdArg(argKey, "", None)
+                fun ctx -> ctx.WhenCmdArg(CmdName.LongName argKeyLongName, "", None)
             ]
         )
 
     [<CustomOperation("cmdArg")>]
-    member inline _.cmdArg([<InlineIfLambda>] builder: BuildConditions, argKey: string, argValue: string) =
+    member inline _.cmdArg([<InlineIfLambda>] builder: BuildConditions, argKeyLongName: string, argValue: string) =
         BuildConditions(fun conditions ->
             builder.Invoke(conditions)
             @ [
-                fun ctx -> ctx.WhenCmdArg(argKey, argValue, None)
+                fun ctx -> ctx.WhenCmdArg(CmdName.LongName argKeyLongName, argValue, None)
             ]
         )
 
     [<CustomOperation("cmdArg")>]
-    member inline _.cmdArg([<InlineIfLambda>] builder: BuildConditions, argKey: string, argValue: string, description: string) =
+    member inline _.cmdArg([<InlineIfLambda>] builder: BuildConditions, argKeyLongName: string, argValue: string, description: string) =
         BuildConditions(fun conditions ->
             builder.Invoke(conditions)
             @ [
-                fun ctx -> ctx.WhenCmdArg(argKey, argValue, Some description)
+                fun ctx -> ctx.WhenCmdArg(CmdName.LongName argKeyLongName, argValue, Some description)
             ]
         )
 
@@ -307,30 +324,30 @@ type StageBuilder with
     /// Set if stage is active or should run by check the command line args.
     /// Only the last condition will take effect.
     [<CustomOperation("whenCmdArg")>]
-    member inline _.whenCmdArg([<InlineIfLambda>] build: BuildStage, argKey: string) =
+    member inline _.whenCmdArg([<InlineIfLambda>] build: BuildStage, argKeyLongName: string) =
         BuildStage(fun ctx ->
             { build.Invoke ctx with
-                IsActive = fun ctx -> ctx.WhenCmdArg(argKey, "", None)
+                IsActive = fun ctx -> ctx.WhenCmdArg(CmdName.LongName argKeyLongName, "", None)
             }
         )
 
     /// Set if stage is active or should run by check the command line args.
     /// Only the last condition will take effect.
     [<CustomOperation("whenCmdArg")>]
-    member inline _.whenCmdArg([<InlineIfLambda>] build: BuildStage, argKey: string, argValue: string) =
+    member inline _.whenCmdArg([<InlineIfLambda>] build: BuildStage, argKeyLongName: string, argValue: string) =
         BuildStage(fun ctx ->
             { build.Invoke ctx with
-                IsActive = fun ctx -> ctx.WhenCmdArg(argKey, argValue, None)
+                IsActive = fun ctx -> ctx.WhenCmdArg(CmdName.LongName argKeyLongName, argValue, None)
             }
         )
 
     /// Set if stage is active or should run by check the command line args.
     /// Only the last condition will take effect.
     [<CustomOperation("whenCmdArg")>]
-    member inline _.whenCmdArg([<InlineIfLambda>] build: BuildStage, argKey: string, argValue: string, description: string) =
+    member inline _.whenCmdArg([<InlineIfLambda>] build: BuildStage, argKeyLongName: string, argValue: string, description: string) =
         BuildStage(fun ctx ->
             { build.Invoke ctx with
-                IsActive = fun ctx -> ctx.WhenCmdArg(argKey, argValue, Some description)
+                IsActive = fun ctx -> ctx.WhenCmdArg(CmdName.LongName argKeyLongName, argValue, Some description)
             }
         )
 
@@ -419,30 +436,30 @@ type PipelineBuilder with
     /// Set if stage is active or should run by check the command line args.
     /// Only the last condition will take effect.
     [<CustomOperation("whenCmdArg")>]
-    member inline _.whenCmdArg([<InlineIfLambda>] build: BuildPipeline, argKey: string) =
+    member inline _.whenCmdArg([<InlineIfLambda>] build: BuildPipeline, argKeyLongName: string) =
         BuildPipeline(fun ctx ->
             { build.Invoke ctx with
-                Verify = fun ctx -> ctx.MakeVerificationStage().WhenCmdArg(argKey, "", None)
+                Verify = fun ctx -> ctx.MakeVerificationStage().WhenCmdArg(CmdName.LongName argKeyLongName, "", None)
             }
         )
 
     /// Set if stage is active or should run by check the command line args.
     /// Only the last condition will take effect.
     [<CustomOperation("whenCmdArg")>]
-    member inline _.whenCmdArg([<InlineIfLambda>] build: BuildPipeline, argKey: string, argValue: string) =
+    member inline _.whenCmdArg([<InlineIfLambda>] build: BuildPipeline, argKeyLongName: string, argValue: string) =
         BuildPipeline(fun ctx ->
             { build.Invoke ctx with
-                Verify = fun ctx -> ctx.MakeVerificationStage().WhenCmdArg(argKey, argValue, None)
+                Verify = fun ctx -> ctx.MakeVerificationStage().WhenCmdArg(CmdName.LongName argKeyLongName, argValue, None)
             }
         )
 
     /// Set if stage is active or should run by check the command line args.
     /// Only the last condition will take effect.
     [<CustomOperation("whenCmdArg")>]
-    member inline _.whenCmdArg([<InlineIfLambda>] build: BuildPipeline, argKey: string, argValue: string, description: string) =
+    member inline _.whenCmdArg([<InlineIfLambda>] build: BuildPipeline, argKeyLongName: string, argValue: string, description: string) =
         BuildPipeline(fun ctx ->
             { build.Invoke ctx with
-                Verify = fun ctx -> ctx.MakeVerificationStage().WhenCmdArg(argKey, argValue, Some description)
+                Verify = fun ctx -> ctx.MakeVerificationStage().WhenCmdArg(CmdName.LongName argKeyLongName, argValue, Some description)
             }
         )
 
@@ -498,7 +515,7 @@ type WhenAnyBuilder() =
             | _ ->
                 match ctx.GetMode() with
                 | Mode.Verification
-                | Mode.CommandHelp true -> AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}when any below conditions are met[/]"
+                | Mode.CommandHelp { Verbose = true } -> AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}when any below conditions are met[/]"
                 | _ -> ()
 
                 let indentCtx =
@@ -524,7 +541,7 @@ type WhenAllBuilder() =
             | _ ->
                 match ctx.GetMode() with
                 | Mode.Verification
-                | Mode.CommandHelp true -> AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}when all below conditions are met[/]"
+                | Mode.CommandHelp { Verbose = true } -> AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}when all below conditions are met[/]"
                 | _ -> ()
 
                 let indentCtx =
@@ -547,7 +564,7 @@ type WhenNotBuilder() =
         BuildStageIsActive(fun ctx ->
             match ctx.GetMode() with
             | Mode.Verification
-            | Mode.CommandHelp true ->
+            | Mode.CommandHelp { Verbose = true } ->
                 AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}when all below conditions are [bold red]NOT[/] met[/]"
                 let indentCtx =
                     { StageContext.Create "  " with
@@ -560,7 +577,7 @@ type WhenNotBuilder() =
                 builder.Invoke [] |> Seq.iter (fun fn -> fn newCtx |> ignore)
                 false
 
-            | Mode.CommandHelp false -> false
+            | Mode.CommandHelp _ -> false
 
             | Mode.Execution -> builder.Invoke [] |> Seq.map (fun fn -> not (fn ctx)) |> Seq.reduce (fun x y -> x && y)
         )
@@ -570,7 +587,14 @@ type WhenCmdBuilder() =
 
     member _.Run(build: BuildCmdInfo) =
         BuildStageIsActive(fun ctx ->
-            let cmdInfo = build.Invoke { Name = ""; Alias = None; Description = None; Values = [] }
+            let cmdInfo =
+                build.Invoke
+                    {
+                        // We should carefully procees the empty string in this build type
+                        Name = CmdName.ShortName ""
+                        Description = None
+                        Values = []
+                    }
             ctx.WhenCmd(cmdInfo)
         )
 
@@ -578,11 +602,51 @@ type WhenCmdBuilder() =
     member inline _.Yield(x: BuildCmdInfo) = x
     member inline _.Delay([<InlineIfLambda>] fn: unit -> BuildCmdInfo) = BuildCmdInfo(fun x -> fn().Invoke(x))
 
-    [<CustomOperation "name">]
-    member inline _.name([<InlineIfLambda>] build: BuildCmdInfo, x: string) = BuildCmdInfo(fun info -> { build.Invoke(info) with Name = x })
 
+    /// Short name, long name
+    [<CustomOperation "fullName">]
+    member inline _.fullName([<InlineIfLambda>] build: BuildCmdInfo, shortName: string, longName: string) =
+        BuildCmdInfo(fun info ->
+            { build.Invoke(info) with
+                Name = CmdName.FullName(shortName, longName)
+            }
+        )
+
+    /// It is the same as shortName
+    [<CustomOperation "name">]
+    member inline this.name([<InlineIfLambda>] build: BuildCmdInfo, x: string) = this.shortName (build, x)
+
+    /// It is the same as longName
     [<CustomOperation "alias">]
-    member inline _.alias([<InlineIfLambda>] build: BuildCmdInfo, x: string) = BuildCmdInfo(fun info -> { build.Invoke(info) with Alias = Some x })
+    member inline this.alias([<InlineIfLambda>] build: BuildCmdInfo, x: string) = this.longName (build, x)
+
+
+    [<CustomOperation "shortName">]
+    member _.shortName(build: BuildCmdInfo, x: string) =
+        BuildCmdInfo(fun info ->
+            let info = build.Invoke(info)
+            { info with
+                Name =
+                    match info.Name with
+                    | CmdName.FullName(_, longName)
+                    | CmdName.LongName longName when not (String.IsNullOrEmpty longName) -> CmdName.FullName(x, longName)
+                    | _ -> CmdName.ShortName x
+            }
+        )
+
+    [<CustomOperation "longName">]
+    member _.longName(build: BuildCmdInfo, x: string) =
+        BuildCmdInfo(fun info ->
+            let info = build.Invoke(info)
+            { info with
+                Name =
+                    match info.Name with
+                    | CmdName.FullName(shortName, _)
+                    | CmdName.ShortName shortName when not (String.IsNullOrEmpty shortName) -> CmdName.FullName(shortName, x)
+                    | _ -> CmdName.LongName x
+            }
+        )
+
 
     [<CustomOperation "description">]
     member inline _.description([<InlineIfLambda>] build: BuildCmdInfo, x: string) =

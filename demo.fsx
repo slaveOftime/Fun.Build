@@ -136,8 +136,7 @@ pipeline "pipeline-verify-demo" {
 pipeline "cmd-info" {
     description "Check cmd info build style"
     whenCmd {
-        name "-w"
-        alias "--watch"
+        fullName "-w" "--watch"
         // Description can also support multiple lines
         description "watch cool stuff \n dasd asdad \n asdasd as123"
     }
@@ -147,18 +146,18 @@ pipeline "cmd-info" {
         whenAll {
             // You can use whenCmd CE for more complex situation.
             whenCmd {
-                name "-w"
-                alias "--watch"
+                shortName "-w"
                 // Description can also support multiple lines
                 description "watch cool stuff \n dasd asdad \n asdasd as123"
             }
             whenCmd {
-                name "run"
+                shortName "-r"
                 description "run cool stuff"
                 acceptValues [ "v1"; "v2" ]
             }
             whenCmd {
-                name "run2"
+                longName "--build"
+                description "build your dream"
                 acceptValues [ "v1"; "v2" ]
             }
             whenAny {
