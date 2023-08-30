@@ -31,9 +31,10 @@ type CmdArg =
         Name: CmdName
         Values: string list
         Description: string option
+        IsOptional: bool
     }
 
-    static member Create(?shortName: string, ?longName: string, ?description: string, ?values) = {
+    static member Create(?shortName: string, ?longName: string, ?description: string, ?values, ?isOptiomal: bool) = {
         Name =
             match shortName, longName with
             | Some s, Some l -> CmdName.FullName(s, l)
@@ -42,8 +43,10 @@ type CmdArg =
             | _ -> failwith "shortName or longName cannot be empty at the same time"
         Values = defaultArg values []
         Description = description
+        IsOptional = defaultArg isOptiomal false
     }
 
     member this.WithValue value = { this with Values = this.Values @ [ value ] }
     member this.WithValue values = { this with Values = this.Values @ values }
     member this.WithDescription x = { this with Description = Some x }
+    member this.WithOptional x = { this with IsOptional = x }

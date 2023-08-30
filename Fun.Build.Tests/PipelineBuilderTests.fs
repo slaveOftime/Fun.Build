@@ -351,3 +351,54 @@ let ``Should fail if stage is ignored`` () =
             runImmediate
         }
     )
+
+
+[<Fact>]
+let ``whenCmdArg should work`` () =
+    Assert.Throws<PipelineFailedException>(fun _ ->
+        shouldNotBeCalled (fun call ->
+            pipeline "" {
+                whenCmdArg "test1"
+                stage "" { run call }
+                runImmediate
+            }
+        )
+    )
+    |> ignore
+
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            cmdArgs [ "test1" ]
+            whenCmdArg "test1"
+            stage "" { run call }
+            runImmediate
+        }
+    )
+
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            whenCmdArg "test1" "value" "description" true
+            stage "" { run call }
+            runImmediate
+        }
+    )
+
+    Assert.Throws<PipelineFailedException>(fun _ ->
+        shouldNotBeCalled (fun call ->
+            pipeline "" {
+                whenCmdArg "test1" "value" "description" false
+                stage "" { run call }
+                runImmediate
+            }
+        )
+    )
+    |> ignore
+
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            cmdArgs [ "test1"; "value" ]
+            whenCmdArg "test1" "value" "description" false
+            stage "" { run call }
+            runImmediate
+        }
+    )

@@ -61,6 +61,19 @@ let ``whenCmd should work`` () =
         }
     )
 
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            stage "" {
+                whenCmd {
+                    name "test1"
+                    optional
+                }
+                run call
+            }
+            runImmediate
+        }
+    )
+
 
 [<Fact>]
 let ``whenCmdArg should work`` () =
@@ -85,6 +98,36 @@ let ``whenCmdArg should work`` () =
         }
     )
 
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            stage "" {
+                whenCmdArg "test1" "value" "description" true
+                run call
+            }
+            runImmediate
+        }
+    )
+
+    shouldNotBeCalled (fun call ->
+        pipeline "" {
+            stage "" {
+                whenCmdArg "test1" "value" "description" false
+                run call
+            }
+            runImmediate
+        }
+    )
+
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            cmdArgs [ "test1"; "value" ]
+            stage "" {
+                whenCmdArg "test1" "value" "description" false
+                run call
+            }
+            runImmediate
+        }
+    )
 
 [<Fact>]
 let ``whenEnvVar should work`` () =

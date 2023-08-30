@@ -52,7 +52,8 @@ module Internal =
                     match ctx.TryGetCmdArg v with
                     | ValueSome v when info.Values.Length = 0 || List.contains v info.Values -> true
                     | _ -> false
-                info.Name.Names |> Seq.exists isValueMatch
+
+                if info.IsOptional then true else info.Name.Names |> Seq.exists isValueMatch
 
             let makeNameForPrint () =
                 match mode with
@@ -66,6 +67,8 @@ module Internal =
                     | CmdName.ShortName x -> x
                     | CmdName.LongName x -> x
                     | CmdName.FullName(s, l) -> $"{s}, {l}"
+                // If the command is optional, then wrap it with []
+                |> fun x -> if info.IsOptional then $"[{x}]" else x
 
             let makeValuesForPrint () =
                 match info.Values with
@@ -100,7 +103,7 @@ module Internal =
             | Mode.Execution -> getResult ()
 
 
-        member ctx.WhenCmdArg(name: CmdName, argValue: string, description) =
+        member ctx.WhenCmdArg(name: CmdName, argValue: string, description, isOptional) =
             ctx.WhenCmd
                 {
                     Name = name
@@ -108,6 +111,7 @@ module Internal =
                     Values = [
                         if String.IsNullOrEmpty argValue |> not then argValue
                     ]
+                    IsOptional = isOptional
                 }
 
 
@@ -229,7 +233,7 @@ type ConditionsBuilder() =
         BuildConditions(fun conditions ->
             builder.Invoke(conditions)
             @ [
-                fun ctx -> ctx.WhenCmdArg(CmdName.LongName argKeyLongName, "", None)
+                fun ctx -> ctx.WhenCmdArg(CmdName.LongName argKeyLongName, "", None, false)
             ]
         )
 
@@ -238,7 +242,7 @@ type ConditionsBuilder() =
         BuildConditions(fun conditions ->
             builder.Invoke(conditions)
             @ [
-                fun ctx -> ctx.WhenCmdArg(CmdName.LongName argKeyLongName, argValue, None)
+                fun ctx -> ctx.WhenCmdArg(CmdName.LongName argKeyLongName, argValue, None, false)
             ]
         )
 
@@ -247,7 +251,7 @@ type ConditionsBuilder() =
         BuildConditions(fun conditions ->
             builder.Invoke(conditions)
             @ [
-                fun ctx -> ctx.WhenCmdArg(CmdName.LongName argKeyLongName, argValue, Some description)
+                fun ctx -> ctx.WhenCmdArg(CmdName.LongName argKeyLongName, argValue, Some description, false)
             ]
         )
 
@@ -345,7 +349,7 @@ type StageBuilder with
     member inline _.whenCmdArg([<InlineIfLambda>] build: BuildStage, argKeyLongName: string) =
         BuildStage(fun ctx ->
             { build.Invoke ctx with
-                IsActive = fun ctx -> ctx.WhenCmdArg(CmdName.LongName argKeyLongName, "", None)
+                IsActive = fun ctx -> ctx.WhenCmdArg(CmdName.LongName argKeyLongName, "", None, false)
             }
         )
 
@@ -355,7 +359,7 @@ type StageBuilder with
     member inline _.whenCmdArg([<InlineIfLambda>] build: BuildStage, argKeyLongName: string, argValue: string) =
         BuildStage(fun ctx ->
             { build.Invoke ctx with
-                IsActive = fun ctx -> ctx.WhenCmdArg(CmdName.LongName argKeyLongName, argValue, None)
+                IsActive = fun ctx -> ctx.WhenCmdArg(CmdName.LongName argKeyLongName, argValue, None, false)
             }
         )
 
@@ -365,10 +369,19 @@ type StageBuilder with
     member inline _.whenCmdArg([<InlineIfLambda>] build: BuildStage, argKeyLongName: string, argValue: string, description: string) =
         BuildStage(fun ctx ->
             { build.Invoke ctx with
-                IsActive = fun ctx -> ctx.WhenCmdArg(CmdName.LongName argKeyLongName, argValue, Some description)
+                IsActive = fun ctx -> ctx.WhenCmdArg(CmdName.LongName argKeyLongName, argValue, Some description, false)
             }
         )
 
+    /// Set if stage is active or should run by check the command line args.
+    /// Only the last condition will take effect.
+    [<CustomOperation("whenCmdArg")>]
+    member inline _.whenCmdArg([<InlineIfLambda>] build: BuildStage, argKeyLongName: string, argValue: string, description: string, isOptional) =
+        BuildStage(fun ctx ->
+            { build.Invoke ctx with
+                IsActive = fun ctx -> ctx.WhenCmdArg(CmdName.LongName argKeyLongName, argValue, Some description, isOptional)
+            }
+        )
 
     /// Set if stage is active or should run by check the git branch name.
     /// Only the last condition will take effect.
@@ -466,7 +479,7 @@ type PipelineBuilder with
     member inline _.whenCmdArg([<InlineIfLambda>] build: BuildPipeline, argKeyLongName: string) =
         BuildPipeline(fun ctx ->
             { build.Invoke ctx with
-                Verify = fun ctx -> ctx.MakeVerificationStage().WhenCmdArg(CmdName.LongName argKeyLongName, "", None)
+                Verify = fun ctx -> ctx.MakeVerificationStage().WhenCmdArg(CmdName.LongName argKeyLongName, "", None, false)
             }
         )
 
@@ -476,7 +489,7 @@ type PipelineBuilder with
     member inline _.whenCmdArg([<InlineIfLambda>] build: BuildPipeline, argKeyLongName: string, argValue: string) =
         BuildPipeline(fun ctx ->
             { build.Invoke ctx with
-                Verify = fun ctx -> ctx.MakeVerificationStage().WhenCmdArg(CmdName.LongName argKeyLongName, argValue, None)
+                Verify = fun ctx -> ctx.MakeVerificationStage().WhenCmdArg(CmdName.LongName argKeyLongName, argValue, None, false)
             }
         )
 
@@ -486,10 +499,26 @@ type PipelineBuilder with
     member inline _.whenCmdArg([<InlineIfLambda>] build: BuildPipeline, argKeyLongName: string, argValue: string, description: string) =
         BuildPipeline(fun ctx ->
             { build.Invoke ctx with
-                Verify = fun ctx -> ctx.MakeVerificationStage().WhenCmdArg(CmdName.LongName argKeyLongName, argValue, Some description)
+                Verify = fun ctx -> ctx.MakeVerificationStage().WhenCmdArg(CmdName.LongName argKeyLongName, argValue, Some description, false)
             }
         )
 
+    /// Set if stage is active or should run by check the command line args.
+    /// Only the last condition will take effect.
+    [<CustomOperation("whenCmdArg")>]
+    member inline _.whenCmdArg
+        (
+            [<InlineIfLambda>] build: BuildPipeline,
+            argKeyLongName: string,
+            argValue: string,
+            description: string,
+            isOptional: bool
+        ) =
+        BuildPipeline(fun ctx ->
+            { build.Invoke ctx with
+                Verify = fun ctx -> ctx.MakeVerificationStage().WhenCmdArg(CmdName.LongName argKeyLongName, argValue, Some description, isOptional)
+            }
+        )
 
     /// Set if stage is active or should run by check the git branch name.
     /// Only the last condition will take effect.
@@ -621,6 +650,7 @@ type WhenCmdBuilder() =
                         Name = CmdName.ShortName ""
                         Description = None
                         Values = []
+                        IsOptional = false
                     }
             ctx.WhenCmd(cmdInfo)
         )
@@ -686,6 +716,8 @@ type WhenCmdBuilder() =
     member inline _.acceptValues([<InlineIfLambda>] build: BuildCmdInfo, values: string list) =
         BuildCmdInfo(fun info -> { build.Invoke(info) with Values = values })
 
+    [<CustomOperation "optional">]
+    member inline _.optional([<InlineIfLambda>] build: BuildCmdInfo) = BuildCmdInfo(fun info -> { build.Invoke(info) with IsOptional = true })
 
 /// When any of the added conditions are satisified, the stage will be active
 let whenAny = WhenAnyBuilder()
