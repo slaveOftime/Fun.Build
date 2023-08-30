@@ -140,6 +140,11 @@ pipeline "cmd-info" {
         // Description can also support multiple lines
         description "watch cool stuff \n dasd asdad \n asdasd as123"
     }
+    whenCmd {
+        name "--debug"
+        description "optional argument"
+        optional
+    }
     stage "condition demo" {
         noStdRedirectForStep
         failIfIgnored
@@ -176,5 +181,5 @@ pipeline "cmd-info" {
 
 
 // This will collect command line help information for you
-// You can run: dotnet demo.fsx -- -h
+// You can run: dotnet fsi demo.fsx -- -h
 tryPrintPipelineCommandHelp ()
