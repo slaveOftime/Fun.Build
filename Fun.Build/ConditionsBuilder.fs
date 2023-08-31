@@ -255,6 +255,22 @@ type ConditionsBuilder() =
             ]
         )
 
+    [<CustomOperation("cmdArg")>]
+    member inline _.cmdArg
+        (
+            [<InlineIfLambda>] builder: BuildConditions,
+            argKeyLongName: string,
+            argValue: string,
+            description: string,
+            isOptional: bool
+        ) =
+        BuildConditions(fun conditions ->
+            builder.Invoke(conditions)
+            @ [
+                fun ctx -> ctx.WhenCmdArg(CmdName.LongName argKeyLongName, argValue, Some description, isOptional)
+            ]
+        )
+
 
     [<CustomOperation("branch")>]
     member inline _.branch([<InlineIfLambda>] builder: BuildConditions, branch: string) =
