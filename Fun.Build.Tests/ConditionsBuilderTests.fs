@@ -180,12 +180,64 @@ let ``whenAny should work`` () =
     |> condition.Invoke
     |> Assert.True
 
+    // Check situation where all the commands are optional
+    let condition2 = whenAny {
+        whenCmd {
+            name "test1"
+            acceptValues [ "v1"; "v2" ]
+            optional
+        }
+
+        cmdArg "name" "value" "description" true
+    }
+
+    // All commands are optional, so it should return true when no command is provided
+    { StageContext.Create "" with
+        ParentContext = pipeline |> StageParent.Pipeline |> ValueSome
+    }
+    |> condition2.Invoke
+    |> Assert.True
+
+    // All commands are optional, so it should return true if one command is provided
+    { StageContext.Create "" with
+        ParentContext = { pipeline with CmdArgs = [ "test1"; "v1" ] } |> StageParent.Pipeline |> ValueSome
+    }
+    |> condition2.Invoke
+    |> Assert.True
+
+    // Check situation with a mix of optional and non-optional commands
+    let condition3 = whenAny {
+        whenCmd {
+            name "test1"
+            acceptValues [ "v1"; "v2" ]
+            optional
+        }
+
+        cmdArg "test2"
+    }
+
+    // Because at least one command is optional it should return true when no command is provided
+    { StageContext.Create "" with
+        ParentContext = pipeline |> StageParent.Pipeline |> ValueSome
+    }
+    |> condition3.Invoke
+    |> Assert.True
+
+    // It should return true if a non-optional command is provided
+    { StageContext.Create "" with
+        ParentContext = { pipeline with CmdArgs = [ "test1" ] } |> StageParent.Pipeline |> ValueSome
+    }
+    |> condition3.Invoke
+    |> Assert.True
+
 
 [<Fact>]
 let ``whenAll should work`` () =
     let condition = whenAll {
         cmdArg "test1"
         envVar "test2"
+        // Add optional command, this condition should always fullfill
+        cmdArg "test3" "value" "description" true
     }
 
     let pipeline = PipelineContext.Create ""
