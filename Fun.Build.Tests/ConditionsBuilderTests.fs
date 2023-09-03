@@ -383,6 +383,10 @@ let ``condition builder should follow the sequence`` () =
             ls.Add(2)
             true
         )
+        BuildStageIsActive(fun _ ->
+            ls.Add(3)
+            true
+        )
     }
 
     { StageContext.Create "" with
@@ -391,4 +395,34 @@ let ``condition builder should follow the sequence`` () =
     |> condition.Invoke
     |> Assert.False
 
-    Assert.Equal<int>([ 1; 2 ], ls)
+    Assert.Equal<int>([ 1; 2; 3 ], ls)
+
+
+    let ls = System.Collections.Generic.List()
+
+    let condition = whenAll {
+        cmdArg "test0"
+        BuildStageIsActive(fun _ ->
+            ls.Add(1)
+            false
+        )
+        BuildStageIsActive(fun _ ->
+            ls.Add(2)
+            true
+        )
+        cmdArg "test1"
+        cmdArg "test2"
+        BuildStageIsActive(fun _ ->
+            ls.Add(3)
+            true
+        )
+        cmdArg "test3"
+    }
+
+    { StageContext.Create "" with
+        ParentContext = PipelineContext.Create "" |> StageParent.Pipeline |> ValueSome
+    }
+    |> condition.Invoke
+    |> Assert.False
+
+    Assert.Equal<int>([ 1; 2; 3 ], ls)

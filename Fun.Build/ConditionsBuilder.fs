@@ -182,14 +182,14 @@ type ConditionsBuilder() =
 
 
     member inline _.Combine([<InlineIfLambda>] buildStageIsActive: BuildStageIsActive, [<InlineIfLambda>] builder: BuildConditions) =
-        BuildConditions(fun conditions -> [ buildStageIsActive.Invoke ] @ builder.Invoke(conditions))
+        BuildConditions(fun conditions -> builder.Invoke(conditions @ [ buildStageIsActive.Invoke ]))
 
 
     member inline _.For([<InlineIfLambda>] builder: BuildConditions, [<InlineIfLambda>] fn: unit -> BuildConditions) =
         BuildConditions(fun conds -> fn().Invoke(builder.Invoke(conds)))
 
     member inline this.For([<InlineIfLambda>] builder: BuildConditions, [<InlineIfLambda>] fn: unit -> BuildStageIsActive) =
-        this.Combine(fn (), builder)
+        BuildConditions(fun conditions -> builder.Invoke(conditions @ [ fn().Invoke ]))
 
 
     [<CustomOperation("envVar")>]

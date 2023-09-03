@@ -36,12 +36,13 @@ let ``steps should run in sequence`` () =
     pipeline "" {
         stage "" {
             run (fun _ -> calls.Add 1)
-            run (fun _ -> calls.Add 2)
+            stage "" { run (fun _ -> calls.Add 2) }
             run (fun _ -> calls.Add 3)
+            stage "" { run (fun _ -> calls.Add 4) }
         }
         runImmediate
     }
-    Assert.Equal<int>([ 1; 2; 3 ], calls)
+    Assert.Equal<int>([ 1; 2; 3; 4 ], calls)
 
     calls.Clear()
     pipeline "" {
@@ -85,20 +86,24 @@ let ``steps should run in sequence`` () =
                 calls.Add 1
                 return Ok()
             })
-            step (fun _ _ -> async {
+            run (fun _ ->
                 calls.Add 2
+                Ok()
+            )
+            step (fun _ _ -> async {
+                calls.Add 3
                 return Ok()
             })
             timeout 10
             step (fun _ _ -> async {
-                calls.Add 3
+                calls.Add 4
                 return Ok()
             })
             timeout 10
         }
         runImmediate
     }
-    Assert.Equal<int>([ 1; 2; 3 ], calls)
+    Assert.Equal<int>([ 1; 2; 3; 4 ], calls)
 
 
 
