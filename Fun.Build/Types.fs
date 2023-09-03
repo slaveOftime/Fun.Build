@@ -50,3 +50,10 @@ type CmdArg =
     member this.WithValue values = { this with Values = this.Values @ values }
     member this.WithDescription x = { this with Description = Some x }
     member this.WithOptional x = { this with IsOptional = x }
+
+type EnvArg = {
+    Name: string
+    Values: string list
+    Description: string option
+    IsOptional: bool
+}

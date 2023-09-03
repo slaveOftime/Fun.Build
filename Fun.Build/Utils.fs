@@ -3,6 +3,7 @@ module Fun.Build.Internal.Utils
 
 open System
 open System.IO
+open Fun.Build
 
 
 let windowsEnvPaths =
@@ -41,6 +42,26 @@ let makeCommandOption prefix (argInfo: string) (argDescription: string) =
 let printCommandOption prefix (argInfo: string) (argDescription: string) = printfn "%s" (makeCommandOption prefix argInfo argDescription)
 
 let printHelpOptions () = printCommandOption "  " "-h, --help" "Show help and usage information"
+
+
+let makeCmdNameForPrint mode (info: CmdArg) =
+    match mode with
+    | Mode.CommandHelp { Verbose = false } ->
+        match info.Name with
+        | CmdName.ShortName x -> x
+        | CmdName.LongName x -> $"    {x}"
+        | CmdName.FullName(s, l) -> $"{s}, {l}"
+    | _ ->
+        match info.Name with
+        | CmdName.ShortName x -> x
+        | CmdName.LongName x -> x
+        | CmdName.FullName(s, l) -> $"{s}, {l}"
+    |> if info.IsOptional then sprintf "%s [optional]" else id
+
+let makeValuesForPrint (values: string list) =
+    match values with
+    | [] -> ""
+    | _ -> Environment.NewLine + "[choices: " + String.concat ", " (values |> Seq.map (sprintf "\"%s\"")) + "]"
 
 
 let getFsiFileName () =

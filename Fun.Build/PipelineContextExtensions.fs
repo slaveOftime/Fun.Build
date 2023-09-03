@@ -175,10 +175,14 @@ module PipelineContextExtensionsInternal =
 
             let scriptFile = getFsiFileName ()
 
-            let pipeline =
-                { pipeline with
-                    Mode = Mode.CommandHelp { Verbose = verbose; CmdInfos = Collections.Generic.List() }
-                }
+            let helpContext = {
+                Verbose = verbose
+                CmdArgs = Collections.Generic.List()
+                EnvArgs = Collections.Generic.List()
+            }
+
+            let mode = Mode.CommandHelp helpContext
+            let pipeline = { pipeline with Mode = mode }
 
             AnsiConsole.MarkupLine $"Description:"
 
@@ -200,15 +204,10 @@ module PipelineContextExtensionsInternal =
 
             if verbose then
                 AnsiConsole.WriteLine "Options/conditions:"
-            else
-                AnsiConsole.WriteLine "Options(collected from pipeline and stages):"
-
-            if verbose then AnsiConsole.Console.MarkupLine "> pipeline verification:"
-
-            if pipeline.Verify(pipeline) && verbose then
-                AnsiConsole.Console.MarkupLine "  [grey]no options/conditions[/]"
-
-            if verbose then AnsiConsole.Console.MarkupLine "> stages activation:"
+                AnsiConsole.Console.MarkupLine "> pipeline verification:"
+                if pipeline.Verify(pipeline) && verbose then
+                    AnsiConsole.Console.MarkupLine "  [grey]no options/conditions[/]"
+                AnsiConsole.Console.MarkupLine "> stages activation:"
 
 
             let rec run (stage: StageContext) =
@@ -244,7 +243,31 @@ module PipelineContextExtensionsInternal =
             )
 
             if not verbose then
+                let prefix = "  "
+
+                if helpContext.CmdArgs.Count > 0 then
+                    AnsiConsole.WriteLine "Options(collected from pipeline and stages):"
+                    helpContext.CmdArgs
+                    |> Seq.distinctBy (fun x -> x.Name)
+                    |> Seq.iter (fun x ->
+                        makeCommandOption prefix (makeCmdNameForPrint mode x) (defaultArg x.Description "" + makeValuesForPrint x.Values)
+                        |> AnsiConsole.WriteLine
+                    )
+                    AnsiConsole.WriteLine ""
+
                 printHelpOptions ()
-                printCommandOption "  " "-v, --verbose" "Make the help information verbose"
+                printCommandOption
+                    prefix
+                    "-v, --verbose"
+                    "Make the help information verbose (pipeline structure, conditions detail, cmd options and env args etc.)"
+
+                if helpContext.EnvArgs.Count > 0 then
+                    AnsiConsole.WriteLine ""
+                    AnsiConsole.WriteLine "ENV variables(collected from pipeline and stages):"
+                    helpContext.EnvArgs
+                    |> Seq.distinctBy (fun x -> x.Name)
+                    |> Seq.iter (fun x ->
+                        makeCommandOption prefix x.Name (defaultArg x.Description "" + makeValuesForPrint x.Values) |> AnsiConsole.WriteLine
+                    )
 
             AnsiConsole.WriteLine ""

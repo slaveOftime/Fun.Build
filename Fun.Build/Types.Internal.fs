@@ -34,7 +34,8 @@ type StageIndex =
 type CommandHelpContext = {
     Verbose: bool
     /// When we find some CmdInfo we can add it here, with this we can remove duplicates for simple printing
-    CmdInfos: Collections.Generic.List<CmdArg>
+    CmdArgs: Collections.Generic.List<CmdArg>
+    EnvArgs: Collections.Generic.List<EnvArg>
 }
 
 [<Struct; RequireQualifiedAccess>]
@@ -95,3 +96,5 @@ type BuildStageIsActive = delegate of ctx: StageContext -> bool
 type BuildStep = delegate of ctx: StageContext * index: StepIndex -> Async<Result<unit, string>>
 
 type BuildCmdInfo = delegate of CmdArg -> CmdArg
+
+type BuildEnvInfo = delegate of EnvArg -> EnvArg

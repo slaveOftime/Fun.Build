@@ -32,7 +32,10 @@ pipeline "demo" {
             echo $"run {Apps.app1}"
         }
         stage Apps.app2 {
-            whenCmdArg (args.app [ Apps.app2 ])
+            whenAny {
+                envVar "TEST1"
+                cmdArg (args.app [ Apps.app2 ])
+            }
             echo $"run {Apps.app2}"
         }
     }
@@ -46,6 +49,12 @@ pipeline "demo" {
                 optional
             }
             cmdArg "--foo" "" "sd" true
+            whenEnv {
+                name "TEST2"
+                acceptValues [ "foo1"; "foo2" ]
+                description "This is for demo"
+                optional
+            }
         }
         run (fun ctx -> printfn "%A" (ctx.TryGetCmdArg(args.path)))
     }

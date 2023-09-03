@@ -129,6 +129,75 @@ let ``whenCmdArg should work`` () =
         }
     )
 
+
+
+[<Fact>]
+let ``whenEnv should work`` () =
+    shouldNotBeCalled (fun call ->
+        pipeline "" {
+            stage "" {
+                whenEnv { name "test1" }
+                run call
+            }
+            runImmediate
+        }
+    )
+
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            envVars [ "test1", "" ]
+            stage "" {
+                whenEnv { name "test1" }
+                run call
+            }
+            runImmediate
+        }
+    )
+
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            envVars [ "test1", "v1" ]
+            stage "" {
+                whenEnv {
+                    name "test1"
+                    acceptValues [ "v1"; "v2" ]
+                }
+                run call
+            }
+            runImmediate
+        }
+    )
+
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            envVars [ "test1", "v1" ]
+            stage "" {
+                whenAll {
+                    whenEnv {
+                        name "test1"
+                        acceptValues [ "v1"; "v2" ]
+                    }
+                }
+                run call
+            }
+            runImmediate
+        }
+    )
+
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            stage "" {
+                whenEnv {
+                    name "test1"
+                    optional
+                }
+                run call
+            }
+            runImmediate
+        }
+    )
+
+
 [<Fact>]
 let ``whenEnvVar should work`` () =
     shouldNotBeCalled (fun call ->

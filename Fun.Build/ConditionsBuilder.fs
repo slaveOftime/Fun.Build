@@ -16,23 +16,28 @@ module Internal =
 
     type StageContext with
 
-        member ctx.WhenEnvArg(envKey: string, envValue: string, description) =
+        member ctx.WhenEnvArg(info: EnvArg) =
+            if info.Name |> String.IsNullOrEmpty then
+                failwith "ENV variable name cannot be empty"
+
             let getResult () =
-                match ctx.TryGetEnvVar envKey with
-                | ValueSome v when envValue = "" || v = envValue -> true
-                | _ -> false
+                info.IsOptional
+                || (
+                    match ctx.TryGetEnvVar info.Name with
+                    | ValueSome v when info.Values.IsEmpty || List.contains v info.Values -> true
+                    | _ -> false
+                )
 
             let getPrintInfo (prefix: string) =
-                makeCommandOption
-                    (prefix + "env: ")
-                    (envKey + if String.IsNullOrEmpty envValue then "" else " = " + envValue)
-                    (defaultArg description "")
+                makeCommandOption (prefix + "env: ") (info.Name) (defaultArg info.Description "" + makeValuesForPrint info.Values)
 
             match ctx.GetMode() with
             | Mode.CommandHelp { Verbose = true } ->
                 AnsiConsole.WriteLine(getPrintInfo (ctx.BuildIndent()))
                 false
-            | Mode.CommandHelp _ -> true
+            | Mode.CommandHelp cmdHelpCtx ->
+                cmdHelpCtx.EnvArgs.Add info
+                false
             | Mode.Verification ->
                 if getResult () then
                     AnsiConsole.MarkupLineInterpolated($"[green]✓ {getPrintInfo (ctx.BuildIndent().Substring(2))}[/]")
@@ -40,6 +45,19 @@ module Internal =
                     AnsiConsole.MarkupLineInterpolated($"[red]✕ {getPrintInfo (ctx.BuildIndent().Substring(2))}[/]")
                 false
             | Mode.Execution -> getResult ()
+
+
+        member ctx.WhenEnvArg(name: string, ?argValue, ?description, ?isOptional) =
+            let argValue = defaultArg argValue ""
+            ctx.WhenEnvArg
+                {
+                    Name = name
+                    Description = description
+                    Values = [
+                        if String.IsNullOrEmpty argValue |> not then argValue
+                    ]
+                    IsOptional = defaultArg isOptional false
+                }
 
 
         member ctx.WhenCmd(info: CmdArg) =
@@ -55,44 +73,16 @@ module Internal =
 
                 if info.IsOptional then true else info.Name.Names |> Seq.exists isValueMatch
 
-            let makeNameForPrint () =
-                match mode with
-                | Mode.CommandHelp { Verbose = false } ->
-                    match info.Name with
-                    | CmdName.ShortName x -> x
-                    | CmdName.LongName x -> $"    {x}"
-                    | CmdName.FullName(s, l) -> $"{s}, {l}"
-                | _ ->
-                    match info.Name with
-                    | CmdName.ShortName x -> x
-                    | CmdName.LongName x -> x
-                    | CmdName.FullName(s, l) -> $"{s}, {l}"
-                |> if info.IsOptional then sprintf "%s [optional]" else id
-
-            let makeValuesForPrint () =
-                match info.Values with
-                | [] -> ""
-                | _ -> Environment.NewLine + "[choices: " + String.concat ", " (info.Values |> Seq.map (sprintf "\"%s\"")) + "]"
-
-
             let getPrintInfo (prefix: string) =
-                makeCommandOption (prefix + "cmd: ") (makeNameForPrint ()) (defaultArg info.Description "" + makeValuesForPrint ())
+                makeCommandOption (prefix + "cmd: ") (makeCmdNameForPrint mode info) (defaultArg info.Description "" + makeValuesForPrint info.Values)
 
             match mode with
             | Mode.CommandHelp { Verbose = true } ->
                 AnsiConsole.WriteLine(getPrintInfo (ctx.BuildIndent()))
                 false
             | Mode.CommandHelp cmdHelpCtx ->
-                let isCmdInfoAlreadyAdded =
-                    cmdHelpCtx.CmdInfos
-                    |> Seq.exists (fun addedCmdInfo -> addedCmdInfo.Name.Names |> Seq.exists (fun n -> Seq.contains n info.Name.Names))
-                cmdHelpCtx.CmdInfos.Add info
-                if isCmdInfoAlreadyAdded then
-                    // No need to print duplicate cmd info when name is same in none verbose mode
-                    false
-                else
-                    AnsiConsole.WriteLine(makeCommandOption "  " (makeNameForPrint ()) (defaultArg info.Description "" + makeValuesForPrint ()))
-                    false
+                cmdHelpCtx.CmdArgs.Add info
+                false
             | Mode.Verification ->
                 if getResult () then
                     AnsiConsole.MarkupLineInterpolated $"""[green]{getPrintInfo ("✓ " + ctx.BuildIndent().Substring(2))}[/]"""
@@ -196,7 +186,7 @@ type ConditionsBuilder() =
         BuildConditions(fun conditions ->
             builder.Invoke(conditions)
             @ [
-                fun ctx -> ctx.WhenEnvArg(envKey, "", None)
+                fun ctx -> ctx.WhenEnvArg(envKey)
             ]
         )
 
@@ -205,7 +195,7 @@ type ConditionsBuilder() =
         BuildConditions(fun conditions ->
             builder.Invoke(conditions)
             @ [
-                fun ctx -> ctx.WhenEnvArg(envKey, envValue, None)
+                fun ctx -> ctx.WhenEnvArg(envKey, envValue)
             ]
         )
 
@@ -214,7 +204,7 @@ type ConditionsBuilder() =
         BuildConditions(fun conditions ->
             builder.Invoke(conditions)
             @ [
-                fun ctx -> ctx.WhenEnvArg(envKey, envValue, Some description)
+                fun ctx -> ctx.WhenEnvArg(envKey, envValue, description)
             ]
         )
 
@@ -323,7 +313,7 @@ type StageBuilder with
     member inline _.whenEnvVar([<InlineIfLambda>] build: BuildStage, envKey: string) =
         BuildStage(fun ctx ->
             { build.Invoke ctx with
-                IsActive = fun ctx -> ctx.WhenEnvArg(envKey, "", None)
+                IsActive = fun ctx -> ctx.WhenEnvArg(envKey)
             }
         )
 
@@ -333,7 +323,7 @@ type StageBuilder with
     member inline _.whenEnvVar([<InlineIfLambda>] build: BuildStage, envKey: string, envValue: string) =
         BuildStage(fun ctx ->
             { build.Invoke ctx with
-                IsActive = fun ctx -> ctx.WhenEnvArg(envKey, envValue, None)
+                IsActive = fun ctx -> ctx.WhenEnvArg(envKey, envValue)
             }
         )
 
@@ -343,7 +333,7 @@ type StageBuilder with
     member inline _.whenEnvVar([<InlineIfLambda>] build: BuildStage, envKey: string, envValue: string, description: string) =
         BuildStage(fun ctx ->
             { build.Invoke ctx with
-                IsActive = fun ctx -> ctx.WhenEnvArg(envKey, envValue, Some description)
+                IsActive = fun ctx -> ctx.WhenEnvArg(envKey, envValue, description)
             }
         )
 
@@ -454,7 +444,7 @@ type PipelineBuilder with
     member inline _.whenEnvVar([<InlineIfLambda>] build: BuildPipeline, envKey: string) =
         BuildPipeline(fun ctx ->
             { build.Invoke ctx with
-                Verify = fun ctx -> ctx.MakeVerificationStage().WhenEnvArg(envKey, "", None)
+                Verify = fun ctx -> ctx.MakeVerificationStage().WhenEnvArg(envKey)
             }
         )
 
@@ -464,7 +454,7 @@ type PipelineBuilder with
     member inline _.whenEnvVar([<InlineIfLambda>] build: BuildPipeline, envKey: string, envValue: string) =
         BuildPipeline(fun ctx ->
             { build.Invoke ctx with
-                Verify = fun ctx -> ctx.MakeVerificationStage().WhenEnvArg(envKey, envValue, None)
+                Verify = fun ctx -> ctx.MakeVerificationStage().WhenEnvArg(envKey, envValue)
             }
         )
 
@@ -474,7 +464,7 @@ type PipelineBuilder with
     member inline _.whenEnvVar([<InlineIfLambda>] build: BuildPipeline, envKey: string, envValue: string, description: string) =
         BuildPipeline(fun ctx ->
             { build.Invoke ctx with
-                Verify = fun ctx -> ctx.MakeVerificationStage().WhenEnvArg(envKey, envValue, Some description)
+                Verify = fun ctx -> ctx.MakeVerificationStage().WhenEnvArg(envKey, envValue, description)
             }
         )
 
@@ -734,6 +724,47 @@ type WhenCmdBuilder() =
     [<CustomOperation "optional">]
     member inline _.optional([<InlineIfLambda>] build: BuildCmdInfo) = BuildCmdInfo(fun info -> { build.Invoke(info) with IsOptional = true })
 
+
+type WhenEnvBuilder() =
+
+    member _.Run(build: BuildEnvInfo) =
+        BuildStageIsActive(fun ctx ->
+            let arg =
+                build.Invoke
+                    {
+                        // We should carefully procees the empty string in this build type
+                        Name = ""
+                        Description = None
+                        Values = []
+                        IsOptional = false
+                    }
+            ctx.WhenEnvArg(arg)
+        )
+
+    member inline _.Yield(_: unit) = BuildEnvInfo(fun x -> x)
+    member inline _.Yield(x: BuildEnvInfo) = x
+    member inline _.Delay([<InlineIfLambda>] fn: unit -> BuildEnvInfo) = BuildEnvInfo(fun x -> fn().Invoke(x))
+
+
+    /// ENV variable
+    [<CustomOperation "name">]
+    member inline _.name([<InlineIfLambda>] build: BuildEnvInfo, name: string) = BuildEnvInfo(fun info -> { build.Invoke(info) with Name = name })
+
+    [<CustomOperation "description">]
+    member inline _.description([<InlineIfLambda>] build: BuildEnvInfo, x: string) =
+        BuildEnvInfo(fun info -> { build.Invoke(info) with Description = Some x })
+
+    [<CustomOperation "value">]
+    member inline _.value([<InlineIfLambda>] build: BuildEnvInfo, x: string) = BuildEnvInfo(fun info -> { build.Invoke(info) with Values = [ x ] })
+
+    [<CustomOperation "acceptValues">]
+    member inline _.acceptValues([<InlineIfLambda>] build: BuildEnvInfo, values: string list) =
+        BuildEnvInfo(fun info -> { build.Invoke(info) with Values = values })
+
+    [<CustomOperation "optional">]
+    member inline _.optional([<InlineIfLambda>] build: BuildEnvInfo) = BuildEnvInfo(fun info -> { build.Invoke(info) with IsOptional = true })
+
+
 /// When any of the added conditions are satisified, the stage will be active
 let whenAny = WhenAnyBuilder()
 /// When all of the added conditions are satisified, the stage will be active
@@ -742,3 +773,5 @@ let whenAll = WhenAllBuilder()
 let whenNot = WhenNotBuilder()
 /// When the cmd is matched, the stage will be active
 let whenCmd = WhenCmdBuilder()
+/// When the ENV is matched, the stage will be active
+let whenEnv = WhenEnvBuilder()
