@@ -67,8 +67,7 @@ module Internal =
                     | CmdName.ShortName x -> x
                     | CmdName.LongName x -> x
                     | CmdName.FullName(s, l) -> $"{s}, {l}"
-                // If the command is optional, then wrap it with []
-                |> fun x -> if info.IsOptional then $"[{x}]" else x
+                |> if info.IsOptional then sprintf "%s [optional]" else id
 
             let makeValuesForPrint () =
                 match info.Values with

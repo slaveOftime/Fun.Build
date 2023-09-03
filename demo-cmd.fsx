@@ -40,6 +40,12 @@ pipeline "demo" {
         whenAll {
             branch "master"
             cmdArg args.path
+            whenCmd {
+                name "-s"
+                longName "--send"
+                optional
+            }
+            cmdArg "--foo" "" "sd" true
         }
         run (fun ctx -> printfn "%A" (ctx.TryGetCmdArg(args.path)))
     }
