@@ -178,7 +178,7 @@ type ConditionsBuilder() =
         BuildConditions(fun conds -> fn().Invoke(builder.Invoke(conds)))
 
     member inline this.For([<InlineIfLambda>] builder: BuildConditions, [<InlineIfLambda>] fn: unit -> BuildStageIsActive) =
-        BuildConditions(fun conditions -> builder.Invoke(conditions @ [ fn().Invoke ]))
+        BuildConditions(fun conditions -> builder.Invoke(conditions) @ [ fn().Invoke ])
 
 
     [<CustomOperation("envVar")>]

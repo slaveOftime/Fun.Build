@@ -486,6 +486,10 @@ let ``condition builder should follow the sequence`` () =
             true
         )
         cmdArg "test3"
+        BuildStageIsActive(fun _ ->
+            ls.Add(4)
+            true
+        )
     }
 
     { StageContext.Create "" with
@@ -494,4 +498,4 @@ let ``condition builder should follow the sequence`` () =
     |> condition.Invoke
     |> Assert.False
 
-    Assert.Equal<int>([ 1; 2; 3 ], ls)
+    Assert.Equal<int>([ 1; 2; 3; 4 ], ls)
