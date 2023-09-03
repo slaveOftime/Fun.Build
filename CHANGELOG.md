@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.4.3] - 2023-09-03
+
+- Fix ConditionsBuilder sequence issue
+- Make optional help info more explicity
+- Add whenEnv and enable print env vars in command help mode
+
 ## [0.4.2] - 2023-07-08
 
 - Support CmdArg directly for whenCmdArg and cmdArg

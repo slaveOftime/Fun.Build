@@ -145,6 +145,11 @@ pipeline "cmd-info" {
         description "optional argument"
         optional
     }
+    whenEnv {
+        name "PRODUCTION"
+        description "optional argument"
+        optional
+    }
     stage "condition demo" {
         noStdRedirectForStep
         failIfIgnored

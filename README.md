@@ -19,7 +19,7 @@ Every **step** is just a **async<Result<unit, string>>**, string is for the erro
 ## Minimal example and conventions
 
 ```fsharp
-#r "nuget: Fun.Build, 0.3.9"
+#r "nuget: Fun.Build, 0.4.3"
 open Fun.Build
 
 pipeline "demo" {
@@ -67,7 +67,7 @@ Below example covered most of the apis and usage example, take it as the documen
 
 ```fsharp
 #r "nuget: Fun.Result"
-#r "nuget: Fun.Build, 0.4.1"
+#r "nuget: Fun.Build, 0.4.3"
 
 open Fun.Result
 open Fun.Build
@@ -207,6 +207,16 @@ pipeline "cmd-info" {
         // Description can also support multiple lines
         description "watch cool stuff \n dasd asdad \n asdasd as123"
     }
+    whenCmd {
+        name "--debug"
+        description "optional argument"
+        optional
+    }
+    whenEnv {
+        name "PRODUCTION"
+        description "optional argument"
+        optional
+    }
     stage "condition demo" {
         noStdRedirectForStep
         failIfIgnored
@@ -243,6 +253,6 @@ pipeline "cmd-info" {
 
 
 // This will collect command line help information for you
-// You can run: dotnet demo.fsx -- -h
+// You can run: dotnet fsi demo.fsx -- -h
 tryPrintPipelineCommandHelp ()
 ```
