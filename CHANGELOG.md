@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.4.5] - 2023-09-04
+
 - Should combine all values from duplicate arg
 - Improve top level condition help infomation printing
 
