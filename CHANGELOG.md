@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Should combine all values from duplicate arg
+- Improve top level condition help infomation printing
+
 ## [0.4.4] - 2023-09-04
 
 - Support EnvArg for whenEnvVar

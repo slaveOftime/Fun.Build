@@ -22,8 +22,12 @@ let args = {|
 pipeline "demo" {
     description "simple demo"
     whenCmdArg (args.app Apps.all)
+    whenEnvVar "ENV1"
+    whenEnvVar "ENV2"
     stage "build" {
-        stage "taiwindcss" {
+        whenEnvVar "ENV3"
+        whenEnvVar "ENV4"
+        stage "tailwindcss" {
             whenCmdArg args.watch
             echo "tailwindcss building"
         }

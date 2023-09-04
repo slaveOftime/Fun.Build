@@ -208,7 +208,8 @@ module PipelineContextExtensionsInternal =
                 if pipeline.Verify(pipeline) && verbose then
                     AnsiConsole.Console.MarkupLine "  [grey]no options/conditions[/]"
                 AnsiConsole.Console.MarkupLine "> stages activation:"
-
+            else
+                pipeline.Verify pipeline |> ignore
 
             let rec run (stage: StageContext) =
                 if verbose then
@@ -249,9 +250,11 @@ module PipelineContextExtensionsInternal =
 
                 if helpContext.CmdArgs.Count > 0 then
                     helpContext.CmdArgs
-                    |> Seq.distinctBy (fun x -> x.Name)
-                    |> Seq.iter (fun x ->
-                        makeCommandOption prefix (makeCmdNameForPrint mode x) (defaultArg x.Description "" + makeValuesForPrint x.Values)
+                    |> Seq.groupBy (fun x -> x.Name)
+                    |> Seq.iter (fun (_, args) ->
+                        let arg = args |> Seq.item 0
+                        let values = args |> Seq.map (fun x -> x.Values) |> Seq.concat |> Seq.distinct |> Seq.toList
+                        makeCommandOption prefix (makeCmdNameForPrint mode arg) (defaultArg arg.Description "" + makeValuesForPrint values)
                         |> AnsiConsole.WriteLine
                     )
 
@@ -265,9 +268,11 @@ module PipelineContextExtensionsInternal =
                     AnsiConsole.WriteLine ""
                     AnsiConsole.WriteLine "ENV variables(collected from pipeline and stages):"
                     helpContext.EnvArgs
-                    |> Seq.distinctBy (fun x -> x.Name)
-                    |> Seq.iter (fun x ->
-                        makeCommandOption prefix x.Name (defaultArg x.Description "" + makeValuesForPrint x.Values) |> AnsiConsole.WriteLine
+                    |> Seq.groupBy (fun x -> x.Name)
+                    |> Seq.iter (fun (_, args) ->
+                        let arg = args |> Seq.item 0
+                        let values = args |> Seq.map (fun x -> x.Values) |> Seq.concat |> Seq.distinct |> Seq.toList
+                        makeCommandOption prefix arg.Name (defaultArg arg.Description "" + makeValuesForPrint values) |> AnsiConsole.WriteLine
                     )
 
             AnsiConsole.WriteLine ""
