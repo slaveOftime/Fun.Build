@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Support EnvArg for whenEnvVar
+
 ## [0.4.3] - 2023-09-03
 
 - Fix ConditionsBuilder sequence issue

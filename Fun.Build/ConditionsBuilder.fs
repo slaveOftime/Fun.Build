@@ -310,6 +310,16 @@ type StageBuilder with
     /// Set if stage is active or should run by check the environment variable.
     /// Only the last condition will take effect.
     [<CustomOperation("whenEnvVar")>]
+    member inline _.whenEnvVar([<InlineIfLambda>] build: BuildStage, arg: EnvArg) =
+        BuildStage(fun ctx ->
+            { build.Invoke ctx with
+                IsActive = fun ctx -> ctx.WhenEnvArg(arg)
+            }
+        )
+
+    /// Set if stage is active or should run by check the environment variable.
+    /// Only the last condition will take effect.
+    [<CustomOperation("whenEnvVar")>]
     member inline _.whenEnvVar([<InlineIfLambda>] build: BuildStage, envKey: string) =
         BuildStage(fun ctx ->
             { build.Invoke ctx with
@@ -437,6 +447,16 @@ type PipelineBuilder with
     member inline _.when'([<InlineIfLambda>] build: BuildPipeline, value: bool) =
         BuildPipeline(fun ctx -> { build.Invoke ctx with Verify = fun _ -> value })
 
+
+    /// Set if stage is active or should run by check the environment variable.
+    /// Only the last condition will take effect.
+    [<CustomOperation("whenEnvVar")>]
+    member inline _.whenEnvVar([<InlineIfLambda>] build: BuildPipeline, arg: EnvArg) =
+        BuildPipeline(fun ctx ->
+            { build.Invoke ctx with
+                Verify = fun ctx -> ctx.MakeVerificationStage().WhenEnvArg(arg)
+            }
+        )
 
     /// Set if stage is active or should run by check the environment variable.
     /// Only the last condition will take effect.
