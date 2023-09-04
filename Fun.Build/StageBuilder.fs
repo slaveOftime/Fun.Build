@@ -13,6 +13,7 @@ type StageBuilder(name: string) =
 
 
     member inline _.Yield(_: unit) = BuildStage id
+    member inline _.Yield(_: obj) = BuildStage id
     member inline _.Yield(stage: StageContext) = stage
 
     member inline _.Delay([<InlineIfLambda>] fn: unit -> BuildStage) = BuildStage(fun ctx -> fn().Invoke(ctx))

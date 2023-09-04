@@ -232,6 +232,27 @@ let ``Syntax check`` () =
     pipeline "" { stage1 } |> ignore
 
     pipeline "" {
+        let a = ""
+        let b = {| Test = "value" |}
+        runImmediate
+    }
+
+    pipeline "" {
+        let a = ""
+        let b = {| Test = "value" |}
+        runIfOnlySpecified
+    }
+
+    pipeline "" {
+        stage "" {
+            let a = ""
+            let b = {| Test = "value" |}
+            echo ""
+        }
+    }
+    |> ignore
+
+    pipeline "" {
         cmdArgs [ "" ]
         envVars [ "", "" ]
         stage1

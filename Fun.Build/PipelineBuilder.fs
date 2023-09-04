@@ -37,6 +37,8 @@ type PipelineBuilder(name: string) =
 
     member inline _.Yield(_: unit) = BuildPipeline id
 
+    member inline _.Yield(_: obj) = BuildPipeline id
+
     member inline _.Yield(stage: StageContext) = stage
 
 
