@@ -52,7 +52,7 @@ type CmdArg =
     member this.WithOptional x = { this with IsOptional = x }
 
 
-type EnvArg = 
+type EnvArg =
     {
         Name: string
         Values: string list

@@ -5,6 +5,7 @@
 - Support EnvArg for whenEnvVar
 - Add help methods to build EnvArg
 - For top level condition of stage or pipeline it should combine all condition with && rule
+- Clean extra line for printing help info
 
 ## [0.4.3] - 2023-09-03
 

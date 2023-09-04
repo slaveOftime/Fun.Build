@@ -253,7 +253,6 @@ module PipelineContextExtensionsInternal =
                         makeCommandOption prefix (makeCmdNameForPrint mode x) (defaultArg x.Description "" + makeValuesForPrint x.Values)
                         |> AnsiConsole.WriteLine
                     )
-                    AnsiConsole.WriteLine ""
 
                 printHelpOptions ()
                 printCommandOption
