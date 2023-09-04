@@ -29,7 +29,7 @@ module Internal =
                 )
 
             let getPrintInfo (prefix: string) =
-                makeCommandOption (prefix + "env: ") (info.Name) (defaultArg info.Description "" + makeValuesForPrint info.Values)
+                makeCommandOption (prefix + "env: ") (makeEnvNameForPrint info) (defaultArg info.Description "" + makeValuesForPrint info.Values)
 
             match ctx.GetMode() with
             | Mode.CommandHelp { Verbose = true } ->

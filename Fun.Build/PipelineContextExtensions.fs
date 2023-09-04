@@ -276,7 +276,8 @@ module PipelineContextExtensionsInternal =
                     |> Seq.iter (fun (_, args) ->
                         let arg = args |> Seq.item 0
                         let values = args |> Seq.map (fun x -> x.Values) |> Seq.concat |> Seq.distinct |> Seq.toList
-                        makeCommandOption prefix arg.Name (defaultArg arg.Description "" + makeValuesForPrint values) |> AnsiConsole.WriteLine
+                        makeCommandOption prefix (makeEnvNameForPrint arg) (defaultArg arg.Description "" + makeValuesForPrint values)
+                        |> AnsiConsole.WriteLine
                     )
 
             AnsiConsole.WriteLine ""

@@ -44,6 +44,8 @@ let printCommandOption prefix (argInfo: string) (argDescription: string) = print
 let printHelpOptions () = printCommandOption "  " "-h, --help" "Show help and usage information"
 
 
+let makeEnvNameForPrint (info: EnvArg) = if info.IsOptional then sprintf "%s [optional]" info.Name else info.Name
+
 let makeCmdNameForPrint mode (info: CmdArg) =
     match mode with
     | Mode.CommandHelp { Verbose = false } ->
