@@ -245,8 +245,9 @@ module PipelineContextExtensionsInternal =
             if not verbose then
                 let prefix = "  "
 
+                AnsiConsole.WriteLine "Options(collected from pipeline and stages):"
+
                 if helpContext.CmdArgs.Count > 0 then
-                    AnsiConsole.WriteLine "Options(collected from pipeline and stages):"
                     helpContext.CmdArgs
                     |> Seq.distinctBy (fun x -> x.Name)
                     |> Seq.iter (fun x ->
