@@ -22,7 +22,7 @@ let args = {|
 pipeline "demo" {
     description "simple demo"
     whenCmdArg (args.app Apps.all)
-    whenEnvVar "ENV1"
+    whenEnvVar "ENV1" "" "Test env1"
     whenEnvVar "ENV2"
     stage "build" {
         whenEnvVar "ENV3"

@@ -61,7 +61,7 @@ let makeCmdNameForPrint mode (info: CmdArg) =
     |> if info.IsOptional then sprintf "%s [optional]" else id
 
 let makeValuesForPrint (values: string list) =
-    match values with
+    match values |> List.filter (String.IsNullOrEmpty >> not) with
     | [] -> ""
     | _ -> Environment.NewLine + "[choices: " + String.concat ", " (values |> Seq.map (sprintf "\"%s\"")) + "]"
 

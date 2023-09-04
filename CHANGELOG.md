@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.4.7] - 2023-09-04
+
+- Ignore empty values when printing choices
+
 ## [0.4.6] - 2023-09-04
 
 - Fix help info printing
