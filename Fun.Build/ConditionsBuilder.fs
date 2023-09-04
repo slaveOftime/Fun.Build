@@ -301,140 +301,144 @@ type ConditionsBuilder() =
 type StageBuilder with
 
     /// Set if stage is active or should run.
-    /// Only the last condition will take effect.
     [<CustomOperation("when'")>]
     member inline _.when'([<InlineIfLambda>] build: BuildStage, value: bool) =
-        BuildStage(fun ctx -> { build.Invoke ctx with IsActive = fun _ -> value })
+        BuildStage(fun ctx ->
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                IsActive = fun ctx -> newCtx.IsActive ctx && value
+            }
+        )
 
 
     /// Set if stage is active or should run by check the environment variable.
-    /// Only the last condition will take effect.
     [<CustomOperation("whenEnvVar")>]
     member inline _.whenEnvVar([<InlineIfLambda>] build: BuildStage, arg: EnvArg) =
         BuildStage(fun ctx ->
-            { build.Invoke ctx with
-                IsActive = fun ctx -> ctx.WhenEnvArg(arg)
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                IsActive = fun ctx -> newCtx.IsActive ctx && ctx.WhenEnvArg(arg)
             }
         )
 
     /// Set if stage is active or should run by check the environment variable.
-    /// Only the last condition will take effect.
     [<CustomOperation("whenEnvVar")>]
     member inline _.whenEnvVar([<InlineIfLambda>] build: BuildStage, envKey: string) =
         BuildStage(fun ctx ->
-            { build.Invoke ctx with
-                IsActive = fun ctx -> ctx.WhenEnvArg(envKey)
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                IsActive = fun ctx -> newCtx.IsActive ctx && ctx.WhenEnvArg(envKey)
             }
         )
 
     /// Set if stage is active or should run by check the environment variable.
-    /// Only the last condition will take effect.
     [<CustomOperation("whenEnvVar")>]
     member inline _.whenEnvVar([<InlineIfLambda>] build: BuildStage, envKey: string, envValue: string) =
         BuildStage(fun ctx ->
-            { build.Invoke ctx with
-                IsActive = fun ctx -> ctx.WhenEnvArg(envKey, envValue)
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                IsActive = fun ctx -> newCtx.IsActive ctx && ctx.WhenEnvArg(envKey, envValue)
             }
         )
 
     /// Set if stage is active or should run by check the environment variable.
-    /// Only the last condition will take effect.
     [<CustomOperation("whenEnvVar")>]
     member inline _.whenEnvVar([<InlineIfLambda>] build: BuildStage, envKey: string, envValue: string, description: string) =
         BuildStage(fun ctx ->
-            { build.Invoke ctx with
-                IsActive = fun ctx -> ctx.WhenEnvArg(envKey, envValue, description)
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                IsActive = fun ctx -> newCtx.IsActive ctx && ctx.WhenEnvArg(envKey, envValue, description)
             }
         )
 
 
     /// Set if stage is active or should run by check the command line args.
-    /// Only the last condition will take effect.
     [<CustomOperation("whenCmdArg")>]
     member inline _.whenCmdArg([<InlineIfLambda>] build: BuildStage, arg: CmdArg) =
         BuildStage(fun ctx ->
-            { build.Invoke ctx with
-                IsActive = fun ctx -> ctx.WhenCmd arg
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                IsActive = fun ctx -> newCtx.IsActive ctx && ctx.WhenCmd arg
             }
         )
 
     /// Set if stage is active or should run by check the command line args.
-    /// Only the last condition will take effect.
     [<CustomOperation("whenCmdArg")>]
     member inline _.whenCmdArg([<InlineIfLambda>] build: BuildStage, argKeyLongName: string) =
         BuildStage(fun ctx ->
-            { build.Invoke ctx with
-                IsActive = fun ctx -> ctx.WhenCmdArg(CmdName.LongName argKeyLongName, "", None, false)
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                IsActive = fun ctx -> newCtx.IsActive ctx && ctx.WhenCmdArg(CmdName.LongName argKeyLongName, "", None, false)
             }
         )
 
     /// Set if stage is active or should run by check the command line args.
-    /// Only the last condition will take effect.
     [<CustomOperation("whenCmdArg")>]
     member inline _.whenCmdArg([<InlineIfLambda>] build: BuildStage, argKeyLongName: string, argValue: string) =
         BuildStage(fun ctx ->
-            { build.Invoke ctx with
-                IsActive = fun ctx -> ctx.WhenCmdArg(CmdName.LongName argKeyLongName, argValue, None, false)
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                IsActive = fun ctx -> newCtx.IsActive ctx && ctx.WhenCmdArg(CmdName.LongName argKeyLongName, argValue, None, false)
             }
         )
 
     /// Set if stage is active or should run by check the command line args.
-    /// Only the last condition will take effect.
     [<CustomOperation("whenCmdArg")>]
     member inline _.whenCmdArg([<InlineIfLambda>] build: BuildStage, argKeyLongName: string, argValue: string, description: string) =
         BuildStage(fun ctx ->
-            { build.Invoke ctx with
-                IsActive = fun ctx -> ctx.WhenCmdArg(CmdName.LongName argKeyLongName, argValue, Some description, false)
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                IsActive = fun ctx -> newCtx.IsActive ctx && ctx.WhenCmdArg(CmdName.LongName argKeyLongName, argValue, Some description, false)
             }
         )
 
     /// Set if stage is active or should run by check the command line args.
-    /// Only the last condition will take effect.
     [<CustomOperation("whenCmdArg")>]
     member inline _.whenCmdArg([<InlineIfLambda>] build: BuildStage, argKeyLongName: string, argValue: string, description: string, isOptional) =
         BuildStage(fun ctx ->
-            { build.Invoke ctx with
-                IsActive = fun ctx -> ctx.WhenCmdArg(CmdName.LongName argKeyLongName, argValue, Some description, isOptional)
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                IsActive = fun ctx -> newCtx.IsActive ctx && ctx.WhenCmdArg(CmdName.LongName argKeyLongName, argValue, Some description, isOptional)
             }
         )
 
     /// Set if stage is active or should run by check the git branch name.
-    /// Only the last condition will take effect.
     [<CustomOperation("whenBranch")>]
     member inline _.whenBranch([<InlineIfLambda>] build: BuildStage, branch: string) =
         BuildStage(fun ctx ->
-            { build.Invoke ctx with
-                IsActive = fun ctx -> ctx.WhenBranch branch
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                IsActive = fun ctx -> newCtx.IsActive ctx && ctx.WhenBranch branch
             }
         )
 
     /// Set if stage is active or should run by check the platform is Windows.
-    /// Only the last condition will take effect.
     [<CustomOperation("whenWindows")>]
     member inline _.whenWindows([<InlineIfLambda>] build: BuildStage) =
         BuildStage(fun ctx ->
-            { build.Invoke ctx with
-                IsActive = fun ctx -> ctx.WhenPlatform OSPlatform.Windows
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                IsActive = fun ctx -> newCtx.IsActive ctx && ctx.WhenPlatform OSPlatform.Windows
             }
         )
 
     /// Set if stage is active or should run by check the platform is Linux.
-    /// Only the last condition will take effect.
     [<CustomOperation("whenLinux")>]
     member inline _.whenLinux([<InlineIfLambda>] build: BuildStage) =
         BuildStage(fun ctx ->
-            { build.Invoke ctx with
-                IsActive = fun ctx -> ctx.WhenPlatform OSPlatform.Linux
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                IsActive = fun ctx -> newCtx.IsActive ctx && ctx.WhenPlatform OSPlatform.Linux
             }
         )
 
     /// Set if stage is active or should run by check the platform is OSX.
-    /// Only the last condition will take effect.
     [<CustomOperation("whenOSX")>]
     member inline _.whenOSX([<InlineIfLambda>] build: BuildStage) =
         BuildStage(fun ctx ->
-            { build.Invoke ctx with
-                IsActive = fun ctx -> ctx.WhenPlatform OSPlatform.OSX
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                IsActive = fun ctx -> newCtx.IsActive ctx && ctx.WhenPlatform OSPlatform.OSX
             }
         )
 
@@ -442,94 +446,101 @@ type StageBuilder with
 type PipelineBuilder with
 
     /// Set if stage is active or should run.
-    /// Only the last condition will take effect.
     [<CustomOperation("when'")>]
     member inline _.when'([<InlineIfLambda>] build: BuildPipeline, value: bool) =
-        BuildPipeline(fun ctx -> { build.Invoke ctx with Verify = fun _ -> value })
+        BuildPipeline(fun ctx ->
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                Verify = fun ctx -> newCtx.Verify ctx && value
+            }
+        )
 
 
     /// Set if stage is active or should run by check the environment variable.
-    /// Only the last condition will take effect.
     [<CustomOperation("whenEnvVar")>]
     member inline _.whenEnvVar([<InlineIfLambda>] build: BuildPipeline, arg: EnvArg) =
         BuildPipeline(fun ctx ->
-            { build.Invoke ctx with
-                Verify = fun ctx -> ctx.MakeVerificationStage().WhenEnvArg(arg)
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                Verify = fun ctx -> newCtx.Verify ctx && ctx.MakeVerificationStage().WhenEnvArg(arg)
             }
         )
 
     /// Set if stage is active or should run by check the environment variable.
-    /// Only the last condition will take effect.
     [<CustomOperation("whenEnvVar")>]
     member inline _.whenEnvVar([<InlineIfLambda>] build: BuildPipeline, envKey: string) =
         BuildPipeline(fun ctx ->
-            { build.Invoke ctx with
-                Verify = fun ctx -> ctx.MakeVerificationStage().WhenEnvArg(envKey)
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                Verify = fun ctx -> newCtx.Verify ctx && ctx.MakeVerificationStage().WhenEnvArg(envKey)
             }
         )
 
     /// Set if stage is active or should run by check the environment variable.
-    /// Only the last condition will take effect.
     [<CustomOperation("whenEnvVar")>]
     member inline _.whenEnvVar([<InlineIfLambda>] build: BuildPipeline, envKey: string, envValue: string) =
         BuildPipeline(fun ctx ->
-            { build.Invoke ctx with
-                Verify = fun ctx -> ctx.MakeVerificationStage().WhenEnvArg(envKey, envValue)
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                Verify = fun ctx -> newCtx.Verify ctx && ctx.MakeVerificationStage().WhenEnvArg(envKey, envValue)
             }
         )
 
     /// Set if stage is active or should run by check the environment variable.
-    /// Only the last condition will take effect.
     [<CustomOperation("whenEnvVar")>]
     member inline _.whenEnvVar([<InlineIfLambda>] build: BuildPipeline, envKey: string, envValue: string, description: string) =
         BuildPipeline(fun ctx ->
-            { build.Invoke ctx with
-                Verify = fun ctx -> ctx.MakeVerificationStage().WhenEnvArg(envKey, envValue, description)
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                Verify = fun ctx -> newCtx.Verify ctx && ctx.MakeVerificationStage().WhenEnvArg(envKey, envValue, description)
             }
         )
 
     /// Set if stage is active or should run by check the command line args.
-    /// Only the last condition will take effect.
     [<CustomOperation("whenCmdArg")>]
     member inline _.whenCmdArg([<InlineIfLambda>] build: BuildPipeline, arg: CmdArg) =
         BuildPipeline(fun ctx ->
-            { build.Invoke ctx with
-                Verify = fun ctx -> ctx.MakeVerificationStage().WhenCmd(arg)
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                Verify = fun ctx -> newCtx.Verify ctx && ctx.MakeVerificationStage().WhenCmd(arg)
             }
         )
 
     /// Set if stage is active or should run by check the command line args.
-    /// Only the last condition will take effect.
     [<CustomOperation("whenCmdArg")>]
     member inline _.whenCmdArg([<InlineIfLambda>] build: BuildPipeline, argKeyLongName: string) =
         BuildPipeline(fun ctx ->
-            { build.Invoke ctx with
-                Verify = fun ctx -> ctx.MakeVerificationStage().WhenCmdArg(CmdName.LongName argKeyLongName, "", None, false)
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                Verify = fun ctx -> newCtx.Verify ctx && ctx.MakeVerificationStage().WhenCmdArg(CmdName.LongName argKeyLongName, "", None, false)
             }
         )
 
     /// Set if stage is active or should run by check the command line args.
-    /// Only the last condition will take effect.
     [<CustomOperation("whenCmdArg")>]
     member inline _.whenCmdArg([<InlineIfLambda>] build: BuildPipeline, argKeyLongName: string, argValue: string) =
         BuildPipeline(fun ctx ->
-            { build.Invoke ctx with
-                Verify = fun ctx -> ctx.MakeVerificationStage().WhenCmdArg(CmdName.LongName argKeyLongName, argValue, None, false)
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                Verify =
+                    fun ctx -> newCtx.Verify ctx && ctx.MakeVerificationStage().WhenCmdArg(CmdName.LongName argKeyLongName, argValue, None, false)
             }
         )
 
     /// Set if stage is active or should run by check the command line args.
-    /// Only the last condition will take effect.
     [<CustomOperation("whenCmdArg")>]
     member inline _.whenCmdArg([<InlineIfLambda>] build: BuildPipeline, argKeyLongName: string, argValue: string, description: string) =
         BuildPipeline(fun ctx ->
-            { build.Invoke ctx with
-                Verify = fun ctx -> ctx.MakeVerificationStage().WhenCmdArg(CmdName.LongName argKeyLongName, argValue, Some description, false)
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                Verify =
+                    fun ctx ->
+                        newCtx.Verify ctx
+                        && ctx.MakeVerificationStage().WhenCmdArg(CmdName.LongName argKeyLongName, argValue, Some description, false)
             }
         )
 
     /// Set if stage is active or should run by check the command line args.
-    /// Only the last condition will take effect.
     [<CustomOperation("whenCmdArg")>]
     member inline _.whenCmdArg
         (
@@ -540,48 +551,52 @@ type PipelineBuilder with
             isOptional: bool
         ) =
         BuildPipeline(fun ctx ->
-            { build.Invoke ctx with
-                Verify = fun ctx -> ctx.MakeVerificationStage().WhenCmdArg(CmdName.LongName argKeyLongName, argValue, Some description, isOptional)
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                Verify =
+                    fun ctx ->
+                        newCtx.Verify ctx
+                        && ctx.MakeVerificationStage().WhenCmdArg(CmdName.LongName argKeyLongName, argValue, Some description, isOptional)
             }
         )
 
     /// Set if stage is active or should run by check the git branch name.
-    /// Only the last condition will take effect.
     [<CustomOperation("whenBranch")>]
     member inline _.whenBranch([<InlineIfLambda>] build: BuildPipeline, branch: string) =
         BuildPipeline(fun ctx ->
-            { build.Invoke ctx with
-                Verify = fun ctx -> ctx.MakeVerificationStage().WhenBranch branch
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                Verify = fun ctx -> newCtx.Verify ctx && ctx.MakeVerificationStage().WhenBranch branch
             }
         )
 
     /// Set if stage is active or should run by check the platform is Windows.
-    /// Only the last condition will take effect.
     [<CustomOperation("whenWindows")>]
     member inline _.whenWindows([<InlineIfLambda>] build: BuildPipeline) =
         BuildPipeline(fun ctx ->
-            { build.Invoke ctx with
-                Verify = fun ctx -> ctx.MakeVerificationStage().WhenPlatform OSPlatform.Windows
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                Verify = fun ctx -> newCtx.Verify ctx && ctx.MakeVerificationStage().WhenPlatform OSPlatform.Windows
             }
         )
 
     /// Set if stage is active or should run by check the platform is Linux.
-    /// Only the last condition will take effect.
     [<CustomOperation("whenLinux")>]
     member inline _.whenLinux([<InlineIfLambda>] build: BuildPipeline) =
         BuildPipeline(fun ctx ->
-            { build.Invoke ctx with
-                Verify = fun ctx -> ctx.MakeVerificationStage().WhenPlatform OSPlatform.Linux
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                Verify = fun ctx -> newCtx.Verify ctx && ctx.MakeVerificationStage().WhenPlatform OSPlatform.Linux
             }
         )
 
     /// Set if stage is active or should run by check the platform is OSX.
-    /// Only the last condition will take effect.
     [<CustomOperation("whenOSX")>]
     member inline _.whenOSX([<InlineIfLambda>] build: BuildPipeline) =
         BuildPipeline(fun ctx ->
-            { build.Invoke ctx with
-                Verify = fun ctx -> ctx.MakeVerificationStage().WhenPlatform OSPlatform.OSX
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                Verify = fun ctx -> newCtx.Verify ctx && ctx.MakeVerificationStage().WhenPlatform OSPlatform.OSX
             }
         )
 

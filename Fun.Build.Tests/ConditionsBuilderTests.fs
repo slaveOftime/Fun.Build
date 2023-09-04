@@ -499,3 +499,46 @@ let ``condition builder should follow the sequence`` () =
     |> Assert.False
 
     Assert.Equal<int>([ 1; 2; 3; 4 ], ls)
+
+
+[<Fact>]
+let ``for top level condition of stage or pipeline it should combine all condition with && rule`` () =
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            cmdArgs [ "-t" ]
+            envVars [ "ENV", "" ]
+
+            when' true
+            whenCmdArg "-t"
+            whenEnvVar "ENV"
+
+            stage "" {
+                when' true
+                whenCmdArg "-t"
+                whenEnvVar "ENV"
+
+                run (fun _ -> call ())
+            }
+
+            runImmediate
+        }
+    )
+
+    shouldNotBeCalled (fun call ->
+        pipeline "" {
+            cmdArgs [ "-t" ]
+
+            when' true
+            whenCmdArg "-t"
+
+            stage "" {
+                when' true
+                whenCmdArg "-t"
+                whenEnvVar "ENV"
+
+                run (fun _ -> call ())
+            }
+
+            runImmediate
+        }
+    )
