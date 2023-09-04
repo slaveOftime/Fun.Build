@@ -168,7 +168,6 @@ module PipelineContextExtensionsInternal =
                 AnsiConsole.MarkupLine "[red]Pipeline is failed because result is not indicating as successful[/]"
                 raise (PipelineFailedException "Pipeline is failed because result is not indicating as successful")
 
-
         member pipeline.RunCommandHelp(verbose: bool) =
             Console.InputEncoding <- Encoding.UTF8
             Console.OutputEncoding <- Encoding.UTF8
@@ -208,7 +207,6 @@ module PipelineContextExtensionsInternal =
                 if pipeline.Verify(pipeline) && verbose then
                     AnsiConsole.Console.MarkupLine "  [grey]no options/conditions[/]"
                 AnsiConsole.Console.MarkupLine "> stages activation:"
-
 
             let rec run (stage: StageContext) =
                 if verbose then
@@ -267,7 +265,8 @@ module PipelineContextExtensionsInternal =
                     helpContext.EnvArgs
                     |> Seq.distinctBy (fun x -> x.Name)
                     |> Seq.iter (fun x ->
-                        makeCommandOption prefix x.Name (defaultArg x.Description "" + makeValuesForPrint x.Values) |> AnsiConsole.WriteLine
+                        makeCommandOption prefix (makeEnvNameForPrint x) (defaultArg x.Description "" + makeValuesForPrint x.Values)
+                        |> AnsiConsole.WriteLine
                     )
 
             AnsiConsole.WriteLine ""

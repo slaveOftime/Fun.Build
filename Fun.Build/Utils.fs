@@ -58,6 +58,8 @@ let makeCmdNameForPrint mode (info: CmdArg) =
         | CmdName.FullName(s, l) -> $"{s}, {l}"
     |> if info.IsOptional then sprintf "%s [optional]" else id
 
+let makeEnvNameForPrint (info: EnvArg) = info.Name |> if info.IsOptional then sprintf "%s [optional]" else id
+
 let makeValuesForPrint (values: string list) =
     match values with
     | [] -> ""
