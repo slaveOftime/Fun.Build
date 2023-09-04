@@ -71,10 +71,10 @@ type PipelineBuilder(name: string) =
         )
 
     member inline _.Combine([<InlineIfLambda>] condition: BuildStageIsActive, [<InlineIfLambda>] build: BuildPipeline) =
-        buildPipelineVerification build (fun ctx -> condition.Invoke(ctx.MakeVerificationStage()))
+        buildPipelineVerification build condition.Invoke
 
     member inline _.For([<InlineIfLambda>] build: BuildPipeline, [<InlineIfLambda>] fn: unit -> BuildStageIsActive) =
-        buildPipelineVerification build (fun ctx -> fn().Invoke(ctx.MakeVerificationStage()))
+        buildPipelineVerification build (fn().Invoke)
 
 
     /// This description is mainly used for command help

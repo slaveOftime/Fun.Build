@@ -283,18 +283,18 @@ module PipelineContextExtensionsInternal =
             AnsiConsole.WriteLine ""
 
 
-    let inline buildPipelineVerification (build: BuildPipeline) conditionFn =
+    let inline buildPipelineVerification ([<InlineIfLambda>] build: BuildPipeline) ([<InlineIfLambda>] conditionFn) =
         BuildPipeline(fun ctx ->
             let newCtx = build.Invoke ctx
             { newCtx with
                 Verify =
                     fun ctx ->
                         match ctx.Mode with
-                        | Mode.Execution -> newCtx.Verify ctx && conditionFn ctx
+                        | Mode.Execution -> newCtx.Verify ctx && conditionFn (ctx.MakeVerificationStage())
                         | Mode.Verification
                         | Mode.CommandHelp _ ->
                             newCtx.Verify ctx |> ignore
-                            conditionFn ctx |> ignore
+                            conditionFn (ctx.MakeVerificationStage()) |> ignore
                             false
             }
         )

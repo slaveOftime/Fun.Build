@@ -312,7 +312,7 @@ module StageContextExtensionsInternal =
             isSuccess, stepExns
 
 
-    let inline buildStageIsActive (build: BuildStage) conditionFn =
+    let inline buildStageIsActive ([<InlineIfLambda>] build: BuildStage) ([<InlineIfLambda>] conditionFn) =
         BuildStage(fun ctx ->
             let newCtx = build.Invoke ctx
             { newCtx with

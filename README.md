@@ -19,7 +19,7 @@ Every **step** is just a **async<Result<unit, string>>**, string is for the erro
 ## Minimal example and conventions
 
 ```fsharp
-#r "nuget: Fun.Build, 0.4.8"
+#r "nuget: Fun.Build, 0.4.9"
 open Fun.Build
 
 pipeline "demo" {
@@ -67,7 +67,7 @@ Below example covered most of the apis and usage example, take it as the documen
 
 ```fsharp
 #r "nuget: Fun.Result"
-#r "nuget: Fun.Build, 0.4.8"
+#r "nuget: Fun.Build, 0.4.9"
 
 open Fun.Result
 open Fun.Build

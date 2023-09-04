@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [0.4.9] - 2023-09-04
+
+- Support EnvArg for envVar operation
+- Refactor code
+
 ## [0.4.8] - 2023-09-04
 
 - Conserve output format when possible
