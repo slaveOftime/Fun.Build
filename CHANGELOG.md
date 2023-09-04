@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Fix help info printing
+
 ## [0.4.5] - 2023-09-04
 
 - Should combine all values from duplicate arg

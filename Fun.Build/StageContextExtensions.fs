@@ -112,7 +112,7 @@ module StageContextExtensionsInternal =
         member inline ctx.BuildStepPrefix(i: int) = sprintf "%s/step-%s>" (ctx.BuildCurrentStepPrefix()) (string i)
 
 
-        member ctx.BuildIndent() = String(' ', ctx.GetNamePath().Length - ctx.Name.Length + 4)
+        member ctx.BuildIndent(?margin) = String(' ', ctx.GetNamePath().Length - ctx.Name.Length + defaultArg margin 4)
 
 
         /// Verify if the exit code is allowed.
@@ -310,6 +310,23 @@ module StageContextExtensionsInternal =
                 AnsiConsole.WriteLine()
 
             isSuccess, stepExns
+
+
+    let inline buildStageIsActive (build: BuildStage) conditionFn =
+        BuildStage(fun ctx ->
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                IsActive =
+                    fun ctx ->
+                        match ctx.GetMode() with
+                        | Mode.Execution -> newCtx.IsActive ctx && conditionFn ctx
+                        | Mode.Verification
+                        | Mode.CommandHelp _ ->
+                            newCtx.IsActive ctx |> ignore
+                            conditionFn ctx |> ignore
+                            false
+            }
+        )
 
 
 [<AutoOpen>]

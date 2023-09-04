@@ -205,8 +205,9 @@ module PipelineContextExtensionsInternal =
             if verbose then
                 AnsiConsole.WriteLine "Options/conditions:"
                 AnsiConsole.Console.MarkupLine "> pipeline verification:"
+                AnsiConsole.MarkupLine "  [olive]when all below conditions are met[/]"
                 if pipeline.Verify(pipeline) && verbose then
-                    AnsiConsole.Console.MarkupLine "  [grey]no options/conditions[/]"
+                    AnsiConsole.Console.MarkupLine "    [grey]no options/conditions[/]"
                 AnsiConsole.Console.MarkupLine "> stages activation:"
             else
                 pipeline.Verify pipeline |> ignore
@@ -215,8 +216,11 @@ module PipelineContextExtensionsInternal =
                 if verbose then
                     AnsiConsole.MarkupLineInterpolated $"  [grey]{stage.GetNamePath()}[/]"
 
+                if verbose then
+                    AnsiConsole.MarkupLine $"{stage.BuildIndent(2)} [olive]when all below conditions are met[/]"
+
                 if stage.IsActive stage && verbose then
-                    AnsiConsole.Console.MarkupLine $"{stage.BuildIndent()}[grey]no options/conditions[/]"
+                    AnsiConsole.MarkupLine $"{stage.BuildIndent()}[grey]no options/conditions[/]"
 
                 for step in stage.Steps do
                     match step with
@@ -276,3 +280,20 @@ module PipelineContextExtensionsInternal =
                     )
 
             AnsiConsole.WriteLine ""
+
+
+    let inline buildPipelineVerification (build: BuildPipeline) conditionFn =
+        BuildPipeline(fun ctx ->
+            let newCtx = build.Invoke ctx
+            { newCtx with
+                Verify =
+                    fun ctx ->
+                        match ctx.Mode with
+                        | Mode.Execution -> newCtx.Verify ctx && conditionFn ctx
+                        | Mode.Verification
+                        | Mode.CommandHelp _ ->
+                            newCtx.Verify ctx |> ignore
+                            conditionFn ctx |> ignore
+                            false
+            }
+        )

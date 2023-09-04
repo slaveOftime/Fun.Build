@@ -148,39 +148,6 @@ module Internal =
             | Mode.Execution -> getResult ()
 
 
-    let inline buildStageIsActive (build: BuildStage) conditionFn =
-        BuildStage(fun ctx ->
-            let newCtx = build.Invoke ctx
-            { newCtx with
-                IsActive =
-                    fun ctx ->
-                        match ctx.GetMode() with
-                        | Mode.Execution -> newCtx.IsActive ctx && conditionFn ctx
-                        | Mode.Verification
-                        | Mode.CommandHelp _ ->
-                            newCtx.IsActive ctx |> ignore
-                            conditionFn ctx |> ignore
-                            false
-            }
-        )
-
-    let inline buildPipelineVerification (build: BuildPipeline) conditionFn =
-        BuildPipeline(fun ctx ->
-            let newCtx = build.Invoke ctx
-            { newCtx with
-                Verify =
-                    fun ctx ->
-                        match ctx.Mode with
-                        | Mode.Execution -> newCtx.Verify ctx && conditionFn ctx
-                        | Mode.Verification
-                        | Mode.CommandHelp _ ->
-                            newCtx.Verify ctx |> ignore
-                            conditionFn ctx |> ignore
-                            false
-            }
-        )
-
-
 open Internal
 
 

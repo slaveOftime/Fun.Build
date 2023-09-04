@@ -39,13 +39,10 @@ type StageBuilder(name: string) =
         BuildStage(fun ctx -> { ctx with IsActive = fun ctx -> fn().Invoke(ctx) })
 
     member inline _.Combine([<InlineIfLambda>] condition: BuildStageIsActive, [<InlineIfLambda>] build: BuildStage) =
-        BuildStage(fun ctx -> build.Invoke { ctx with IsActive = condition.Invoke })
+        buildStageIsActive build condition.Invoke
 
     member inline _.For([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] fn: unit -> BuildStageIsActive) =
-        BuildStage(fun ctx ->
-            let ctx = build.Invoke ctx
-            { ctx with IsActive = fun ctx -> fn().Invoke(ctx) }
-        )
+        buildStageIsActive build (fn().Invoke)
 
 
     member inline _.Yield([<InlineIfLambda>] builder: BuildStep) = builder
