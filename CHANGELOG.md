@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.4.6] - 2023-09-04
+
 - Fix help info printing
 - Add optional flag to env when printing help info
 
