@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.5.0] - 2023-09-04
+
+- Allow variable declaration inside pipeline and stage
+
 ## [0.4.9] - 2023-09-04
 
 - Support EnvArg for envVar operation
