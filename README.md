@@ -19,7 +19,7 @@ Every **step** is just a **async<Result<unit, string>>**, string is for the erro
 ## Minimal example and conventions
 
 ```fsharp
-#r "nuget: Fun.Build, 0.4.3"
+#r "nuget: Fun.Build, 0.4.4"
 open Fun.Build
 
 pipeline "demo" {
@@ -42,7 +42,7 @@ pipeline "demo" {
 }
 
 // For script command usage, you can add below helper
-// You can run: dotnet demo.fsx -- -h
+// You can run: dotnet fsi demo.fsx -- -h
 tryPrintPipelineCommandHelp ()
 ```
 
@@ -67,7 +67,7 @@ Below example covered most of the apis and usage example, take it as the documen
 
 ```fsharp
 #r "nuget: Fun.Result"
-#r "nuget: Fun.Build, 0.4.3"
+#r "nuget: Fun.Build, 0.4.4"
 
 open Fun.Result
 open Fun.Build
