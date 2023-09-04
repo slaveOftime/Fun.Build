@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Support EnvArg for whenEnvVar
+- Add help methods to build EnvArg
 
 ## [0.4.3] - 2023-09-03
 

@@ -51,9 +51,24 @@ type CmdArg =
     member this.WithDescription x = { this with Description = Some x }
     member this.WithOptional x = { this with IsOptional = x }
 
-type EnvArg = {
-    Name: string
-    Values: string list
-    Description: string option
-    IsOptional: bool
-}
+
+type EnvArg = 
+    {
+        Name: string
+        Values: string list
+        Description: string option
+        IsOptional: bool
+    }
+
+    static member Create(name: string, ?description: string, ?values, ?isOptiomal: bool) = {
+        Name = name
+        Values = defaultArg values []
+        Description = description
+        IsOptional = defaultArg isOptiomal false
+    }
+
+    member this.WithName x = { this with Name = x }
+    member this.WithValue value = { this with Values = this.Values @ [ value ] }
+    member this.WithValue values = { this with Values = this.Values @ values }
+    member this.WithDescription x = { this with Description = Some x }
+    member this.WithOptional x = { this with IsOptional = x }
