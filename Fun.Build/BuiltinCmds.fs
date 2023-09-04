@@ -34,8 +34,6 @@ module BuiltinCmdsInternal =
 
             ctx.BuildEnvVars() |> Map.iter (fun k v -> command.Environment[k] <- v)
 
-            command.StandardOutputEncoding <- Encoding.UTF8
-            command.RedirectStandardOutput <- true
             command
 
 
