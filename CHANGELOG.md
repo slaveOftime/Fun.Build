@@ -4,7 +4,7 @@
 
 ## [0.5.1] - 2023-09-05
 
-- Fix whenBranch
+- Fix whenBranch: standard output redirect is not enabled
 
 ## [0.5.0] - 2023-09-04
 
