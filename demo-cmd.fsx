@@ -21,6 +21,7 @@ let args = {|
 
 pipeline "demo" {
     description "simple demo"
+    whenBranch "master"
     whenCmdArg (args.app Apps.all)
     whenEnvVar "ENV1" "" "Test env1"
     whenEnvVar "ENV2"

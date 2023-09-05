@@ -111,6 +111,9 @@ module Internal =
                     let command = ctx.BuildCommand("git branch --show-current")
                     ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command.WorkingDirectory <- x)
 
+                    command.RedirectStandardOutput <- true
+                    command.StandardOutputEncoding <- Text.Encoding.UTF8
+
                     let result = Process.Start command
                     result.WaitForExit()
                     result.StandardOutput.ReadLine() = branch

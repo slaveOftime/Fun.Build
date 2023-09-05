@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.5.1] - 2023-09-05
+
+- Fix whenBranch
+
 ## [0.5.0] - 2023-09-04
 
 - Allow variable declaration inside pipeline and stage
