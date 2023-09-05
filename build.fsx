@@ -1,4 +1,4 @@
-#r "nuget: Fun.Build, 0.5.0"
+#r "nuget: Fun.Build, 0.5.1"
 #r "nuget: Fake.IO.FileSystem, 5.23.0"
 
 open Fake.IO
@@ -39,7 +39,7 @@ pipeline "Fun.Build" {
     stage_test
     stage "Build packages" { run "dotnet pack -c Release Fun.Build/Fun.Build.fsproj -o ." }
     stage "Publish packages to nuget" {
-        // whenBranch "master"
+        whenBranch "master"
         whenEnvVar options.NugetAPIKey
         run (fun ctx ->
             let key = ctx.GetEnvVar options.NugetAPIKey.Name
