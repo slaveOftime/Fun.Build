@@ -39,7 +39,7 @@ pipeline "Fun.Build" {
     stage_test
     stage "Build packages" { run "dotnet pack -c Release Fun.Build/Fun.Build.fsproj -o ." }
     stage "Publish packages to nuget" {
-        whenBranch "master"
+        // whenBranch "master"
         whenEnvVar options.NugetAPIKey
         run (fun ctx ->
             let key = ctx.GetEnvVar options.NugetAPIKey.Name
