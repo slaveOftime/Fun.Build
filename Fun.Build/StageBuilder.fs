@@ -138,11 +138,17 @@ type StageBuilder(name: string) =
         BuildStage(fun ctx -> { build.Invoke ctx with TimeoutForStep = ValueSome time })
 
 
-    /// Set if the steps in current stage should run in parallel, default value is true.
+    /// Set if the steps in current stage should run in parallel
     [<CustomOperation("paralle")>]
-    member inline _.paralle([<InlineIfLambda>] build: BuildStage, value: bool) = BuildStage(fun ctx -> { build.Invoke ctx with IsParallel = value })
+    member inline _.paralle([<InlineIfLambda>] build: BuildStage, value: bool) =
+        BuildStage(fun ctx -> { build.Invoke ctx with IsParallel = fun _ -> value })
 
-    /// Set if the steps in current stage should run in parallel, default value is true.
+    /// Set if the steps in current stage should run in parallel
+    [<CustomOperation("paralle")>]
+    member inline _.paralle([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] condition) =
+        BuildStage(fun ctx -> { build.Invoke ctx with IsParallel = condition })
+
+    /// Set the steps in current stage run in parallel
     [<CustomOperation("paralle")>]
     member inline this.paralle([<InlineIfLambda>] build: BuildStage) = this.paralle (build, true)
 

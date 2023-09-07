@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.5.2] - 2023-09-07
+
+- Change IsParallel from bool to **StageContext -> bool**
+
 ## [0.5.1] - 2023-09-05
 
 - Fix whenBranch: standard output redirect is not enabled

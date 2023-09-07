@@ -15,7 +15,7 @@ module StageContextExtensionsInternal =
             Id = Random().Next()
             Name = name
             IsActive = fun _ -> true
-            IsParallel = false
+            IsParallel = fun _ -> false
             Timeout = ValueNone
             TimeoutForStep = ValueNone
             WorkingDir = ValueNone
@@ -155,7 +155,7 @@ module StageContextExtensionsInternal =
 
             else if isActive then
                 let stageSW = Stopwatch.StartNew()
-                let isParallel = stage.IsParallel
+                let isParallel = stage.IsParallel stage
                 let timeoutForStep: int = stage.GetTimeoutForStep()
                 let timeoutForStage: int = stage.GetTimeoutForStage()
 

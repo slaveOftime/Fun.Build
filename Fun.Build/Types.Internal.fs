@@ -50,7 +50,7 @@ type StageContext = {
     Id: int
     Name: string
     IsActive: StageContext -> bool
-    IsParallel: bool
+    IsParallel: StageContext -> bool
     Timeout: TimeSpan voption
     TimeoutForStep: TimeSpan voption
     WorkingDir: string voption
