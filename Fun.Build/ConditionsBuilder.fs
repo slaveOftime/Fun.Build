@@ -105,7 +105,7 @@ module Internal =
                 }
 
 
-        member ctx.WhenBranch(branch: string) =
+        member ctx.WhenBranch(branches: string seq) =
             let getResult () =
                 try
                     let command = ctx.BuildCommand("git branch --show-current")
@@ -116,7 +116,7 @@ module Internal =
 
                     let result = Process.Start command
                     result.WaitForExit()
-                    result.StandardOutput.ReadLine() = branch
+                    Seq.contains (result.StandardOutput.ReadLine()) branches
                 with ex ->
                     AnsiConsole.MarkupLineInterpolated $"[red]Run git to get branch info failed: {ex.Message}[/]"
                     false
@@ -124,15 +124,19 @@ module Internal =
             match ctx.GetMode() with
             | Mode.CommandHelp cmdHelpCtx ->
                 if cmdHelpCtx.Verbose then
-                    AnsiConsole.MarkupLineInterpolated $"{ctx.BuildIndent()}when branch is [green]{branch}[/]"
+                    let branchesStr = String.Join(" or ", branches)
+                    AnsiConsole.MarkupLineInterpolated $"{ctx.BuildIndent()}when branch is [green]{branchesStr}[/]"
                 false
             | Mode.Verification ->
+                let branchesStr = String.Join(" or ", branches)
                 if getResult () then
-                    AnsiConsole.MarkupLineInterpolated $"[green]✓ [/]{ctx.BuildIndent().Substring(2)}when branch is [green]{branch}[/]"
+                    AnsiConsole.MarkupLineInterpolated $"[green]✓ [/]{ctx.BuildIndent().Substring(2)}when branch is [green]{branchesStr}[/]"
                 else
-                    AnsiConsole.MarkupLineInterpolated $"[red]✕ [/]{ctx.BuildIndent().Substring(2)}when branch is [red]{branch}[/]"
+                    AnsiConsole.MarkupLineInterpolated $"[red]✕ [/]{ctx.BuildIndent().Substring(2)}when branch is [red]{branchesStr}[/]"
                 false
             | Mode.Execution -> getResult ()
+
+        member ctx.WhenBranch(branch: string) = ctx.WhenBranch [ branch ]
 
 
         member ctx.WhenPlatform(platform: OSPlatform) =
@@ -165,7 +169,7 @@ type StageContext with
     member ctx.IsLinux = ctx.WhenPlatform(OSPlatform.Linux)
     member ctx.IsWindows = ctx.WhenPlatform(OSPlatform.Windows)
 
-    member ctx.IsBranch(branch) = ctx.WhenBranch(branch)
+    member ctx.IsBranch(branch: string) = ctx.WhenBranch(branch)
 
 
 type ConditionsBuilder() =
@@ -239,6 +243,11 @@ type ConditionsBuilder() =
 
     [<CustomOperation("branch")>]
     member inline _.branch([<InlineIfLambda>] builder: BuildConditions, branch: string) = buildConditions builder (fun ctx -> ctx.WhenBranch(branch))
+
+    /// True if any of the branch is met
+    [<CustomOperation("branches")>]
+    member inline _.branches([<InlineIfLambda>] builder: BuildConditions, branches: string seq) =
+        buildConditions builder (fun ctx -> ctx.WhenBranch(branches))
 
     [<CustomOperation("platformWindows")>]
     member inline _.platformWindows([<InlineIfLambda>] builder: BuildConditions) =
@@ -314,6 +323,11 @@ type StageBuilder with
     /// Set if stage is active or should run by check the git branch name.
     [<CustomOperation("whenBranch")>]
     member inline _.whenBranch([<InlineIfLambda>] build: BuildStage, branch: string) = buildStageIsActive build (fun ctx -> ctx.WhenBranch branch)
+
+    /// Set if stage is active or should run by check the git branch name.
+    [<CustomOperation("whenBranches")>]
+    member inline _.whenBranches([<InlineIfLambda>] build: BuildStage, branches: string seq) =
+        buildStageIsActive build (fun ctx -> ctx.WhenBranch branches)
 
     /// Set if stage is active or should run by check the platform is Windows.
     [<CustomOperation("whenWindows")>]
@@ -404,6 +418,11 @@ type PipelineBuilder with
     [<CustomOperation("whenBranch")>]
     member inline _.whenBranch([<InlineIfLambda>] build: BuildPipeline, branch: string) =
         buildPipelineVerification build (fun ctx -> ctx.WhenBranch branch)
+
+    /// Set if pipeline can run by check the git branch name.
+    [<CustomOperation("whenBranches")>]
+    member inline _.whenBranches([<InlineIfLambda>] build: BuildPipeline, branches: string seq) =
+        buildPipelineVerification build (fun ctx -> ctx.WhenBranch branches)
 
     /// Set if pipeline can run by check the platform is Windows.
     [<CustomOperation("whenWindows")>]

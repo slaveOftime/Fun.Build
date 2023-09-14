@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Fix: help information is not printed for whenNot 
+- Support whenBranches 
 
 ## [0.5.2] - 2023-09-07
 
