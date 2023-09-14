@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.5.3] - 2023-09-14
+
 - Fix: help information is not printed for whenNot 
 - Support whenBranches 
 
