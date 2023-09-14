@@ -478,9 +478,14 @@ type WhenNotBuilder() =
     member inline _.Run([<InlineIfLambda>] builder: BuildConditions) =
         BuildStageIsActive(fun ctx ->
             match ctx.GetMode() with
-            | Mode.Verification
-            | Mode.CommandHelp { Verbose = true } ->
-                AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}when all below conditions are [bold red]NOT[/] met[/]"
+            | Mode.Execution -> builder.Invoke [] |> Seq.map (fun fn -> not (fn ctx)) |> Seq.reduce (fun x y -> x && y)
+            | mode ->
+                match mode with
+                | Mode.Verification
+                | Mode.CommandHelp { Verbose = true } ->
+                    AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}when all below conditions are [bold red]NOT[/] met[/]"
+                | _ -> ()
+
                 let indentCtx =
                     { StageContext.Create "  " with
                         ParentContext = ctx.ParentContext
@@ -491,10 +496,6 @@ type WhenNotBuilder() =
                     }
                 builder.Invoke [] |> Seq.iter (fun fn -> fn newCtx |> ignore)
                 false
-
-            | Mode.CommandHelp _ -> false
-
-            | Mode.Execution -> builder.Invoke [] |> Seq.map (fun fn -> not (fn ctx)) |> Seq.reduce (fun x y -> x && y)
         )
 
 

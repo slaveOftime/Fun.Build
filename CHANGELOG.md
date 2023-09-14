@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Fix: help information is not printed for whenNot 
+
 ## [0.5.2] - 2023-09-07
 
 - Change IsParallel from bool to **StageContext -> bool**
