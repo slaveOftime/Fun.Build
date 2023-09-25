@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Add GetAllCmdArgs to StageContext
+- Add GetAllEnvVars to StageContext
 
 ## [0.5.3] - 2023-09-14
 

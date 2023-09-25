@@ -21,6 +21,31 @@ let ``TryGetCmdArgOrEnvVar should work`` () =
 
 
 [<Fact>]
+let ``GetAllEnvVars should work`` () =
+    let pipeline =
+        pipeline "" {
+            envVars [ "test1", "e1"; "test2", "e1"; "test3", "e3" ]
+            stage "" { envVars [ "test2", "e2" ] }
+        }
+
+    let result = pipeline.Stages[0].GetAllEnvVars()
+    Assert.Equal("e1", Map.find "test1" result)
+    Assert.Equal("e2", Map.find "test2" result)
+    Assert.Equal("e3", Map.find "test3" result)
+
+
+[<Fact>]
+let ``GetAllCmdArgs should work`` () =
+    let pipeline =
+        pipeline "" {
+            cmdArgs [ "test3"; "c1" ]
+            stage "" { echo "" }
+        }
+
+    Assert.Equal<string list>([ "test3"; "c1" ], pipeline.Stages[0].GetAllCmdArgs())
+
+
+[<Fact>]
 let ``workingDir should work`` () =
     let pipeline =
         pipeline "" {

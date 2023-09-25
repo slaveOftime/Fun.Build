@@ -372,6 +372,13 @@ module StageContextExtensions =
             |> ValueOption.defaultValue -1
 
 
+        member ctx.GetAllEnvVars() =
+            match ctx.ParentContext with
+            | ValueSome(StageParent.Pipeline p) -> p.EnvVars
+            | ValueSome(StageParent.Stage s) -> s.GetAllEnvVars()
+            | ValueNone -> Map.empty
+            |> fun envVars -> Map.fold (fun s k v -> Map.add k v s) envVars ctx.EnvVars
+
         member ctx.TryGetEnvVar(key: string) =
             ctx.EnvVars
             |> Map.tryFind key
