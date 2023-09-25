@@ -389,21 +389,21 @@ module StageContextExtensions =
         // If not find then return ""
         member inline ctx.GetEnvVar(key: string) = ctx.TryGetEnvVar key |> ValueOption.defaultValue ""
 
+        member ctx.GetAllCmdArgs() =
+            match ctx.ParentContext with
+            | ValueSome(StageParent.Pipeline p) -> p.CmdArgs
+            | ValueSome(StageParent.Stage s) -> s.GetAllCmdArgs()
+            | ValueNone -> []
 
         member ctx.TryGetCmdArg(key: string) =
-            ctx.ParentContext
-            |> ValueOption.bind (
-                function
-                | StageParent.Stage x -> x.TryGetCmdArg key
-                | StageParent.Pipeline x ->
-                    match x.CmdArgs |> List.tryFindIndex ((=) key) with
-                    | Some index ->
-                        if List.length x.CmdArgs > index + 1 then
-                            ValueSome x.CmdArgs[index + 1]
-                        else
-                            ValueSome ""
-                    | _ -> ValueNone
-            )
+            let cmdArgs = ctx.GetAllCmdArgs()
+            match cmdArgs |> List.tryFindIndex ((=) key) with
+            | Some index ->
+                if List.length cmdArgs > index + 1 then
+                    ValueSome cmdArgs[index + 1]
+                else
+                    ValueSome ""
+            | _ -> ValueNone
 
         member ctx.TryGetCmdArg(arg: CmdArg) =
             arg.Name.Names
