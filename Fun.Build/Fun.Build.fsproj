@@ -5,7 +5,9 @@
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<TrimMode>link</TrimMode>
 		<IsTrimmable>true</IsTrimmable>
-		<ChangelogFile>../CHANGELOG.md</ChangelogFile>
+		<PackageReleaseNotes>[Change log is on github](https://github.com/slaveOftime/Fun.Build/CHANGELOG.md)</PackageReleaseNotes>
+		<PackageProjectUrl>https://github.com/slaveOftime/Fun.Build</PackageProjectUrl>
+		<PackageDescription>This is a project mainly used for CICD, you can use it in a fsharp project or as a script</PackageDescription>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -27,7 +29,6 @@
 
 	<ItemGroup>
 		<PackageReference Update="FSharp.Core" Version="6.0.0" />
-		<PackageReference Condition="'$(Configuration)'=='RELEASE'" Include="Ionide.KeepAChangelog.Tasks" Version="0.1.8" PrivateAssets="all" />
 	</ItemGroup>
 
 </Project>
