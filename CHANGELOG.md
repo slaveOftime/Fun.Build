@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.0.1] - 2023-10-19
+
 - Add failIfNoActiveSubStage to stage
 - Add Changelog helper
 - Add Windows IIS deploy helper
