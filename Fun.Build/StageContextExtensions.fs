@@ -164,7 +164,10 @@ module StageContextExtensionsInternal =
                             | Step.StepOfStage s -> s.IsActive { s with ParentContext = parentContext }
                             | _ -> false
                         )
-                    if not hasActiveStep then raise (PipelineFailedException "No active sub stages")
+                    if not hasActiveStep then
+                        AnsiConsole.MarkupLineInterpolated
+                            $"[red]Pipeline is failed because there is no active sub stages but stage ({stage.GetNamePath()}) requires at least one[/]"
+                        raise (PipelineFailedException "No active sub stages")
 
                 let stageSW = Stopwatch.StartNew()
                 let isParallel = stage.IsParallel stage

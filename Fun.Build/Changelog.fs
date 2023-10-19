@@ -6,6 +6,13 @@ open System.Text
 
 type Changelog =
 
+    /// <summary>
+    /// Get latest version info from the CHANGELOG.md file
+    /// </summary>
+    /// <param name="directory">Directory which contains the changelog file</param>
+    /// <param name="changelogFileName">Default is CHANGELOG.md</param>
+    /// <param name="isPreview">Check if the line contains keyword 'preview'</param>
+    /// <param name="isValidVersion">By default always return true</param>
     static member GetLastVersion(directory, ?changelogFileName, ?isPreview, ?isValidVersion) =
         let changelogFileName = defaultArg changelogFileName "CHANGELOG.md"
         let lines = File.ReadLines(Path.Combine(directory, changelogFileName)).GetEnumerator()
