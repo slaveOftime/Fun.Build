@@ -17,6 +17,7 @@ type Changelog =
         let mutable isDone = false
         let mutable version = None
         let mutable preview = true
+        let mutable dateTime = None
         let releaseNotes = StringBuilder()
 
         while not isDone && lines.MoveNext() do
@@ -26,10 +27,14 @@ type Changelog =
                 ()
             // Simple way to find the version string
             else if version.IsNone && line.StartsWith "## [" && line.Contains "]" then
+                if isValidVersion line |> not then failwith "First number should be digit"
+
                 version <- Some(line.Substring(4, line.IndexOf("]") - 4))
                 preview <- isPreview line
-                // In the future we can verify version format according to more rules
-                if isValidVersion line |> not then failwith "First number should be digit"
+                dateTime <-
+                    let index = line.LastIndexOf("- ")
+                    if index > -1 then line.Substring(index + 2) |> DateTime.Parse |> Some else None
+
             else if version.IsSome then
                 if line.StartsWith "## [" then
                     isDone <- true
@@ -44,4 +49,5 @@ type Changelog =
                     Version = v
                     Preview = preview
                     ReleaseNotes = releaseNotes.ToString()
+                    DateTime = dateTime
                 |}
