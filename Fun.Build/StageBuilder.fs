@@ -102,6 +102,20 @@ type StageBuilder(name: string) =
     [<CustomOperation("failIfIgnored")>]
     member inline this.failIfIgnored([<InlineIfLambda>] build: BuildStage) = this.failIfIgnored (build, true)
 
+
+    /// If the stage has no active sub stage when executing it will throw exception
+    [<CustomOperation("failIfNoActiveSubStage")>]
+    member inline _.failIfNoActiveSubStage([<InlineIfLambda>] build: BuildStage, flag) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with FailIfNoActiveSubStage = flag }
+        )
+
+    /// If the stage has no active sub stage when executing it will throw exception
+    [<CustomOperation("failIfNoActiveSubStage")>]
+    member inline this.failIfNoActiveSubStage([<InlineIfLambda>] build: BuildStage) = this.failIfNoActiveSubStage (build, true)
+
+
     /// Set timeout for every step under the current stage.
     /// Unit is second.
     [<CustomOperation("timeout")>]

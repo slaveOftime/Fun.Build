@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Add failIfNoActiveSubStage to stage
+
 ## [1.0.0] - 2023-09-26
 
 - Add GetAllCmdArgs to StageContext

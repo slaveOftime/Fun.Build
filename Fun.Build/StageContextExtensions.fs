@@ -22,6 +22,7 @@ module StageContextExtensionsInternal =
             EnvVars = Map.empty
             AcceptableExitCodes = set [| 0 |]
             FailIfIgnored = false
+            FailIfNoActiveSubStage = false
             NoPrefixForStep = true
             NoStdRedirectForStep = false
             ShuffleExecuteSequence = false
@@ -154,6 +155,17 @@ module StageContextExtensionsInternal =
                 raise (PipelineFailedException msg)
 
             else if isActive then
+                if stage.FailIfNoActiveSubStage then
+                    let parentContext = ValueSome(StageParent.Stage stage)
+                    let hasActiveStep =
+                        stage.Steps
+                        |> Seq.exists (
+                            function
+                            | Step.StepOfStage s -> s.IsActive { s with ParentContext = parentContext }
+                            | _ -> false
+                        )
+                    if not hasActiveStep then raise (PipelineFailedException "No active sub stages")
+
                 let stageSW = Stopwatch.StartNew()
                 let isParallel = stage.IsParallel stage
                 let timeoutForStep: int = stage.GetTimeoutForStep()
@@ -178,17 +190,17 @@ module StageContextExtensionsInternal =
                 | StageIndex.Step _ ->
                     AnsiConsole.MarkupLineInterpolated($"[grey50]{stage.BuildCurrentStepPrefix()}> sub-stage started. {extraInfo}[/]")
 
-                let stage =
-                    if stage.ShuffleExecuteSequence && stage.GetMode() = Mode.Execution then
-                        { stage with
-                            Steps = stage.Steps |> Seq.shuffle |> Seq.toList
-                        }
-                    else
-                        stage
+                let indexedSteps =
+                    stage.Steps
+                    |> Seq.mapi (fun i s -> i, s)
+                    |> if stage.ShuffleExecuteSequence && stage.GetMode() = Mode.Execution then
+                           Seq.shuffle
+                       else
+                           id
 
                 let steps =
-                    stage.Steps
-                    |> Seq.mapi (fun i step -> async {
+                    indexedSteps
+                    |> Seq.map (fun (i, step) -> async {
                         let prefix = stage.BuildStepPrefix(i)
                         try
                             let sw = Stopwatch.StartNew()

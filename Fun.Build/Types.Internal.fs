@@ -57,6 +57,7 @@ type StageContext = {
     EnvVars: Map<string, string>
     AcceptableExitCodes: Set<int>
     FailIfIgnored: bool
+    FailIfNoActiveSubStage: bool
     NoPrefixForStep: bool
     NoStdRedirectForStep: bool
     ShuffleExecuteSequence: bool

@@ -186,3 +186,56 @@ let ``Soft cancel should work`` () =
     )
 
     Assert.True(10 <= i + j)
+
+
+[<Fact>]
+let ``FailIfNoActiveSubStage`` () =
+    Assert.Throws<PipelineFailedException>(fun _ ->
+        pipeline "" {
+            stage "" {
+                failIfNoActiveSubStage
+                stage "" { when' false }
+            }
+            runImmediate
+        }
+    )
+    |> ignore
+
+    Assert.Throws<PipelineFailedException>(fun _ ->
+        pipeline "" {
+            stage "" {
+                failIfNoActiveSubStage
+                echo ""
+            }
+            runImmediate
+        }
+    )
+    |> ignore
+
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            stage "" {
+                failIfNoActiveSubStage
+                stage "" { when' false }
+                stage "" {
+                    when' true
+                    run (ignore >> call)
+                }
+            }
+            runImmediate
+        }
+    )
+
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            stage "" {
+                failIfNoActiveSubStage
+                echo ""
+                stage "" {
+                    when' true
+                    run (ignore >> call)
+                }
+            }
+            runImmediate
+        }
+    )
