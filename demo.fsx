@@ -53,15 +53,13 @@ pipeline "Fun.Build" {
     demo1
     stage "Demo2" {
         // whenAny, whenNot, whenAll. They can also be composed.
-        whenAll {
-            branch "master" // Check current branch is master
-            whenAny {
-                envVar "envKey" // Check has environment variable
-                envVar "envKey" "envValue" // Check has environment variable value
-                cmdArg "cmdKey" "" "Check has cmd arg"
-                cmdArg "cmdKey" "cmdValue" "Check has cmd arg value which should be behind the cmdKey"
-                whenNot { cmdArg "--not-demo" }
-            }
+        whenBranch "master" // Check current branch is master
+        whenAny {
+            envVar "envKey" // Check has environment variable
+            envVar "envKey" "envValue" // Check has environment variable value
+            cmdArg "cmdKey" "" "Check has cmd arg"
+            cmdArg "cmdKey" "cmdValue" "Check has cmd arg value which should be behind the cmdKey"
+            whenNot { cmdArg "--not-demo" }
         }
         shuffleExecuteSequence // It can shuffle the sequence of steps executing sequence
         run "dotnet --version"
@@ -120,15 +118,17 @@ pipeline "Fun.Build" {
 
 pipeline "pipeline-verify-demo" {
     description "Verify before pipeline start running"
-    // Will throw exception when verification failed. The last rule will take effect. Below we set it for multiple times just for demo purpose.
+
+    // Will throw exception when verification failed.
     // You can define your own logic
     verify (fun ctx -> false)
     // To keep consistence, the condition is similar like when building stage
     whenCmdArg "verify"
-    whenAll {
+    whenAny {
         cmdArg "v1"
         branch "master"
     }
+
     runIfOnlySpecified
 }
 
@@ -153,30 +153,28 @@ pipeline "cmd-info" {
     stage "condition demo" {
         noStdRedirectForStep
         failIfIgnored
-        whenAll {
-            // You can use whenCmd CE for more complex situation.
-            whenCmd {
-                shortName "-w"
-                // Description can also support multiple lines
-                description "watch cool stuff \n dasd asdad \n asdasd as123"
-            }
-            whenCmd {
-                shortName "-r"
-                description "run cool stuff"
-                acceptValues [ "v1"; "v2" ]
-            }
-            whenCmd {
-                longName "--build"
-                description "build your dream"
-                acceptValues [ "v1"; "v2" ]
-            }
-            whenAny {
-                cmdArg "--foo"
-                envVar "--bar"
-                platformLinux
-                platformWindows
-                branch "master"
-            }
+        // You can use whenCmd CE for more complex situation.
+        whenCmd {
+            shortName "-w"
+            // Description can also support multiple lines
+            description "watch cool stuff \n dasd asdad \n asdasd as123"
+        }
+        whenCmd {
+            shortName "-r"
+            description "run cool stuff"
+            acceptValues [ "v1"; "v2" ]
+        }
+        whenCmd {
+            longName "--build"
+            description "build your dream"
+            acceptValues [ "v1"; "v2" ]
+        }
+        whenAny {
+            cmdArg "--foo"
+            envVar "--bar"
+            platformLinux
+            platformWindows
+            branch "master"
         }
         echo "here we are"
         run "dotnet --list-sdks"

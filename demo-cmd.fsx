@@ -45,21 +45,19 @@ pipeline "demo" {
         }
     }
     stage "publish" {
-        whenAll {
-            branch "master"
-            cmdArg args.path
-            whenCmd {
-                name "-s"
-                longName "--send"
-                optional
-            }
-            cmdArg "--foo" "" "sd" true
-            whenEnv {
-                name "TEST2"
-                acceptValues [ "foo1"; "foo2" ]
-                description "This is for demo"
-                optional
-            }
+        whenBranch "master"
+        whenCmdArg args.path
+        whenCmdArg "--foo" "" "sd" true
+        whenCmd {
+            name "-s"
+            longName "--send"
+            optional
+        }
+        whenEnv {
+            name "TEST2"
+            acceptValues [ "foo1"; "foo2" ]
+            description "This is for demo"
+            optional
         }
         run (fun ctx -> printfn "%A" (ctx.TryGetCmdArg(args.path)))
     }
