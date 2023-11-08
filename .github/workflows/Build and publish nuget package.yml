@@ -4,8 +4,8 @@ on:
   push:
     branches:
     - master
-    # paths:
-    # - CHANGELOG.md
+    paths:
+    - CHANGELOG.md
     
 jobs:
   build:
