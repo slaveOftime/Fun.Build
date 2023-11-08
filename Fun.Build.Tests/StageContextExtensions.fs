@@ -104,8 +104,6 @@ let ``noStdRedirectForStep should work`` () =
 
 [<Fact>]
 let ``RunCommandCaptureOutput should work`` () =
-    let mutable output = ""
-
     pipeline "" {
         stage "" {
             whenAny {
@@ -114,24 +112,18 @@ let ``RunCommandCaptureOutput should work`` () =
             }
             run (fun ctx -> async {
                 let! result = ctx.RunCommandCaptureOutput "echo 42"
-                match result with
-                | Ok x -> output <- x
-                | Error _ -> ()
+                Assert.Equal(Ok "42\n\n", result)
             })
         }
         stage "" {
             whenWindows
             run (fun ctx -> async {
                 let! result = ctx.RunCommandCaptureOutput "powershell echo 42"
-                match result with
-                | Ok x -> output <- x
-                | Error _ -> ()
+                Assert.Equal(Ok "42\r\n\r\n", result)
             })
         }
         runImmediate
     }
-
-    Assert.Equal("42", output)
 
 [<Fact>]
 let ``RunCommandCaptureOutput should return an error if command failed`` () =
