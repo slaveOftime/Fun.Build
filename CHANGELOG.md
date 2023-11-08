@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.0.3] - 2023-11-08
+
+- Fix command catupure new line issue
+
 ## [1.0.2] - 2023-10-19
 
 - Improve docs

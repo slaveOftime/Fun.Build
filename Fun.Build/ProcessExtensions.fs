@@ -3,11 +3,11 @@ module Fun.Build.ProcessExtensions
 
 open System
 open System.IO
+open System.Text
 open System.Diagnostics
 open System.Runtime.InteropServices
 open Spectre.Console
 open Fun.Build.Internal
-open System.Text
 
 type Process with
 
@@ -59,10 +59,10 @@ type Process with
             startInfo.StandardErrorEncoding <- Encoding.UTF8
 
         use result = Process.Start startInfo
-        let standardOutputSb = System.Text.StringBuilder()
+        let standardOutputSb = StringBuilder()
 
         let handleDataReceived (ev: DataReceivedEventArgs) =
-            if captureOutput then standardOutputSb.Append ev.Data |> ignore
+            if captureOutput then standardOutputSb.AppendLine ev.Data |> ignore
             if printOutput && not (String.IsNullOrEmpty ev.Data) then
                 if noPrefix then
                     Console.WriteLine(ev.Data)
