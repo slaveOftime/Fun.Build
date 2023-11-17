@@ -126,6 +126,30 @@ let ``RunCommandCaptureOutput should work`` () =
     }
 
 [<Fact>]
+let ``RunCommandCaptureOutput in working directory should work`` () =
+    pipeline "" {
+        stage "" {
+            whenAny {
+                platformOSX
+                platformLinux
+            }
+            run (fun ctx -> async {
+                let tmpFolder = System.IO.Path.GetTempPath()
+                let! result = ctx.RunCommandCaptureOutput("echo 42", workingDir = tmpFolder)
+                Assert.Equal(Ok "42\n\n", result)
+            })
+        }
+        stage "" {
+            whenWindows
+            run (fun ctx -> async {
+                let! result = ctx.RunCommandCaptureOutput "powershell echo 42"
+                Assert.Equal(Ok "42\r\n\r\n", result)
+            })
+        }
+        runImmediate
+    }
+
+[<Fact>]
 let ``RunCommandCaptureOutput should return an error if command failed`` () =
     Assert.Throws<PipelineFailedException>(fun _ ->
         shouldBeCalled (fun call ->

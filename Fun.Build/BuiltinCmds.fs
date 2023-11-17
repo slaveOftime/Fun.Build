@@ -14,7 +14,7 @@ module BuiltinCmdsInternal =
     type StageContext with
 
         /// Build a ProcessStartInfo object for a command string. If your command is a file path with white space, you should quote it with ' or ".
-        member ctx.BuildCommand(commandStr: string) =
+        member ctx.BuildCommand(commandStr: string, ?workingDir: string) =
             let index =
                 if commandStr.StartsWith "\"" then commandStr.IndexOf "\" "
                 else if commandStr.StartsWith "'" then commandStr.IndexOf "' "
@@ -30,7 +30,9 @@ module BuiltinCmdsInternal =
 
             let command = ProcessStartInfo(Process.GetQualifiedFileName cmd, args)
 
-            ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command.WorkingDirectory <- x)
+            match workingDir with
+            | Some workDir -> command.WorkingDirectory <- workDir
+            | None -> ctx.GetWorkingDir() |> ValueOption.iter (fun x -> command.WorkingDirectory <- x)
 
             ctx.BuildEnvVars() |> Map.iter (fun k v -> command.Environment[k] <- v)
 
@@ -60,8 +62,8 @@ module BuiltinCmds =
     type StageContext with
 
         /// Run a command string with current context
-        member ctx.RunCommand(commandStr: string, ?step: int) = async {
-            let command = ctx.BuildCommand(commandStr)
+        member ctx.RunCommand(commandStr: string, ?step: int, ?workingDir: string) = async {
+            let command = ctx.BuildCommand(commandStr, ?workingDir = workingDir)
             let noPrefixForStep = ctx.GetNoPrefixForStep()
             let prefix =
                 if noPrefixForStep then
@@ -83,8 +85,9 @@ module BuiltinCmds =
         /// </summary>
         /// <param name="commandStr">Command to run</param>
         /// <param name="step">Current step rank</param>
-        member ctx.RunCommandCaptureOutput(commandStr: string, ?step: int) = async {
-            let command = ctx.BuildCommand(commandStr)
+        /// <param name="workingDir">Working directory for command</param>
+        member ctx.RunCommandCaptureOutput(commandStr: string, ?step: int, ?workingDir: string) = async {
+            let command = ctx.BuildCommand(commandStr, ?workingDir = workingDir)
             let noPrefixForStep = ctx.GetNoPrefixForStep()
             let prefix =
                 if noPrefixForStep then
@@ -105,8 +108,8 @@ module BuiltinCmds =
         }
 
         /// Run a command string with current context, and encrypt the string for logging
-        member ctx.RunSensitiveCommand(commandStr: FormattableString, ?step: int) = async {
-            let command = ctx.BuildCommand(commandStr.ToString())
+        member ctx.RunSensitiveCommand(commandStr: FormattableString, ?step: int, ?workingDir: string) = async {
+            let command = ctx.BuildCommand(commandStr.ToString(), ?workingDir = workingDir)
             let noPrefixForStep = ctx.GetNoPrefixForStep()
             let args: obj[] = Array.create commandStr.ArgumentCount "*"
             let encryptiedStr = String.Format(commandStr.Format, args)
