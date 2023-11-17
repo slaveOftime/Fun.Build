@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.0.4] - 2023-11-17
+
 - Allow optional workingDir for ctx.RunCommand
 
 ## [1.0.3] - 2023-11-08
