@@ -72,6 +72,22 @@ type StageBuilder(name: string) =
         )
 
 
+    member inline _.Combine([<InlineIfLambda>] build1: BuildStage, [<InlineIfLambda>] build2: BuildStage) =
+        BuildStage(fun ctx -> build2.Invoke(build1.Invoke(ctx)))
+
+    member inline _.For<'T>(items: 'T seq, [<InlineIfLambda>] fn: 'T -> StageContext) =
+        BuildStage(fun ctx ->
+            let newStages = items |> Seq.map (fn >> Step.StepOfStage) |> Seq.toList
+            { ctx with Steps = ctx.Steps @ newStages }
+        )
+
+    member inline _.YieldFrom(stages: StageContext seq) =
+        BuildStage(fun ctx ->
+            let newStages = stages |> Seq.map Step.StepOfStage |> Seq.toList
+            { ctx with Steps = ctx.Steps @ newStages }
+        )
+
+
     /// Add or override environment variables
     [<CustomOperation("envVars")>]
     member inline _.envVars([<InlineIfLambda>] build: BuildStage, kvs: seq<string * string>) =

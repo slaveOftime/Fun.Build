@@ -185,3 +185,20 @@ let ``shuffleExecuteSequence should work`` () =
     }
 
     Assert.False(List.ofSeq ls = [ 1; 2; 3; 4 ])
+
+
+[<Fact>]
+let ``for loop or yield! should work`` () =
+    let list = System.Collections.Generic.List()
+
+    pipeline "" {
+        stage "" {
+            failIfIgnored
+            for i in 1..5 do
+                stage $"{i}" { run (fun _ -> list.Add i) }
+            yield! [ stage "" { run (fun _ -> list.Add 6) } ]
+        }
+        runImmediate
+    }
+
+    Assert.Equal<int>([ 1..6 ], list)
