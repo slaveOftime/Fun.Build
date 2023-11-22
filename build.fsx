@@ -1,4 +1,4 @@
-#r "nuget: Fun.Build, 1.0.4"
+#r "nuget: Fun.Build, 1.0.5"
 
 open Fun.Build
 
@@ -32,6 +32,8 @@ let stage_test = stage "Run unit tests" { run "dotnet test" }
 
 pipeline "packages" {
     description "Build and deploy to nuget"
+    runBeforeEachStage (fun ctx -> if ctx.GetStageLevel() = 0 then printfn $"::group::{ctx.Name}")
+    runAfterEachStage (fun ctx -> if ctx.GetStageLevel() = 0 then printfn "::endgroup::")
     stage_checkEnv
     stage_lint
     stage_test
@@ -56,6 +58,8 @@ pipeline "packages" {
 
 pipeline "test" {
     description "Format code and run tests"
+    runBeforeEachStage (fun ctx -> if ctx.GetStageLevel() = 0 then printfn $"::group::{ctx.Name}")
+    runAfterEachStage (fun ctx -> if ctx.GetStageLevel() = 0 then printfn "::endgroup::")
     stage_checkEnv
     stage_lint
     stage_test
