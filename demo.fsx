@@ -50,6 +50,10 @@ pipeline "Fun.Build" {
     // By default steps will not add prefix for printing information.
     // You can also set the flag on each stage.
     noPrefixForStep false
+    // Before every stage we can run something
+    // For example: for top level stage we echo this message so github action can collapse the stage logs
+    runBeforeEachStage (fun ctx -> if ctx.GetStageLevel() = 0 then printfn $"::group::{ctx.Name}")
+    runAfterEachStage (fun ctx -> if ctx.GetStageLevel() = 0 then printfn "::endgroup::")
     demo1
     stage "Demo2" {
         // whenAny, whenNot, whenAll. They can also be composed.

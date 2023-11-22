@@ -38,6 +38,8 @@ module PipelineContextExtensionsInternal =
                 NoStdRedirectForStep = false
                 Stages = []
                 PostStages = []
+                RunBeforeEachStage = ignore
+                RunAfterEachStage = ignore
             }
 
 

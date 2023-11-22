@@ -423,3 +423,32 @@ let ``whenCmdArg should work`` () =
             runImmediate
         }
     )
+
+
+
+[<Fact>]
+let ``runBeforeEachStage and runAfterEachStage should work`` () =
+    let mutable i = 0
+    let mutable j = 0
+    let mutable ti = 0
+    let mutable tj = 0
+
+    pipeline "" {
+        runBeforeEachStage (fun ctx ->
+            i <- i + 1
+            if ctx.GetStageLevel() = 0 then ti <- ti + 1
+        )
+        runAfterEachStage (fun ctx ->
+            j <- j + 1
+            if ctx.GetStageLevel() = 0 then tj <- tj + 1
+        )
+        stage "" { run ignore }
+        stage "" { stage "" { run ignore } }
+        post [ stage "" { run ignore } ]
+        runImmediate
+    }
+
+    Assert.Equal(4, i)
+    Assert.Equal(4, j)
+    Assert.Equal(3, ti)
+    Assert.Equal(3, tj)

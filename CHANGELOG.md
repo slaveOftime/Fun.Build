@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Add runBeforeEachStage and runAfterEachStage
+
 ## [1.0.4] - 2023-11-17
 
 - Allow optional workingDir for ctx.RunCommand

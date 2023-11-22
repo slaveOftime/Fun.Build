@@ -83,6 +83,8 @@ type PipelineContext = {
     NoStdRedirectForStep: bool
     Stages: StageContext list
     PostStages: StageContext list
+    RunBeforeEachStage: StageContext -> unit
+    RunAfterEachStage: StageContext -> unit
 }
 
 

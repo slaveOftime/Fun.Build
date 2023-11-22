@@ -31,6 +31,13 @@ module StageContextExtensionsInternal =
         }
 
 
+        member ctx.GetParentPipeline() =
+            match ctx.ParentContext with
+            | ValueNone -> None
+            | ValueSome(StageParent.Stage s) -> s.GetParentPipeline()
+            | ValueSome(StageParent.Pipeline p) -> Some p
+
+
         member ctx.GetMode() =
             match ctx.ParentContext with
             | ValueNone -> Mode.Execution
@@ -140,189 +147,196 @@ module StageContextExtensionsInternal =
 
             let isActive = stage.IsActive stage
             let namePath = stage.GetNamePath()
+            let pipeline = stage.GetParentPipeline()
 
-            if not isActive && stage.FailIfIgnored then
-                let msg = $"Stage ({stage.GetNamePath()}) cannot be ignored (inactive)"
-                AnsiConsole.MarkupLineInterpolated $"[red]{msg}[/]"
-                let verifyStage =
-                    { stage with
-                        ParentContext =
-                            match stage.ParentContext with
-                            | ValueSome(StageParent.Pipeline p) -> ValueSome(StageParent.Pipeline { p with Mode = Mode.Verification })
-                            | x -> x
-                    }
-                stage.IsActive(verifyStage) |> ignore
-                raise (PipelineFailedException msg)
+            pipeline |> Option.iter (fun x -> x.RunBeforeEachStage stage)
 
-            else if isActive then
-                if stage.FailIfNoActiveSubStage then
-                    let parentContext = ValueSome(StageParent.Stage stage)
-                    let hasActiveStep =
-                        stage.Steps
-                        |> Seq.exists (
-                            function
-                            | Step.StepOfStage s -> s.IsActive { s with ParentContext = parentContext }
-                            | _ -> false
-                        )
-                    if not hasActiveStep then
-                        AnsiConsole.MarkupLineInterpolated
-                            $"[red]Pipeline is failed because there is no active sub stages but stage ({stage.GetNamePath()}) requires at least one[/]"
-                        raise (PipelineFailedException "No active sub stages")
+            try
+                if not isActive && stage.FailIfIgnored then
+                    let msg = $"Stage ({stage.GetNamePath()}) cannot be ignored (inactive)"
+                    AnsiConsole.MarkupLineInterpolated $"[red]{msg}[/]"
+                    let verifyStage =
+                        { stage with
+                            ParentContext =
+                                match stage.ParentContext with
+                                | ValueSome(StageParent.Pipeline p) -> ValueSome(StageParent.Pipeline { p with Mode = Mode.Verification })
+                                | x -> x
+                        }
+                    stage.IsActive(verifyStage) |> ignore
+                    raise (PipelineFailedException msg)
 
-                let stageSW = Stopwatch.StartNew()
-                let isParallel = stage.IsParallel stage
-                let timeoutForStep: int = stage.GetTimeoutForStep()
-                let timeoutForStage: int = stage.GetTimeoutForStage()
-
-                let mutable isStageSoftCancelled = false
-
-                use cts = new Threading.CancellationTokenSource(timeoutForStage)
-                use stepErrorCTS = new Threading.CancellationTokenSource()
-                use linkedStepErrorCTS = Threading.CancellationTokenSource.CreateLinkedTokenSource(cts.Token, stepErrorCTS.Token)
-                use linkedCTS = Threading.CancellationTokenSource.CreateLinkedTokenSource(linkedStepErrorCTS.Token, cancelToken)
-
-                use stepCTS = new Threading.CancellationTokenSource(timeoutForStep)
-                use linkedStepCTS = Threading.CancellationTokenSource.CreateLinkedTokenSource(stepCTS.Token, linkedCTS.Token)
-
-                AnsiConsole.WriteLine()
-
-                let extraInfo = $"timeout: {timeoutForStage}ms. step timeout: {timeoutForStep}ms."
-                match index with
-                | StageIndex.Stage i ->
-                    AnsiConsole.Write(Rule($"[grey50]STAGE #{i} [bold turquoise4]{namePath}[/] started. {extraInfo}[/]").LeftJustified())
-                | StageIndex.Step _ ->
-                    AnsiConsole.MarkupLineInterpolated($"[grey50]{stage.BuildCurrentStepPrefix()}> sub-stage started. {extraInfo}[/]")
-
-                let indexedSteps =
-                    stage.Steps
-                    |> Seq.mapi (fun i s -> i, s)
-                    |> if stage.ShuffleExecuteSequence && stage.GetMode() = Mode.Execution then
-                           Seq.shuffle
-                       else
-                           id
-
-                let steps =
-                    indexedSteps
-                    |> Seq.map (fun (i, step) -> async {
-                        let prefix = stage.BuildStepPrefix(i)
-                        try
-                            let sw = Stopwatch.StartNew()
-                            AnsiConsole.WriteLine()
-                            AnsiConsole.MarkupLineInterpolated $"""[grey50]{prefix} started{if isParallel then " in parallel -->" else ""}[/]"""
-
-                            let! isSuccess =
-                                match step with
-                                | Step.StepFn fn -> async {
-                                    match! fn (stage, i) with
-                                    | Error e ->
-                                        if String.IsNullOrEmpty e |> not then
-                                            if stage.GetNoPrefixForStep() then
-                                                AnsiConsole.MarkupLineInterpolated $"""[red]{e}[/]"""
-                                            else
-                                                AnsiConsole.MarkupLineInterpolated $"""{prefix} error: [red]{e}[/]"""
-                                        return false
-                                    | Ok _ -> return true
-                                  }
-                                | Step.StepOfStage subStage -> async {
-                                    let subStage =
-                                        { subStage with
-                                            ParentContext = ValueSome(StageParent.Stage stage)
-                                        }
-                                    let isSuccess, exn = subStage.Run(StageIndex.Step i, linkedStepCTS.Token)
-                                    stepExns.AddRange exn
-                                    return isSuccess
-                                  }
-
-                            AnsiConsole.MarkupLineInterpolated(
-                                $"""[grey50]{prefix} finished{if isParallel then " in parallel." else "."} {sw.ElapsedMilliseconds}ms.[/]"""
+                else if isActive then
+                    if stage.FailIfNoActiveSubStage then
+                        let parentContext = ValueSome(StageParent.Stage stage)
+                        let hasActiveStep =
+                            stage.Steps
+                            |> Seq.exists (
+                                function
+                                | Step.StepOfStage s -> s.IsActive { s with ParentContext = parentContext }
+                                | _ -> false
                             )
-                            if i = stage.Steps.Length - 1 then AnsiConsole.WriteLine()
+                        if not hasActiveStep then
+                            AnsiConsole.MarkupLineInterpolated
+                                $"[red]Pipeline is failed because there is no active sub stages but stage ({stage.GetNamePath()}) requires at least one[/]"
+                            raise (PipelineFailedException "No active sub stages")
 
-                            if not isSuccess then stepErrorCTS.Cancel()
-                            return isSuccess
+                    let stageSW = Stopwatch.StartNew()
+                    let isParallel = stage.IsParallel stage
+                    let timeoutForStep: int = stage.GetTimeoutForStep()
+                    let timeoutForStage: int = stage.GetTimeoutForStage()
 
-                        with
-                        | :? StepSoftCancelledException as ex ->
-                            AnsiConsole.MarkupLineInterpolated $"[yellow]{prefix} {ex.Message}.[/]"
-                            return true
-                        | :? StageSoftCancelledException as ex ->
-                            AnsiConsole.MarkupLineInterpolated $"[yellow]{prefix} {ex.Message}.[/]"
-                            isStageSoftCancelled <- true
-                            stepErrorCTS.Cancel()
-                            return true
-                        | ex ->
-                            AnsiConsole.MarkupLineInterpolated $"[red]{prefix} exception hanppened.[/]"
-                            AnsiConsole.WriteException ex
-                            stepExns.Add ex
-                            stepErrorCTS.Cancel()
-                            return false
-                    })
+                    let mutable isStageSoftCancelled = false
 
-                try
-                    let ts =
-                        if isParallel then
-                            async {
-                                let completers = ResizeArray()
+                    use cts = new Threading.CancellationTokenSource(timeoutForStage)
+                    use stepErrorCTS = new Threading.CancellationTokenSource()
+                    use linkedStepErrorCTS = Threading.CancellationTokenSource.CreateLinkedTokenSource(cts.Token, stepErrorCTS.Token)
+                    use linkedCTS = Threading.CancellationTokenSource.CreateLinkedTokenSource(linkedStepErrorCTS.Token, cancelToken)
 
-                                for ts in steps do
-                                    let! completer = Async.StartChild(ts, timeoutForStep)
-                                    completers.Add completer
+                    use stepCTS = new Threading.CancellationTokenSource(timeoutForStep)
+                    use linkedStepCTS = Threading.CancellationTokenSource.CreateLinkedTokenSource(stepCTS.Token, linkedCTS.Token)
 
-                                let mutable i = 0
-                                while i < completers.Count && isSuccess do
-                                    let! result = completers[i]
-                                    i <- i + 1
-                                    isSuccess <- isSuccess && result
-                            }
+                    AnsiConsole.WriteLine()
+
+                    let extraInfo = $"timeout: {timeoutForStage}ms. step timeout: {timeoutForStep}ms."
+                    match index with
+                    | StageIndex.Stage i ->
+                        AnsiConsole.Write(Rule($"[grey50]STAGE #{i} [bold turquoise4]{namePath}[/] started. {extraInfo}[/]").LeftJustified())
+                    | StageIndex.Step _ ->
+                        AnsiConsole.MarkupLineInterpolated($"[grey50]{stage.BuildCurrentStepPrefix()}> sub-stage started. {extraInfo}[/]")
+
+                    let indexedSteps =
+                        stage.Steps
+                        |> Seq.mapi (fun i s -> i, s)
+                        |> (if stage.ShuffleExecuteSequence && stage.GetMode() = Mode.Execution then
+                                Seq.shuffle
+                            else
+                                id)
+
+                    let steps =
+                        indexedSteps
+                        |> Seq.map (fun (i, step) -> async {
+                            let prefix = stage.BuildStepPrefix(i)
+                            try
+                                let sw = Stopwatch.StartNew()
+                                AnsiConsole.WriteLine()
+                                AnsiConsole.MarkupLineInterpolated $"""[grey50]{prefix} started{if isParallel then " in parallel -->" else ""}[/]"""
+
+                                let! isSuccess =
+                                    match step with
+                                    | Step.StepFn fn -> async {
+                                        match! fn (stage, i) with
+                                        | Error e ->
+                                            if String.IsNullOrEmpty e |> not then
+                                                if stage.GetNoPrefixForStep() then
+                                                    AnsiConsole.MarkupLineInterpolated $"""[red]{e}[/]"""
+                                                else
+                                                    AnsiConsole.MarkupLineInterpolated $"""{prefix} error: [red]{e}[/]"""
+                                            return false
+                                        | Ok _ -> return true
+                                      }
+                                    | Step.StepOfStage subStage -> async {
+                                        let subStage =
+                                            { subStage with
+                                                ParentContext = ValueSome(StageParent.Stage stage)
+                                            }
+                                        let isSuccess, exn = subStage.Run(StageIndex.Step i, linkedStepCTS.Token)
+                                        stepExns.AddRange exn
+                                        return isSuccess
+                                      }
+
+                                AnsiConsole.MarkupLineInterpolated(
+                                    $"""[grey50]{prefix} finished{if isParallel then " in parallel." else "."} {sw.ElapsedMilliseconds}ms.[/]"""
+                                )
+                                if i = stage.Steps.Length - 1 then AnsiConsole.WriteLine()
+
+                                if not isSuccess then stepErrorCTS.Cancel()
+                                return isSuccess
+
+                            with
+                            | :? StepSoftCancelledException as ex ->
+                                AnsiConsole.MarkupLineInterpolated $"[yellow]{prefix} {ex.Message}.[/]"
+                                return true
+                            | :? StageSoftCancelledException as ex ->
+                                AnsiConsole.MarkupLineInterpolated $"[yellow]{prefix} {ex.Message}.[/]"
+                                isStageSoftCancelled <- true
+                                stepErrorCTS.Cancel()
+                                return true
+                            | ex ->
+                                AnsiConsole.MarkupLineInterpolated $"[red]{prefix} exception hanppened.[/]"
+                                AnsiConsole.WriteException ex
+                                stepExns.Add ex
+                                stepErrorCTS.Cancel()
+                                return false
+                        })
+
+                    try
+                        let ts =
+                            if isParallel then
+                                async {
+                                    let completers = ResizeArray()
+
+                                    for ts in steps do
+                                        let! completer = Async.StartChild(ts, timeoutForStep)
+                                        completers.Add completer
+
+                                    let mutable i = 0
+                                    while i < completers.Count && isSuccess do
+                                        let! result = completers[i]
+                                        i <- i + 1
+                                        isSuccess <- isSuccess && result
+                                }
+                            else
+                                async {
+                                    let mutable i = 0
+                                    let length = Seq.length steps
+                                    while i < length && isSuccess do
+                                        let! completer = Async.StartChild(Seq.item i steps, timeoutForStep)
+                                        let! result = completer
+                                        i <- i + 1
+                                        isSuccess <- isSuccess && result
+                                }
+
+                        Async.RunSynchronously(ts, cancellationToken = linkedCTS.Token)
+
+                    with
+                    | _ when isStageSoftCancelled -> isSuccess <- true
+                    | ex ->
+                        isSuccess <- false
+                        if linkedCTS.Token.IsCancellationRequested then
+                            AnsiConsole.MarkupLine $"[yellow]Stage is cancelled or timeouted.[/]"
+                            AnsiConsole.WriteLine()
                         else
-                            async {
-                                let mutable i = 0
-                                let length = Seq.length steps
-                                while i < length && isSuccess do
-                                    let! completer = Async.StartChild(Seq.item i steps, timeoutForStep)
-                                    let! result = completer
-                                    i <- i + 1
-                                    isSuccess <- isSuccess && result
-                            }
-
-                    Async.RunSynchronously(ts, cancellationToken = linkedCTS.Token)
-
-                with
-                | _ when isStageSoftCancelled -> isSuccess <- true
-                | ex ->
-                    isSuccess <- false
-                    if linkedCTS.Token.IsCancellationRequested then
-                        AnsiConsole.MarkupLine $"[yellow]Stage is cancelled or timeouted.[/]"
-                        AnsiConsole.WriteLine()
-                    else
-                        AnsiConsole.MarkupLine $"[red]Stage's step is failed[/]"
-                        AnsiConsole.WriteException ex
-                        AnsiConsole.WriteLine()
+                            AnsiConsole.MarkupLine $"[red]Stage's step is failed[/]"
+                            AnsiConsole.WriteException ex
+                            AnsiConsole.WriteLine()
 
 
-                let color = if isSuccess then "turquoise4" else "red"
-                match index with
-                | StageIndex.Stage i ->
-                    AnsiConsole.Write(
-                        Rule($"""[grey50]STAGE #{i} [bold {color}]{namePath}[/] finished. {stageSW.ElapsedMilliseconds}ms.[/]""")
-                            .LeftJustified()
-                    )
-                | StageIndex.Step _ ->
-                    AnsiConsole.MarkupLineInterpolated(
-                        $"""[grey50]{stage.BuildCurrentStepPrefix()}> sub-stage finished. {stageSW.ElapsedMilliseconds}ms.[/]"""
-                    )
+                    let color = if isSuccess then "turquoise4" else "red"
+                    match index with
+                    | StageIndex.Stage i ->
+                        AnsiConsole.Write(
+                            Rule($"""[grey50]STAGE #{i} [bold {color}]{namePath}[/] finished. {stageSW.ElapsedMilliseconds}ms.[/]""")
+                                .LeftJustified()
+                        )
+                    | StageIndex.Step _ ->
+                        AnsiConsole.MarkupLineInterpolated(
+                            $"""[grey50]{stage.BuildCurrentStepPrefix()}> sub-stage finished. {stageSW.ElapsedMilliseconds}ms.[/]"""
+                        )
 
-                AnsiConsole.WriteLine()
+                    AnsiConsole.WriteLine()
 
-            else
-                AnsiConsole.WriteLine()
+                else
+                    AnsiConsole.WriteLine()
 
-                match index with
-                | StageIndex.Stage i -> AnsiConsole.Write(Rule($"[grey50]STAGE #{i} {namePath} is [yellow]in-active[/][/]").LeftJustified())
-                | StageIndex.Step _ ->
-                    AnsiConsole.MarkupLineInterpolated($"[grey50]{stage.BuildCurrentStepPrefix()}> sub-stage is [yellow]in-active[/][/]")
+                    match index with
+                    | StageIndex.Stage i -> AnsiConsole.Write(Rule($"[grey50]STAGE #{i} {namePath} is [yellow]in-active[/][/]").LeftJustified())
+                    | StageIndex.Step _ ->
+                        AnsiConsole.MarkupLineInterpolated($"[grey50]{stage.BuildCurrentStepPrefix()}> sub-stage is [yellow]in-active[/][/]")
 
-                AnsiConsole.WriteLine()
+                    AnsiConsole.WriteLine()
+
+            finally
+                pipeline |> Option.iter (fun x -> x.RunAfterEachStage stage)
 
             isSuccess, stepExns
 
@@ -348,6 +362,13 @@ module StageContextExtensionsInternal =
 module StageContextExtensions =
 
     type StageContext with
+
+        /// Stage under pipeline should be level 0, the level will get increased for nested stages
+        member ctx.GetStageLevel() =
+            match ctx.ParentContext with
+            | ValueNone -> 0
+            | ValueSome(StageParent.Stage x) -> x.GetStageLevel() + 1
+            | ValueSome(StageParent.Pipeline _) -> 0
 
         member ctx.GetWorkingDir() =
             ctx.WorkingDir

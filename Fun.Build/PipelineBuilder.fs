@@ -203,6 +203,17 @@ type PipelineBuilder(name: string) =
     member inline this.noStdRedirectForStep([<InlineIfLambda>] build: BuildPipeline) = this.noStdRedirectForStep (build, true)
 
 
+    /// Run some function before each stage is being executed
+    [<CustomOperation("runBeforeEachStage")>]
+    member inline _.runBeforeEachStage([<InlineIfLambda>] build: BuildPipeline, fn) =
+        BuildPipeline(fun ctx -> { build.Invoke ctx with RunBeforeEachStage = fn })
+
+    /// Run some function after each stage is executed even exception is hanpened
+    [<CustomOperation("runAfterEachStage")>]
+    member inline _.runAfterEachStage([<InlineIfLambda>] build: BuildPipeline, fn) =
+        BuildPipeline(fun ctx -> { build.Invoke ctx with RunAfterEachStage = fn })
+
+
     [<CustomOperation("post")>]
     member inline _.post([<InlineIfLambda>] build: BuildPipeline, stages: StageContext list) =
         BuildPipeline(fun ctx ->
