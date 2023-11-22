@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.0.5] - 2023-11-22
+
 - Add runBeforeEachStage and runAfterEachStage
 - Enable for loop and yield! for sub stages
 
