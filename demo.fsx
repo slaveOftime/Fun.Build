@@ -5,6 +5,17 @@
 open Fun.Result
 open Fun.Build
 
+[<AutoOpen>]
+module Extensions =
+    open Fun.Build.Internal
+
+    type PipelineBuilder with
+
+        [<CustomOperation "collapseGithubActionLogs">]
+        member inline this.collapseGithubActionLogs(build: Internal.BuildPipeline) =
+            let build = this.runBeforeEachStage (build, (fun ctx -> if ctx.GetStageLevel() = 0 then printfn $"::group::{ctx.Name}"))
+            this.runAfterEachStage (build, (fun ctx -> if ctx.GetStageLevel() = 0 then printfn "::endgroup::"))
+
 
 // You can create a stage and reuse it in any pipeline or nested stages
 let demo1 =
@@ -50,10 +61,8 @@ pipeline "Fun.Build" {
     // By default steps will not add prefix for printing information.
     // You can also set the flag on each stage.
     noPrefixForStep false
-    // Before every stage we can run something
-    // For example: for top level stage we echo this message so github action can collapse the stage logs
-    runBeforeEachStage (fun ctx -> if ctx.GetStageLevel() = 0 then printfn $"::group::{ctx.Name}")
-    runAfterEachStage (fun ctx -> if ctx.GetStageLevel() = 0 then printfn "::endgroup::")
+    // Below is a custom extended operation
+    collapseGithubActionLogs
     demo1
     stage "Demo2" {
         // whenAny, whenNot, whenAll. They can also be composed.

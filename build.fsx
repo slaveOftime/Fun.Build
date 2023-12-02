@@ -1,6 +1,15 @@
 #r "nuget: Fun.Build, 1.0.5"
 
 open Fun.Build
+open Fun.Build.Internal
+
+
+type PipelineBuilder with
+
+    [<CustomOperation "collapseGithubActionLogs">]
+    member inline this.collapseGithubActionLogs(build: Internal.BuildPipeline) =
+        let build = this.runBeforeEachStage (build, (fun ctx -> if ctx.GetStageLevel() = 0 then printfn $"::group::{ctx.Name}"))
+        this.runAfterEachStage (build, (fun ctx -> if ctx.GetStageLevel() = 0 then printfn "::endgroup::"))
 
 
 let options = {|
@@ -32,8 +41,7 @@ let stage_test = stage "Run unit tests" { run "dotnet test" }
 
 pipeline "packages" {
     description "Build and deploy to nuget"
-    runBeforeEachStage (fun ctx -> if ctx.GetStageLevel() = 0 then printfn $"::group::{ctx.Name}")
-    runAfterEachStage (fun ctx -> if ctx.GetStageLevel() = 0 then printfn "::endgroup::")
+    collapseGithubActionLogs
     stage_checkEnv
     stage_lint
     stage_test
@@ -58,8 +66,7 @@ pipeline "packages" {
 
 pipeline "test" {
     description "Format code and run tests"
-    runBeforeEachStage (fun ctx -> if ctx.GetStageLevel() = 0 then printfn $"::group::{ctx.Name}")
-    runAfterEachStage (fun ctx -> if ctx.GetStageLevel() = 0 then printfn "::endgroup::")
+    collapseGithubActionLogs
     stage_checkEnv
     stage_lint
     stage_test
