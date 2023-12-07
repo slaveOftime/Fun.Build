@@ -156,7 +156,7 @@ pipeline "Fun.Build" {
             shuffleExecuteSequence
             echo "cool nested"
             stage "Deeper" { echo "cooller" }
-            stage "in-active" {
+            stage "inactive" {
                 whenCmdArg "arg3"
                 echo "Got here!"
             }
@@ -174,7 +174,7 @@ pipeline "Fun.Build" {
         whenCmdArg "arg2"
         echo "Got here!"
     }
-    stage "in-active" {
+    stage "inactive" {
         whenCmdArg "arg3"
         echo "Got here!"
     }
