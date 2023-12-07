@@ -329,9 +329,9 @@ module StageContextExtensionsInternal =
                     AnsiConsole.WriteLine()
 
                     match index with
-                    | StageIndex.Stage i -> AnsiConsole.Write(Rule($"[grey50]STAGE #{i} {namePath} is [yellow]in-active[/][/]").LeftJustified())
+                    | StageIndex.Stage i -> AnsiConsole.Write(Rule($"[grey50]STAGE #{i} {namePath} is [yellow]inactive[/][/]").LeftJustified())
                     | StageIndex.Step _ ->
-                        AnsiConsole.MarkupLineInterpolated($"[grey50]{stage.BuildCurrentStepPrefix()}> sub-stage is [yellow]in-active[/][/]")
+                        AnsiConsole.MarkupLineInterpolated($"[grey50]{stage.BuildCurrentStepPrefix()}> sub-stage is [yellow]inactive[/][/]")
 
                     AnsiConsole.WriteLine()
 
