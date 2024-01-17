@@ -1,7 +1,12 @@
 #r "nuget: Fun.Build, 1.0.5"
 
+open System.IO
+open Fun.Result
 open Fun.Build
 open Fun.Build.Internal
+
+
+let (</>) x y = Path.Combine(x, y)
 
 
 type PipelineBuilder with
@@ -38,19 +43,36 @@ let stage_lint =
 
 let stage_test = stage "Run unit tests" { run "dotnet test" }
 
+let stage_buildVersion =
+    stage "generate Directory.build.props for version control" {
+        run (fun _ ->
+            Directory.GetDirectories(__SOURCE_DIRECTORY__)
+            |> Seq.filter (fun x -> File.Exists(x </> "CHANGELOG.md"))
+            |> Seq.iter (fun dir ->
+                let version = Changelog.GetLastVersion dir |> Option.defaultWith (fun _ -> failwith "No version available")
+                let content =
+                    $"""<!-- auto generated -->
+<Project>
+    <PropertyGroup>
+        <Version>{version.Version}</Version>
+    </PropertyGroup>
+</Project>"""
+                File.WriteAllText(dir </> "Directory.Build.props", content)
+            )
+        )
+    }
+
 
 pipeline "packages" {
     description "Build and deploy to nuget"
     collapseGithubActionLogs
     stage_checkEnv
+    stage_buildVersion
     stage_lint
     stage_test
     stage "Build packages" {
-        run (fun _ ->
-            let version =
-                Changelog.GetLastVersion(__SOURCE_DIRECTORY__) |> Option.defaultWith (fun () -> failwith "Version is not found")
-            $"dotnet pack -c Release Fun.Build/Fun.Build.fsproj -p:PackageVersion={version.Version} -o ."
-        )
+        run "dotnet pack -c Release Fun.Build/Fun.Build.fsproj -o ."
+        run "dotnet pack -c Release Fun.Build.Cli/Fun.Build.Cli.fsproj -o ."
     }
     stage "Publish packages to nuget" {
         whenBranch "master"

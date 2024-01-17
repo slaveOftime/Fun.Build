@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFrameworks>net8.0</TargetFrameworks>
+		<PackAsTool>true</PackAsTool>
+		<ToolCommandName>fun-blazor</ToolCommandName>
+		<PackageOutputPath>./nupkg</PackageOutputPath>
+    <!-- <PublishAot>true</PublishAot>
+    <UseSystemResourceKeys>true</UseSystemResourceKeys>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <StripSymbols>true</StripSymbols> -->
+  </PropertyGroup>
+
+  <ItemGroup>
+   <Compile Include="Start.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Fun.Build\Fun.Build.fsproj" />
+  </ItemGroup>
+
+  <!-- <ItemGroup>
+    <PackageReference Include="PublishAotCompressed" Version="1.0.3" />
+  </ItemGroup> -->
+
+</Project>

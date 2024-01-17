@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.0.6] - 2024-01-17
+
+- Fix typo
+- Fix ctrl+c termination issue
+
 ## [1.0.5] - 2023-11-22
 
 - Add runBeforeEachStage and runAfterEachStage
