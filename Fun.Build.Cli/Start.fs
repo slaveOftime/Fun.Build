@@ -5,6 +5,7 @@ open System.Security.Cryptography
 open Spectre.Console
 open Fun.Result
 open Fun.Build
+open Spectre.Console
 
 
 Console.InputEncoding <- Encoding.UTF8
@@ -103,7 +104,6 @@ let refreshPipelineInfos (dir: string) =
     |> Async.Parallel
     |> Async.map ignore
 
-
 let rec addSourceDir () =
     let source =
         AnsiConsole.Ask<string>("You need to provide at least one source folder which should contains .fsx file under it or under its sub folders:")
@@ -116,7 +116,6 @@ let rec addSourceDir () =
     else
         AnsiConsole.MarkupLine("The folder is not exist, please try again:")
         addSourceDir ()
-
 
 let selectHistory () =
     let historyLines =
@@ -146,51 +145,69 @@ let selectHistory () =
         Seq.tryItem index histories
 
 let rec runPipeline (ctx: Internal.StageContext) (pipeline: Pipeline) = asyncResult {
-    AnsiConsole.MarkupLineInterpolated($"Pipeline: [bold green]{pipeline.Name}[/]")
-    if String.IsNullOrEmpty(pipeline.Description.Trim()) |> not then
-        AnsiConsole.MarkupLineInterpolated($"[green]{pipeline.Description}[/]")
-    AnsiConsole.MarkupLineInterpolated($"Script: [green]{pipeline.Script}[/]")
-
     let scriptFile = Path.GetFileName pipeline.Script
     let scriptDir = Path.GetDirectoryName pipeline.Script
-    let args = AnsiConsole.Ask<string>("Arguments: ")
 
-    AnsiConsole.MarkupLineInterpolated($"Working dir: [green]{scriptDir}[/]")
+    let table = Table()
+    table.ShowHeaders <- false
+    table.AddColumns("", "") |> ignore
+    table.AddRow("Script", $"[green]{scriptFile}[/]") |> ignore
+    table.AddRow("Pipeline", $"[bold green]{pipeline.Name}[/]") |> ignore
+    table.AddRow("WorkingDir", $"[green]{scriptDir}[/]") |> ignore
+    if String.IsNullOrEmpty(pipeline.Description.Trim()) |> not then
+        table.AddRow("Description", $"[green]{pipeline.Description}[/]") |> ignore
 
-    let startedTime = DateTime.Now
-    do!
-        ctx.RunCommand($"dotnet fsi \"{scriptFile}\" -- -p {pipeline.Name} {args}", workingDir = scriptDir)
-        |> Async.map (ignore >> Ok)
+    AnsiConsole.Write table
 
-    if args.Trim() <> "-h" then
+    let args = AnsiConsole.Ask<string>("Arguments (-h for help): ")
+    let isHelpCommand = args.Trim() <> "-h"
+
+    if isHelpCommand then
         addHistory
             {
                 Script = pipeline.Script
                 Pipeline = pipeline.Name
                 Args = args
-                StartedTime = startedTime
+                StartedTime = DateTime.Now
             }
-    else
-        do! runPipeline ctx pipeline
+
+    do!
+        ctx.RunCommand($"dotnet fsi \"{scriptFile}\" -- -p {pipeline.Name} {args}", workingDir = scriptDir)
+        |> Async.map (ignore >> Ok)
+
+    if not isHelpCommand then do! runPipeline ctx pipeline
 }
 
-let reRunHistory (ctx: Internal.StageContext) (history: ExecutionHistoryItem) = asyncResult {
-    let args =
-        let newArgs = AnsiConsole.Ask<string>("Type new arguments or press ENTER to use the one from history", "")
-        if String.IsNullOrEmpty newArgs then history.Args else newArgs
-
+let rec reRunHistory (ctx: Internal.StageContext) (history: ExecutionHistoryItem) = asyncResult {
     let scriptFile = Path.GetFileName history.Script
     let scriptDir = Path.GetDirectoryName history.Script
 
-    AnsiConsole.MarkupLineInterpolated($"[green]Working dir: {scriptDir}[/]")
+    let table = Table()
+    table.ShowHeaders <- false
+    table.AddColumns("", "") |> ignore
+    table.AddRow("Script", $"[green]{scriptFile}[/]") |> ignore
+    table.AddRow("Pipeline", $"[bold green]{history.Pipeline}[/]") |> ignore
+    table.AddRow("WorkingDir", $"[green]{scriptDir}[/]") |> ignore
+    table.AddRow("Arguments", history.Args) |> ignore
 
-    let startTime = DateTime.Now
+    AnsiConsole.Write table
+
+    let args =
+        let text = TextPrompt<string>("New arguments (leave empty to use the one from history): ")
+        text.AllowEmpty <- true
+        let newArgs = AnsiConsole.Prompt text
+        if String.IsNullOrEmpty newArgs then history.Args else newArgs
+
+    let isHelpCommand = args = "-h"
+
+    if not isHelpCommand then addHistory { history with StartedTime = DateTime.Now }
+
     do!
         ctx.RunCommand($"dotnet fsi \"{scriptFile}\" -- -p {history.Pipeline} {args}", workingDir = scriptDir)
         |> Async.map (ignore >> Ok)
-    addHistory { history with StartedTime = startTime }
-}
 
+    if isHelpCommand then do! reRunHistory ctx history
+}
 
 let selectPipelineToRun (ctx: Internal.StageContext) = asyncResult {
     let pipelines =
@@ -217,7 +234,7 @@ let selectPipelineToRun (ctx: Internal.StageContext) = asyncResult {
         do! runPipeline ctx selectedPipeline
     }
 
-    if AnsiConsole.Confirm("Do you want to search pipeline by query (y) or select manually (n)?", true) then
+    if AnsiConsole.Confirm("Search pipeline (y) or select manually (n)?", true) then
         let rec queryAndRunPipeline () = asyncResult {
             let query = AnsiConsole.Ask<string>("Query by script file name or pipeline info: ")
             let filteredPipelines =
@@ -301,7 +318,7 @@ pipeline "execution" {
     stage "select" {
         whenNot { cmdArg executionOptions.useLastRun }
         run (fun ctx -> asyncResult {
-            if AnsiConsole.Confirm("Do you want to select history to re-run?", true) then
+            if AnsiConsole.Confirm("Re-run pipeline from history?", true) then
                 match selectHistory () with
                 | Some history -> do! reRunHistory ctx history
                 | None -> do! selectPipelineToRun ctx
