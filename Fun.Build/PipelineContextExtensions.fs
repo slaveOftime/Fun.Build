@@ -123,6 +123,7 @@ module PipelineContextExtensionsInternal =
 
                 AnsiConsole.WriteLine()
                 AnsiConsole.MarkupLine "[yellow]Pipeline is cancelled by console.[/]"
+                Environment.Exit(1)
                 AnsiConsole.WriteLine()
             )
 
