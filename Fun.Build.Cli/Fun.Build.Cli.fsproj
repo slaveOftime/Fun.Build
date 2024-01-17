@@ -4,7 +4,7 @@
 		<OutputType>Exe</OutputType>
 		<TargetFrameworks>net8.0</TargetFrameworks>
 		<PackAsTool>true</PackAsTool>
-		<ToolCommandName>fun-blazor</ToolCommandName>
+		<ToolCommandName>fun-build</ToolCommandName>
 		<PackageOutputPath>./nupkg</PackageOutputPath>
     <!-- <PublishAot>true</PublishAot>
     <UseSystemResourceKeys>true</UseSystemResourceKeys>
