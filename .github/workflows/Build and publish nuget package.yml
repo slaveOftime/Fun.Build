@@ -5,7 +5,8 @@ on:
     branches:
     - master
     paths:
-    - CHANGELOG.md
+    - Fun.Build/CHANGELOG.md
+    - Fun.Build.Cli/CHANGELOG.md
     
 jobs:
   build:
