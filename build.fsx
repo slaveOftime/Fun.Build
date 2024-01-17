@@ -13,7 +13,7 @@ type PipelineBuilder with
 
 
 let options = {|
-    GithubAction = EnvArg.Create("GITHUB_ACTION", description = "Run only in in github action container")
+    GithubAction = EnvArg.Create("GITHUB_ACTION", description = "Run only in github action container")
     NugetAPIKey = EnvArg.Create("NUGET_API_KEY", description = "Nuget api key")
 |}
 
