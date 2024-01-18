@@ -1,12 +1,11 @@
 open System
 open System.IO
 open System.Text
+open System.Linq
 open System.Security.Cryptography
 open Spectre.Console
 open Fun.Result
 open Fun.Build
-open Spectre.Console
-
 
 Console.InputEncoding <- Encoding.UTF8
 Console.OutputEncoding <- Encoding.UTF8
@@ -22,7 +21,7 @@ let funBuildCliCacheDir =
     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) </> "fun-build" |> ensureDir
 let pipelineInfoDir = funBuildCliCacheDir </> "pipeline-infos" |> ensureDir
 let sourcesFile = funBuildCliCacheDir </> "sources.txt"
-let historyFile = funBuildCliCacheDir </> "history.csv"
+let historyFile (i: int) = funBuildCliCacheDir </> $"history{i}.csv"
 
 
 type Pipeline = { Script: string; Name: string; Description: string }
@@ -51,8 +50,33 @@ let parseHistory (line: string) =
     }
 
 
-let addHistory (item: ExecutionHistoryItem) = File.AppendAllLines(historyFile, [ $"{item.Script},{item.Pipeline},{item.Args},{item.StartedTime}" ])
+let addHistory (item: ExecutionHistoryItem) =
+    let lines =
+        try
+            File.ReadLines(historyFile 0) |> Seq.length
+        with _ ->
+            0
 
+    if lines > 100 then File.Move(historyFile 0, historyFile 1, overwrite = true)
+
+    File.AppendAllLines(historyFile 0, [ $"{item.Script},{item.Pipeline},{item.Args},{item.StartedTime}" ])
+
+let getAllHistory () = [
+    try
+        yield! File.ReadAllLines(historyFile 1) |> Seq.map parseHistory
+    with _ ->
+        ()
+    try
+        yield! File.ReadAllLines(historyFile 0) |> Seq.map parseHistory
+    with _ ->
+        ()
+]
+
+let getLastHistory () =
+    try
+        File.ReadLines(historyFile 0) |> Seq.tryLast |> Option.map parseHistory
+    with _ ->
+        None
 
 let parsePipelines (str: string) =
     let pipelines = Collections.Generic.List<string * string>()
@@ -80,7 +104,7 @@ let parsePipelines (str: string) =
     pipelines |> Seq.toList
 
 
-let hashString (str: string) = Convert.ToBase64String(MD5.HashData(Encoding.UTF8.GetBytes(str)))
+let hashString (str: string) = Guid(MD5.HashData(Encoding.UTF8.GetBytes(str))).ToString()
 
 
 let refreshPipelineInfos (dir: string) =
@@ -104,6 +128,35 @@ let refreshPipelineInfos (dir: string) =
     |> Async.Parallel
     |> Async.map ignore
 
+let getAllPipelines () =
+    Directory.GetFiles(pipelineInfoDir)
+    |> Seq.map (fun f ->
+        File.ReadAllLines(f)
+        |> Seq.map (fun l ->
+            let columns = l.Split(",")
+            {
+                Pipeline.Script = columns[0]
+                Name = columns[1]
+                Description = if columns.Length > 2 then columns[2] else ""
+            }
+        )
+    )
+    |> Seq.concat
+    |> Seq.sortBy (fun x -> x.Script, x.Name)
+    |> Seq.toList
+
+let filterPipelines (query: string) (pipelines: Pipeline seq) =
+    let qs = query.Split(" ") |> Seq.map (fun x -> x.Trim()) |> Seq.filter (String.IsNullOrEmpty >> not) |> Seq.toList
+    pipelines
+    |> Seq.filter (fun p ->
+        qs
+        |> Seq.forall (fun query ->
+            p.Name.Contains(query, StringComparison.OrdinalIgnoreCase)
+            || p.Description.Contains(query, StringComparison.OrdinalIgnoreCase)
+            || p.Script.Contains(query, StringComparison.OrdinalIgnoreCase)
+        )
+    )
+
 let rec addSourceDir () =
     let source =
         AnsiConsole.Ask<string>("You need to provide at least one source folder which should contains .fsx file under it or under its sub folders:")
@@ -118,15 +171,12 @@ let rec addSourceDir () =
         addSourceDir ()
 
 let selectHistory () =
-    let historyLines =
-        try
-            File.ReadLines(historyFile)
-        with _ -> [||]
+    let historyLines = getAllHistory ()
 
     let count = historyLines |> Seq.length
     let limit = 10
     let skipCount = if count > limit then count - limit else 0
-    let histories = historyLines |> Seq.skip skipCount |> Seq.map parseHistory |> Seq.rev |> Seq.toList
+    let histories = historyLines |> Seq.skip skipCount |> Seq.rev |> Seq.toList
 
     if histories.IsEmpty then
         AnsiConsole.MarkupLine("[yellow]No history found[/]")
@@ -137,8 +187,8 @@ let selectHistory () =
         selection.Converter <- snd
         selection.AddChoices [
             for i, history in Seq.indexed histories do
-                let time = history.StartedTime.ToString("yyyy-MM-dd HH:mm:ss")
-                i, $"{time}: {history.Pipeline} {history.Args} {history.Script}"
+                let time = history.StartedTime.ToString("MM-dd HH:mm:ss")
+                i, $"{time}: [green]-p {history.Pipeline} {history.Args}[/] [grey]({history.Script})[/]"
         ]
         |> ignore
         let index, _ = AnsiConsole.Prompt(selection)
@@ -171,6 +221,8 @@ let rec runPipeline (ctx: Internal.StageContext) (pipeline: Pipeline) = asyncRes
                 StartedTime = DateTime.Now
             }
 
+    AnsiConsole.MarkupLine("")
+
     do!
         ctx.RunCommand($"dotnet fsi \"{scriptFile}\" -- -p {pipeline.Name} {args}", workingDir = scriptDir)
         |> Async.map (ignore >> Ok)
@@ -202,6 +254,8 @@ let rec reRunHistory (ctx: Internal.StageContext) (history: ExecutionHistoryItem
 
     if not isHelpCommand then addHistory { history with StartedTime = DateTime.Now }
 
+    AnsiConsole.MarkupLine("")
+
     do!
         ctx.RunCommand($"dotnet fsi \"{scriptFile}\" -- -p {history.Pipeline} {args}", workingDir = scriptDir)
         |> Async.map (ignore >> Ok)
@@ -210,55 +264,78 @@ let rec reRunHistory (ctx: Internal.StageContext) (history: ExecutionHistoryItem
 }
 
 let selectPipelineToRun (ctx: Internal.StageContext) = asyncResult {
-    let pipelines =
-        Directory.GetFiles(pipelineInfoDir)
-        |> Seq.map (fun f ->
-            File.ReadAllLines(f)
-            |> Seq.map (fun l ->
-                let columns = l.Split(",")
-                {
-                    Pipeline.Script = columns[0]
-                    Name = columns[1]
-                    Description = if columns.Length > 2 then columns[2] else ""
-                }
-            )
-        )
-        |> Seq.concat
+    let convertFn = fun (p: Pipeline) -> $"[bold green]{p.Name}[/]: {p.Description} ({p.Script})"
 
     let selectAndRunPipelines (pipelines: Pipeline seq) = asyncResult {
         let selection = SelectionPrompt<Pipeline>()
         selection.Title <- "Select pipeline to run"
-        selection.Converter <- fun p -> $"[bold green]{p.Name}[/]: {p.Description} ({p.Script})"
+        selection.Converter <- convertFn
         selection.AddChoices(pipelines |> Seq.sortBy (fun x -> x.Script, x.Name)) |> ignore
         let selectedPipeline = AnsiConsole.Prompt selection
         do! runPipeline ctx selectedPipeline
     }
 
-    if AnsiConsole.Confirm("Search pipeline (y) or select manually (n)?", true) then
-        let rec queryAndRunPipeline () = asyncResult {
-            let query = AnsiConsole.Ask<string>("Query by script file name or pipeline info: ")
-            let filteredPipelines =
-                pipelines
-                |> Seq.filter (fun p ->
-                    p.Name.Contains(query, StringComparison.OrdinalIgnoreCase)
-                    || p.Description.Contains(query, StringComparison.OrdinalIgnoreCase)
-                    || p.Script.Contains(query, StringComparison.OrdinalIgnoreCase)
-                )
-                |> Seq.toList
+    let pipelines = getAllPipelines ()
 
-            match filteredPipelines with
-            | [] ->
+    let mutable query = ""
+    let mutable shouldContinue = true
+    let mutable startSelect = false
+
+    /// Fill rest of screen with empty line, so we can reset the cursor to top
+    let top = Console.CursorTop
+    for _ in Console.WindowHeight - top - 1 .. Console.WindowHeight - 1 do
+        Console.WriteLine(String(' ', Console.WindowWidth))
+    Console.SetCursorPosition(0, 0)
+
+    while shouldContinue do
+        // Clear last render
+        for i in 0 .. Console.WindowHeight - 1 do
+            Console.SetCursorPosition(0, i)
+            Console.Write(String(' ', Console.WindowWidth))
+        Console.SetCursorPosition(0, 0)
+
+        if startSelect then
+            do! filterPipelines query pipelines |> selectAndRunPipelines
+
+        else
+            let filteredPipelines = filterPipelines query pipelines |> Seq.toList
+
+            for i, pipeline in filteredPipelines.Take(5) |> Seq.indexed do
+                let prefix = if i = 0 then "> " else "  "
+                AnsiConsole.Markup($"[green]{prefix}[/]")
+                AnsiConsole.MarkupLine(convertFn pipeline)
+
+            if filteredPipelines.Length > 5 then AnsiConsole.MarkupLine("  ...")
+            if filteredPipelines.IsEmpty then
                 AnsiConsole.MarkupLine("[yellow]No pipelines are found[/]")
-                do! queryAndRunPipeline ()
-            | [ pipeline ] -> do! runPipeline ctx pipeline
-            | ps -> do! selectAndRunPipelines ps
-        }
 
-        do! queryAndRunPipeline ()
+            AnsiConsole.MarkupLine("")
+            AnsiConsole.MarkupLine("Search (space is query spliter) and select pipeline (ArrowDown for selecting, Enter for the first one): ")
+            AnsiConsole.Markup($"> {query}")
+            let k = Console.ReadKey()
 
-    else
-        do! selectAndRunPipelines pipelines
+            if k.Key = ConsoleKey.Enter then
+                let firstPipeline = filteredPipelines |> Seq.tryHead
+                match firstPipeline with
+                | Some p ->
+                    shouldContinue <- false
+                    do! runPipeline ctx p
+                | _ -> ()
 
+            else if k.Key = ConsoleKey.DownArrow then
+                startSelect <- true
+
+            else if k.Key = ConsoleKey.Delete || k.Key = ConsoleKey.Backspace then
+                query <- if query.Length > 0 then query.Substring(0, query.Length - 1) else query
+
+            else if
+                (k.KeyChar >= '0' && k.KeyChar <= '9')
+                || (k.KeyChar >= 'a' && k.KeyChar <= 'z')
+                || (k.KeyChar >= 'A' && k.KeyChar <= 'Z')
+                || k.KeyChar = ' '
+                || k.KeyChar = '.'
+            then
+                query <- query + string k.KeyChar
 }
 
 
@@ -292,6 +369,7 @@ pipeline "source" {
     stage "refresh" {
         whenCmdArg "--refresh" "" "Refresh source pipelines and cache again"
         run (fun _ -> async {
+            Directory.GetFiles(pipelineInfoDir) |> Seq.iter File.Delete
             for source in sources do
                 do! refreshPipelineInfos source
         })
@@ -309,8 +387,7 @@ pipeline "execution" {
     stage "auto" {
         whenCmdArg executionOptions.useLastRun
         run (fun ctx -> asyncResult {
-            let history = File.ReadLines(historyFile) |> Seq.tryLast |> Option.map parseHistory
-            match history with
+            match getLastHistory () with
             | Some history -> do! reRunHistory ctx history
             | None -> AnsiConsole.MarkupLine("[yellow]No history found to run automatically[/]")
         })
