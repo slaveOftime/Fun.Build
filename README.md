@@ -20,7 +20,7 @@ Every **step** is just a **async<Result<unit, string>>**, string is for the erro
 ## Minimal example and conventions
 
 ```fsharp
-#r "nuget: Fun.Build, 1.0.7"
+#r "nuget: Fun.Build, 1.0.8"
 open Fun.Build
 
 pipeline "demo" {
@@ -67,7 +67,7 @@ dotnet fsi build.fsx -- -p your_pipeline -h
 Below example covered most of the apis and usage example, take it as the documents😊:
 
 ```fsharp
-#r "nuget: Fun.Build, 1.0.7"
+#r "nuget: Fun.Build, 1.0.8"
 
 open Fun.Result
 open Fun.Build
@@ -274,6 +274,15 @@ tryPrintPipelineCommandHelp ()
 This is a dotnet tool package which can be used to manage the fsharp script which is using Fun.Build, and called **tryPrintPipelineCommandHelp**.
 
 ```bash
+dotnet tool install --global Fun.Build.Cli
+```
+
+```
+fun-build -h
+```
+
+```bash
+
 Pipelines:
 
   source                          Manage source directory

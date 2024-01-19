@@ -1,20 +1,12 @@
-#r "nuget: Fun.Build, 1.0.5"
+#r "nuget: Fun.Build, 1.0.7"
 
 open System.IO
 open Fun.Result
 open Fun.Build
-open Fun.Build.Internal
+open Fun.Build.Github
 
 
 let (</>) x y = Path.Combine(x, y)
-
-
-type PipelineBuilder with
-
-    [<CustomOperation "collapseGithubActionLogs">]
-    member inline this.collapseGithubActionLogs(build: Internal.BuildPipeline) =
-        let build = this.runBeforeEachStage (build, (fun ctx -> if ctx.GetStageLevel() = 0 then printfn $"::group::{ctx.Name}"))
-        this.runAfterEachStage (build, (fun ctx -> if ctx.GetStageLevel() = 0 then printfn "::endgroup::"))
 
 
 let options = {|

@@ -4,17 +4,7 @@
 
 open Fun.Result
 open Fun.Build
-
-[<AutoOpen>]
-module Extensions =
-    open Fun.Build.Internal
-
-    type PipelineBuilder with
-
-        [<CustomOperation "collapseGithubActionLogs">]
-        member inline this.collapseGithubActionLogs(build: Internal.BuildPipeline) =
-            let build = this.runBeforeEachStage (build, (fun ctx -> if ctx.GetStageLevel() = 0 then printfn $"::group::{ctx.Name}"))
-            this.runAfterEachStage (build, (fun ctx -> if ctx.GetStageLevel() = 0 then printfn "::endgroup::"))
+open Fun.Build.Github
 
 
 // You can create a stage and reuse it in any pipeline or nested stages
@@ -163,6 +153,7 @@ pipeline "cmd-info" {
         description "optional argument"
         optional
     }
+    whenGithubAction
     stage "condition demo" {
         noStdRedirectForStep
         failIfIgnored
