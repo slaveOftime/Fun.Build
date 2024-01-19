@@ -6,7 +6,7 @@ The basic idea is you have **pipeline** which can contain multiple stages.
 Every **stage** can contain multiple steps. In the stage you can set it to run in parallel or run under some conditions (when envVar, cmdArg, branch etc.).  
 Every **step** is just a **async<Result<unit, string>>**, string is for the error message. 
 
-[Fun.Build.Cli](#funbuildcli) is used manage fsharp scripts which is using Fun.Build and using tryPrintPipelineCommandHelp.
+[Fun.Build.Cli](#funbuildcli) is used to manage fsharp scripts which is using Fun.Build and tryPrintPipelineCommandHelp.
 
 ## For what
 
@@ -20,7 +20,7 @@ Every **step** is just a **async<Result<unit, string>>**, string is for the erro
 ## Minimal example and conventions
 
 ```fsharp
-#r "nuget: Fun.Build, 1.0.6"
+#r "nuget: Fun.Build, 1.0.7"
 open Fun.Build
 
 pipeline "demo" {
@@ -67,7 +67,7 @@ dotnet fsi build.fsx -- -p your_pipeline -h
 Below example covered most of the apis and usage example, take it as the documents😊:
 
 ```fsharp
-#r "nuget: Fun.Build, 1.0.6"
+#r "nuget: Fun.Build, 1.0.7"
 
 open Fun.Result
 open Fun.Build
@@ -269,7 +269,7 @@ pipeline "cmd-info" {
 tryPrintPipelineCommandHelp ()
 ```
 
-## Fun.Build.Cli
+## Fun.Build.Cli  [![Nuget](https://img.shields.io/nuget/vpre/Fun.Build.Cli)](https://www.nuget.org/packages/Fun.Build.Cli)
 
 This is a dotnet tool package which can be used to manage the fsharp script which is using Fun.Build, and called **tryPrintPipelineCommandHelp**.
 

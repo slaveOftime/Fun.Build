@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.0.7] - 2024-01-19
+
 - Add indicator for default pipeline
 - Add Github module to provide some helper ce operations: collapseGithubActionLogs for pipeline, githubAction for condition
 
