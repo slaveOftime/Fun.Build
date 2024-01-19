@@ -6,6 +6,7 @@ The basic idea is you have **pipeline** which can contain multiple stages.
 Every **stage** can contain multiple steps. In the stage you can set it to run in parallel or run under some conditions (when envVar, cmdArg, branch etc.).  
 Every **step** is just a **async<Result<unit, string>>**, string is for the error message. 
 
+[Fun.Build.Cli](#funbuildcli) is used manage fsharp scripts which is using Fun.Build and using tryPrintPipelineCommandHelp.
 
 ## For what
 
@@ -267,3 +268,27 @@ pipeline "cmd-info" {
 // You can run: dotnet fsi demo.fsx -- -h
 tryPrintPipelineCommandHelp ()
 ```
+
+## Fun.Build.Cli
+
+This is a dotnet tool package which can be used to manage the fsharp script which is using Fun.Build, and called **tryPrintPipelineCommandHelp**.
+
+```bash
+Pipelines:
+
+  source                          Manage source directory
+
+    Options(collected from pipeline and stages):
+        --list                      List current source directories
+        --add                       Add source directory and build pipeline info cache for usage
+        --remove                    Remove source from current source list
+        --clean                     Clear all the files
+        --refresh                   Rebuild pipelines and cache for current sources again
+
+  run                             Execute pipeline found from sources
+    Default pipeline
+    Options(collected from pipeline and stages):
+        --use-last-run              Execute the last pipeline
+```
+
+After first setup, we can run the it without any arugments, it will pompt related question to guide you.

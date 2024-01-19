@@ -47,11 +47,11 @@ pipeline "source" {
         )
     }
     stage "clean" {
-        whenCmdArg "--clean" "" "Clear all the files and restart again"
+        whenCmdArg "--clean" "" "Clear all the cache files"
         run (fun _ -> Directory.Delete(funBuildCliCacheDir, recursive = true))
     }
     stage "refresh" {
-        whenCmdArg "--refresh" "" "Rebuild pipelines and cache again for current source again"
+        whenCmdArg "--refresh" "" "Rebuild pipelines and cache for current source again"
         run (fun _ -> async {
             Pipeline.ClearCache()
             for source in Source.Sources do
