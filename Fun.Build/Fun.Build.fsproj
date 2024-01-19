@@ -23,6 +23,7 @@
 		<Compile Include="ConditionsBuilder.fs" />
 		<Compile Include="Changelog.fs" />
 		<Compile Include="Windows.fs" />
+		<Compile Include="Github.fs" />
 	</ItemGroup>
 
 	<ItemGroup>
