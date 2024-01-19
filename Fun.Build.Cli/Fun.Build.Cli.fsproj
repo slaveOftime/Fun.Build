@@ -13,6 +13,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+   <Compile Include="Core.fs" />
+   <Compile Include="AnsiConsole.fs" />
+   <Compile Include="History.fs" />
+   <Compile Include="Pipeline.fs" />
+   <Compile Include="Source.fs" />
    <Compile Include="Start.fs" />
   </ItemGroup>
 

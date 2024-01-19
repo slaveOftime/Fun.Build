@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.1.0] - 2024-01-19
+
+- Refactor code
+
 ## [0.0.3] - 2024-01-18
 
 - Improve UX
