@@ -5,9 +5,6 @@ open Spectre.Console
 open Fun.Result
 open Fun.Build
 open Fun.Build.Cli
-open System.IO
-open System.IO
-open Spectre.Console
 
 
 Console.InputEncoding <- Encoding.UTF8
