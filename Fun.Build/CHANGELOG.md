@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.0.8] - 2024-01-19
+
+- Add whenGithubAction
+
 ## [1.0.7] - 2024-01-19
 
 - Add indicator for default pipeline
