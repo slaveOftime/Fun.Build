@@ -28,9 +28,9 @@ type Pipeline with
             else if isPipeline && not (String.IsNullOrEmpty(line)) then
                 let index = line.Trim().IndexOf(" ")
                 if index > 0 then
-                    pipelines.Add(line.Substring(0, index), line.Substring(index + 1).Trim())
+                    pipelines.Add(line.Substring(0, index).Trim(), line.Substring(index + 1).Trim())
                 else
-                    pipelines.Add(line, "")
+                    pipelines.Add(line.Trim(), "")
             else if isPipeline then
                 shouldContinue <- false
             else

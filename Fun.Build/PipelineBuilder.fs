@@ -6,9 +6,10 @@ open Spectre.Console
 open Fun.Build.Internal
 open Fun.Build.PipelineContextExtensionsInternal
 
+type private IsSpecified = bool
 
 /// Used to keep registered data for later usage
-let private runIfOnlySpecifiedPipelines = System.Collections.Generic.List<PipelineContext>()
+let private runIfOnlySpecifiedPipelines = System.Collections.Generic.List<struct (IsSpecified * PipelineContext)>()
 
 
 type PipelineBuilder(name: string) =
@@ -242,7 +243,7 @@ type PipelineBuilder(name: string) =
         let verbose = args |> Seq.exists (fun arg -> arg = "-v" || arg = "--verbose")
         let pipelineIndex = args |> Seq.tryFindIndex (fun arg -> arg = "-p" || arg = "--pipeline")
 
-        runIfOnlySpecifiedPipelines.Add ctx
+        runIfOnlySpecifiedPipelines.Add(specified, ctx)
 
         try
             if isHelp then
@@ -280,7 +281,8 @@ let tryPrintPipelineCommandHelp () =
     | Some index ->
         let pipelineName = args[index + 1]
         let isPipelineRegistered =
-            runIfOnlySpecifiedPipelines |> Seq.exists (fun x -> x.Name.Equals(pipelineName, StringComparison.OrdinalIgnoreCase))
+            runIfOnlySpecifiedPipelines
+            |> Seq.exists (fun struct (_, x) -> x.Name.Equals(pipelineName, StringComparison.OrdinalIgnoreCase))
         if not isPipelineRegistered then
             AnsiConsole.MarkupLineInterpolated $"Pipeline [red]{pipelineName}[/] is not found."
             AnsiConsole.MarkupLine "You can use [green]runIfOnlySpecified[/] for your pipline, or check if the name is correct."
@@ -291,7 +293,8 @@ let tryPrintPipelineCommandHelp () =
         if isHelp then
             if runIfOnlySpecifiedPipelines.Count = 1 then
                 let verbose = args |> Seq.exists (fun arg -> arg = "-v" || arg = "--verbose")
-                runIfOnlySpecifiedPipelines[0].RunCommandHelp(verbose)
+                let struct (_, pipeline) = runIfOnlySpecifiedPipelines[0]
+                pipeline.RunCommandHelp(verbose)
 
             else
                 let scriptFile = getFsiFileName ()
@@ -306,8 +309,8 @@ let tryPrintPipelineCommandHelp () =
                     AnsiConsole.MarkupLine
                         "[red]* No run if only specified pipelines are found. Please use [green]runIfOnlySpecified[/] at the end of your pipeline CE.[/]"
 
-                for pipeline in runIfOnlySpecifiedPipelines do
-                    printCommandOption "  " pipeline.Name (defaultValueArg pipeline.Description "")
+                for struct (specified, pipeline) in runIfOnlySpecifiedPipelines do
+                    printCommandOption "  " (pipeline.Name + if specified then "" else " (default)") (defaultValueArg pipeline.Description "")
 
                 AnsiConsole.WriteLine ""
                 AnsiConsole.WriteLine "Usage:"
