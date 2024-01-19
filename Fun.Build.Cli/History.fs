@@ -111,7 +111,7 @@ type History =
         table.AddRow("Arguments", history.Args) |> ignore
 
         AnsiConsole.Write table
-        AnsiConsole.MarkupLine("New arguments (leave empty to use the one from history):`")
+        AnsiConsole.MarkupLine("New arguments (leave empty to use the one from history):")
 
         let args =
             let text = TextPrompt<string>("> ")
