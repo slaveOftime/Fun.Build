@@ -98,7 +98,8 @@ type History =
             )
 
 
-    static member Run(ctx: Internal.StageContext, history: HistoryItem) = asyncResult {
+    static member Run(ctx: Internal.StageContext, history: HistoryItem, ?withLastArgs: bool) = asyncResult {
+        let withLastArgs = defaultArg withLastArgs false
         let scriptFile = Path.GetFileName history.Pipeline.Script
         let scriptDir = Path.GetDirectoryName history.Pipeline.Script
 
@@ -114,10 +115,13 @@ type History =
         AnsiConsole.MarkupLine("New arguments (leave empty to use the one from history):")
 
         let args =
-            let text = TextPrompt<string>("> ")
-            text.AllowEmpty <- true
-            let newArgs = AnsiConsole.Prompt text
-            if String.IsNullOrEmpty newArgs then history.Args else newArgs
+            if withLastArgs then
+                history.Args
+            else
+                let text = TextPrompt<string>("> ")
+                text.AllowEmpty <- true
+                let newArgs = AnsiConsole.Prompt text
+                if String.IsNullOrEmpty newArgs then history.Args else newArgs
 
         let isHelpCommand = args = "-h"
 

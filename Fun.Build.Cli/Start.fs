@@ -61,6 +61,7 @@ pipeline "source" {
 
 let executionOptions = {|
     useLastRun = CmdArg.Create(longName = "--use-last-run", description = "Execute the last pipeline")
+    withLastArgs = CmdArg.Create(longName = "--with-last-args", description = "Use the last run arugments")
 |}
 
 pipeline "run" {
@@ -70,7 +71,7 @@ pipeline "run" {
         whenCmdArg executionOptions.useLastRun
         run (fun ctx -> asyncResult {
             match History.LoadLastOne() with
-            | Some history -> do! History.Run(ctx, history)
+            | Some history -> do! History.Run(ctx, history, withLastArgs = (ctx.TryGetCmdArg(executionOptions.withLastArgs) |> Option.isSome))
             | None ->
                 AnsiConsole.MarkupLine("[yellow]No history found to run automatically[/]")
                 match Pipeline.PromtSelect() with
