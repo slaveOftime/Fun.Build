@@ -50,7 +50,6 @@ pipeline "source" {
     stage "refresh" {
         whenCmdArg "--refresh" "" "Rebuild pipelines and cache for current source again"
         run (fun _ -> async {
-            Pipeline.ClearCache()
             for source in Source.Sources do
                 do! Pipeline.BuildCache source
             Environment.Exit(0)

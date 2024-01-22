@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Improve pipeline cache refresh performance
+
 ## [0.1.1] - 2024-01-19
 
 - Fix typo

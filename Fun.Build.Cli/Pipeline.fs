@@ -45,25 +45,48 @@ type Pipeline with
     static member BuildCache(dir: string) =
         AnsiConsole.MarkupLine($"Start to build pipeline info cache for: [green]{dir}[/]")
 
-        Directory.GetFiles(dir, "*.fsx", EnumerationOptions(RecurseSubdirectories = true))
-        |> Seq.map (fun f -> async {
-            try
-                let isValidFile = File.ReadLines(f) |> Seq.exists (fun l -> l.Contains("tryPrintPipelineCommandHelp"))
-                if isValidFile then
-                    printfn "Process script %s" f
-                    let psInfo = Diagnostics.ProcessStartInfo()
-                    psInfo.FileName <- Diagnostics.Process.GetQualifiedFileName "dotnet"
-                    psInfo.Arguments <- $"fsi \"{f}\" -- -h"
-                    let! result = Diagnostics.Process.StartAsync(psInfo, "", "", printOutput = false, captureOutput = true)
+        let asyncs =
+            Directory.GetFiles(dir, "*.fsx", EnumerationOptions(RecurseSubdirectories = true))
+            |> Seq.map (fun f -> async {
+                try
                     let pipelineInfoFile = pipelineInfoDir </> hashString f
-                    let pipelineInfos = Pipeline.Parse result.StandardOutput |> Seq.map (fun (x, y) -> sprintf "%s,%s,%s" f x y)
-                    File.WriteAllLines(pipelineInfoFile, pipelineInfos)
 
-            with ex ->
-                AnsiConsole.MarkupLineInterpolated($"[red]Process script {f} failed: {ex.Message}[/]")
-        })
-        |> Async.Parallel
-        |> Async.map ignore
+                    let isValidFile = lazy (File.ReadLines(f) |> Seq.exists (fun l -> l.Contains("tryPrintPipelineCommandHelp")))
+
+                    let isScriptChanged () =
+                        let pInfoFileInfo = FileInfo pipelineInfoFile
+                        if pInfoFileInfo.Exists then
+                            pInfoFileInfo.LastWriteTime <> (FileInfo f).LastWriteTime
+                        else
+                            true
+
+                    if isScriptChanged () && isValidFile.Value then
+                        printfn "Process script %s" f
+                        let psInfo = Diagnostics.ProcessStartInfo()
+                        psInfo.FileName <- Diagnostics.Process.GetQualifiedFileName "dotnet"
+                        psInfo.Arguments <- $"fsi \"{f}\" -- -h"
+                        let! result = Diagnostics.Process.StartAsync(psInfo, "", "", printOutput = false, captureOutput = true)
+                        let pipelineInfos = Pipeline.Parse result.StandardOutput |> Seq.map (fun (x, y) -> sprintf "%s,%s,%s" f x y)
+                        File.WriteAllLines(pipelineInfoFile, pipelineInfos)
+                        File.SetLastWriteTime(pipelineInfoFile, FileInfo(f).LastWriteTime)
+
+                    if isValidFile.Value then return Some pipelineInfoFile else return None
+
+                with ex ->
+                    AnsiConsole.MarkupLineInterpolated($"[red]Process script {f} failed: {ex.Message}[/]")
+                    return None
+            })
+            |> Async.Parallel
+            |> Async.map (Seq.choose id)
+
+        async {
+            let! files = asyncs |> Async.map (Seq.map Path.GetFileNameWithoutExtension)
+            let allFiles = Directory.GetFiles(pipelineInfoDir)
+            for oldFile in allFiles do
+                if Seq.contains (Path.GetFileNameWithoutExtension oldFile) files |> not then
+                    printfn "Removing unused pipeline info cache %s" oldFile
+                    File.Delete oldFile
+        }
 
 
     static member LoadAll() =
