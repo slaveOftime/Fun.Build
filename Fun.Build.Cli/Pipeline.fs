@@ -53,14 +53,14 @@ type Pipeline with
 
                     let isValidFile = lazy (File.ReadLines(f) |> Seq.exists (fun l -> l.Contains("tryPrintPipelineCommandHelp")))
 
-                    let isScriptChanged () =
-                        let pInfoFileInfo = FileInfo pipelineInfoFile
-                        if pInfoFileInfo.Exists then
-                            pInfoFileInfo.LastWriteTime <> (FileInfo f).LastWriteTime
-                        else
-                            true
+                    let isScriptChanged =
+                            let pInfoFileInfo = FileInfo pipelineInfoFile
+                            if pInfoFileInfo.Exists then
+                                pInfoFileInfo.LastWriteTime <> (FileInfo f).LastWriteTime
+                            else
+                                true
 
-                    if isScriptChanged () && isValidFile.Value then
+                    if isScriptChanged && isValidFile.Value then
                         printfn "Process script %s" f
                         let psInfo = Diagnostics.ProcessStartInfo()
                         psInfo.FileName <- Diagnostics.Process.GetQualifiedFileName "dotnet"
@@ -69,6 +69,9 @@ type Pipeline with
                         let pipelineInfos = Pipeline.Parse result.StandardOutput |> Seq.map (fun (x, y) -> sprintf "%s,%s,%s" f x y)
                         File.WriteAllLines(pipelineInfoFile, pipelineInfos)
                         File.SetLastWriteTime(pipelineInfoFile, FileInfo(f).LastWriteTime)
+
+                    else if not isScriptChanged && isValidFile.Value then
+                        printfn "Script is not changed: %s" f
 
                     if isValidFile.Value then return Some pipelineInfoFile else return None
 
