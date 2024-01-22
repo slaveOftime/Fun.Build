@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.1.2] - 2024-01-19
+
 - Improve pipeline cache refresh performance
 - Support re-run the last run with the last run arugments
 

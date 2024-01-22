@@ -20,7 +20,7 @@ Every **step** is just a **async<Result<unit, string>>**, string is for the erro
 ## Minimal example and conventions
 
 ```fsharp
-#r "nuget: Fun.Build, 1.0.8"
+#r "nuget: Fun.Build, 1.0.9"
 open Fun.Build
 
 pipeline "demo" {
@@ -67,7 +67,7 @@ dotnet fsi build.fsx -- -p your_pipeline -h
 Below example covered most of the apis and usage example, take it as the documents😊:
 
 ```fsharp
-#r "nuget: Fun.Build, 1.0.8"
+#r "nuget: Fun.Build, 1.0.9"
 
 open Fun.Result
 open Fun.Build
@@ -286,18 +286,17 @@ fun-build -h
 Pipelines:
 
   source                          Manage source directory
-
     Options(collected from pipeline and stages):
-        --list                      List current source directories
-        --add                       Add source directory and build pipeline info cache for usage
-        --remove                    Remove source from current source list
-        --clean                     Clear all the files
-        --refresh                   Rebuild pipelines and cache for current sources again
+      --list                      List current source directories
+      --add                       Add source directory and build pipeline info cache for usage
+      --remove                    Remove source from current source list
+      --clean                     Clear all the cache files
+      --refresh                   Rebuild pipelines and cache for current source again
 
-  run                             Execute pipeline found from sources
-    Default pipeline
+  run (default)                   Execute pipeline found from sources
     Options(collected from pipeline and stages):
-        --use-last-run              Execute the last pipeline
+      --use-last-run              Execute the last pipeline
+      --with-last-args            Use the last run arugments
 ```
 
 After first setup, we can run the it without any arugments, it will pompt related question to guide you.
