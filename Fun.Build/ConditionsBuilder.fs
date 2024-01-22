@@ -16,6 +16,24 @@ module Internal =
 
     type StageContext with
 
+        member ctx.When'(isTrue: bool) =
+            let getPrintInfo (prefix: string) =
+                makeCommandOption prefix (if isTrue then "always true" else "always false") ""
+
+            match ctx.GetMode() with
+            | Mode.CommandHelp { Verbose = true } ->
+                AnsiConsole.WriteLine(getPrintInfo (ctx.BuildIndent()))
+                false
+            | Mode.CommandHelp _ ->
+                false
+            | Mode.Verification ->
+                if isTrue then
+                    AnsiConsole.MarkupLineInterpolated($"[green]✓ always true[/]")
+                else
+                    AnsiConsole.MarkupLineInterpolated($"[red]✕ always false[/]")
+                false
+            | Mode.Execution -> isTrue
+
         member ctx.WhenEnvArg(info: EnvArg) =
             if info.Name |> String.IsNullOrEmpty then
                 failwith "ENV variable name cannot be empty"
@@ -193,6 +211,10 @@ type ConditionsBuilder() =
         BuildConditions(fun conditions -> builder.Invoke(conditions) @ [ fn().Invoke ])
 
 
+    [<CustomOperation("when'")>]
+    member inline _.when'([<InlineIfLambda>] builder: BuildConditions, arg: bool) = buildConditions builder (fun ctx -> ctx.When'(arg))
+
+
     [<CustomOperation("envVar")>]
     member inline _.envVar([<InlineIfLambda>] builder: BuildConditions, arg: EnvArg) = buildConditions builder (fun ctx -> ctx.WhenEnvArg(arg))
 
@@ -265,7 +287,7 @@ type StageBuilder with
 
     /// Set if stage is active or should run.
     [<CustomOperation("when'")>]
-    member inline _.when'([<InlineIfLambda>] build: BuildStage, value: bool) = buildStageIsActive build (fun _ -> value)
+    member inline _.when'([<InlineIfLambda>] build: BuildStage, value: bool) = buildStageIsActive build (fun ctx -> ctx.When' value)
 
 
     /// Set if stage is active or should run by check the environment variable.
@@ -346,7 +368,7 @@ type PipelineBuilder with
 
     /// Set if pipeline can run
     [<CustomOperation("when'")>]
-    member inline _.when'([<InlineIfLambda>] build: BuildPipeline, value: bool) = buildPipelineVerification build (fun _ -> value)
+    member inline _.when'([<InlineIfLambda>] build: BuildPipeline, value: bool) = buildPipelineVerification build (fun ctx -> ctx.When' value)
 
 
     /// Set if pipeline can run by check the environment variable.

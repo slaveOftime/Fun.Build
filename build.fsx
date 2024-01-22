@@ -1,4 +1,4 @@
-#r "nuget: Fun.Build, 1.0.7"
+#r "nuget: Fun.Build, 1.0.8"
 
 open System.IO
 open Fun.Result
@@ -10,7 +10,6 @@ let (</>) x y = Path.Combine(x, y)
 
 
 let options = {|
-    GithubAction = EnvArg.Create("GITHUB_ACTION", description = "Run only in github action container")
     NugetAPIKey = EnvArg.Create("NUGET_API_KEY", description = "Nuget api key")
 |}
 
@@ -18,17 +17,16 @@ let options = {|
 let stage_checkEnv =
     stage "Check environment" {
         run "dotnet tool restore"
-        run (fun ctx -> printfn $"""github action name: {ctx.GetEnvVar options.GithubAction.Name}""")
     }
 
 let stage_lint =
     stage "Lint" {
         stage "Format" {
-            whenNot { envVar options.GithubAction }
+            whenGithubAction
             run "dotnet fantomas . -r"
         }
         stage "Check" {
-            whenEnvVar options.GithubAction
+            whenGithubAction
             run "dotnet fantomas . -r --check"
         }
     }
@@ -70,6 +68,7 @@ pipeline "packages" {
         whenBranch "master"
         whenEnvVar options.NugetAPIKey
         whenEnvVar "GITHUB_ENV" "" "Only push packages in github action"
+        whenGithubAction
         run (fun ctx ->
             let key = ctx.GetEnvVar options.NugetAPIKey.Name
             ctx.RunSensitiveCommand $"""dotnet nuget push *.nupkg -s https://api.nuget.org/v3/index.json --skip-duplicate -k {key}"""

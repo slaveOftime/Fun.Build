@@ -69,6 +69,10 @@ pipeline "run" {
     stage "ensure-source" { run (fun _ -> if Source.Sources.Length = 0 then Source.PromptAdd()) }
     stage "auto" {
         whenCmdArg executionOptions.useLastRun
+        whenAny {
+            when' true
+            cmdArg executionOptions.withLastArgs
+        }
         run (fun ctx -> asyncResult {
             match History.LoadLastOne() with
             | Some history -> do! History.Run(ctx, history, withLastArgs = (ctx.TryGetCmdArg(executionOptions.withLastArgs) |> Option.isSome))

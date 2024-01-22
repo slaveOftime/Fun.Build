@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.0.9] - 2024-01-22
+
+- Add when' for ConditionsBuilder
+
 ## [1.0.8] - 2024-01-19
 
 - Add whenGithubAction
