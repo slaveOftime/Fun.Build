@@ -39,11 +39,13 @@ type Pipeline with
         pipelines |> Seq.toList
 
 
-    static member ClearCache() = Directory.GetFiles(pipelineInfoDir) |> Seq.iter File.Delete
+    static member ClearCache() = Directory.GetFiles(pipelineInfoDir, "*", EnumerationOptions(RecurseSubdirectories = true)) |> Seq.iter File.Delete
 
 
     static member BuildCache(dir: string) =
         AnsiConsole.MarkupLine($"Start to build pipeline info cache for: [green]{dir}[/]")
+
+        let pipelineInfoDir = pipelineInfoDir </> hashString dir |> ensureDir
 
         let asyncs =
             Directory.GetFiles(dir, "*.fsx", EnumerationOptions(RecurseSubdirectories = true))
@@ -65,7 +67,14 @@ type Pipeline with
                         let psInfo = Diagnostics.ProcessStartInfo()
                         psInfo.FileName <- Diagnostics.Process.GetQualifiedFileName "dotnet"
                         psInfo.Arguments <- $"fsi \"{f}\" -- -h"
-                        let! result = Diagnostics.Process.StartAsync(psInfo, "", "", printOutput = false, captureOutput = true)
+
+                        let! result = 
+                            Async.StartChild(
+                                Diagnostics.Process.StartAsync(psInfo, "", "", printOutput = false, captureOutput = true),
+                                millisecondsTimeout = 10_000
+                            )
+                        let! result = result
+
                         let pipelineInfos = Pipeline.Parse result.StandardOutput |> Seq.map (fun (x, y) -> sprintf "%s,%s,%s" f x y)
                         File.WriteAllLines(pipelineInfoFile, pipelineInfos)
                         File.SetLastWriteTime(pipelineInfoFile, FileInfo(f).LastWriteTime)
@@ -83,17 +92,17 @@ type Pipeline with
             |> Async.map (Seq.choose id)
 
         async {
-            let! files = asyncs |> Async.map (Seq.map Path.GetFileNameWithoutExtension)
-            let allFiles = Directory.GetFiles(pipelineInfoDir)
-            for oldFile in allFiles do
-                if Seq.contains (Path.GetFileNameWithoutExtension oldFile) files |> not then
+            let! files = asyncs |> Async.map (Seq.map Path.GetFileNameWithoutExtension >> Seq.toList)
+            let oldFiles = Directory.GetFiles(pipelineInfoDir)
+            for oldFile in oldFiles do
+                if files |> Seq.contains (Path.GetFileNameWithoutExtension oldFile) |> not then
                     printfn "Removing unused pipeline info cache %s" oldFile
                     File.Delete oldFile
         }
 
 
     static member LoadAll() =
-        Directory.GetFiles(pipelineInfoDir)
+        Directory.GetFiles(pipelineInfoDir, "*", EnumerationOptions(RecurseSubdirectories = true))
         |> Seq.map (fun f ->
             File.ReadAllLines(f)
             |> Seq.map (fun l ->

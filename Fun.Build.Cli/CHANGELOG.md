@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.1.3] - 2024-01-23
+
+- Fix pipline cache creation
+
 ## [0.1.2] - 2024-01-19
 
 - Improve pipeline cache refresh performance
