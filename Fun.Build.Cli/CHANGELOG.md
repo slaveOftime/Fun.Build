@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.1.4] - 2024-01-23
+
+- Support to parse scripts which only contains only one pipeline 
+
 ## [0.1.3] - 2024-01-23
 
 - Fix pipline cache creation

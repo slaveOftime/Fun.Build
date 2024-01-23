@@ -14,29 +14,38 @@ let private pipelineInfoDir = funBuildCliCacheDir </> "pipeline-infos" |> ensure
 type Pipeline with
 
     static member Parse(str: string) =
-        let pipelines = Collections.Generic.List<string * string>()
         let lines = str.Split(Environment.NewLine)
-        let mutable index = 0
-        let mutable shouldContinue = true
-        let mutable isPipeline = false
 
-        while shouldContinue do
-            let line = lines[index].Trim()
-            index <- index + 1
-            if line = "Pipelines:" then
-                isPipeline <- true
-            else if isPipeline && not (String.IsNullOrEmpty(line)) then
-                let index = line.Trim().IndexOf(" ")
-                if index > 0 then
-                    pipelines.Add(line.Substring(0, index).Trim(), line.Substring(index + 1).Trim())
+        if lines.Length = 0 then []
+
+        else if lines[0].StartsWith("Description:") then
+            let name = lines[1].Split(" ") |> Seq.map (fun x -> x.Trim()) |>  Seq.filter (String.IsNullOrEmpty >> not) |> Seq.item 1
+            let description = lines[2].Trim()
+            [ name, description ]
+
+        else
+            let pipelines = Collections.Generic.List<string * string>()
+            let mutable index = 0
+            let mutable shouldContinue = true
+            let mutable isPipeline = false
+
+            while shouldContinue do
+                let line = lines[index].Trim()
+                index <- index + 1
+                if line = "Pipelines:" then
+                    isPipeline <- true
+                else if isPipeline && not (String.IsNullOrEmpty(line)) then
+                    let index = line.Trim().IndexOf(" ")
+                    if index > 0 then
+                        pipelines.Add(line.Substring(0, index).Trim(), line.Substring(index + 1).Trim())
+                    else
+                        pipelines.Add(line.Trim(), "")
+                else if isPipeline then
+                    shouldContinue <- false
                 else
-                    pipelines.Add(line.Trim(), "")
-            else if isPipeline then
-                shouldContinue <- false
-            else
-                shouldContinue <- index < lines.Length
+                    shouldContinue <- index < lines.Length
 
-        pipelines |> Seq.toList
+            pipelines |> Seq.toList
 
 
     static member ClearCache() = Directory.GetFiles(pipelineInfoDir, "*", EnumerationOptions(RecurseSubdirectories = true)) |> Seq.iter File.Delete
@@ -56,11 +65,11 @@ type Pipeline with
                     let isValidFile = lazy (File.ReadLines(f) |> Seq.exists (fun l -> l.Contains("tryPrintPipelineCommandHelp")))
 
                     let isScriptChanged =
-                            let pInfoFileInfo = FileInfo pipelineInfoFile
-                            if pInfoFileInfo.Exists then
-                                pInfoFileInfo.LastWriteTime <> (FileInfo f).LastWriteTime
-                            else
-                                true
+                        let pInfoFileInfo = FileInfo pipelineInfoFile
+                        if pInfoFileInfo.Exists then
+                            pInfoFileInfo.Length = 0 || pInfoFileInfo.LastWriteTime <> (FileInfo f).LastWriteTime
+                        else
+                            true
 
                     if isScriptChanged && isValidFile.Value then
                         printfn "Process script %s" f
@@ -71,7 +80,7 @@ type Pipeline with
                         let! result = 
                             Async.StartChild(
                                 Diagnostics.Process.StartAsync(psInfo, "", "", printOutput = false, captureOutput = true),
-                                millisecondsTimeout = 10_000
+                                millisecondsTimeout = 60_000
                             )
                         let! result = result
 
