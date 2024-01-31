@@ -17,15 +17,13 @@ module Internal =
     type StageContext with
 
         member ctx.When'(isTrue: bool) =
-            let getPrintInfo (prefix: string) =
-                makeCommandOption prefix (if isTrue then "always true" else "always false") ""
+            let getPrintInfo (prefix: string) = makeCommandOption prefix (if isTrue then "always true" else "always false") ""
 
             match ctx.GetMode() with
             | Mode.CommandHelp { Verbose = true } ->
                 AnsiConsole.WriteLine(getPrintInfo (ctx.BuildIndent()))
                 false
-            | Mode.CommandHelp _ ->
-                false
+            | Mode.CommandHelp _ -> false
             | Mode.Verification ->
                 if isTrue then
                     AnsiConsole.MarkupLineInterpolated($"[green]✓ always true[/]")

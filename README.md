@@ -20,7 +20,7 @@ Every **step** is just a **async<Result<unit, string>>**, string is for the erro
 ## Minimal example and conventions
 
 ```fsharp
-#r "nuget: Fun.Build, 1.0.9"
+#r "nuget: Fun.Build, 1.1.0"
 open Fun.Build
 
 pipeline "demo" {
@@ -67,7 +67,7 @@ dotnet fsi build.fsx -- -p your_pipeline -h
 Below example covered most of the apis and usage example, take it as the documents😊:
 
 ```fsharp
-#r "nuget: Fun.Build, 1.0.9"
+#r "nuget: Fun.Build, 1.1.0"
 
 open Fun.Result
 open Fun.Build
@@ -172,6 +172,7 @@ pipeline "Fun.Build" {
     }
     stage "FailIfIgnored" {
         failIfIgnored // When set this, the stage cannot be ignored
+        continueOnStepFailure // When set this, the stage will be considered as success even if it's step is failed
         whenCmdArg "arg2"
         echo "Got here!"
     }
@@ -259,6 +260,8 @@ pipeline "cmd-info" {
         }
         echo "here we are"
         run "dotnet --list-sdks"
+        // You can get the cmd from the context
+        run (fun ctx -> printfn "%A" (ctx.GetCmdArg("--build")))
     }
     runIfOnlySpecified
 }

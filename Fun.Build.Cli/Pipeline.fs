@@ -16,10 +16,11 @@ type Pipeline with
     static member Parse(str: string) =
         let lines = str.Split(Environment.NewLine)
 
-        if lines.Length = 0 then []
+        if lines.Length = 0 then
+            []
 
         else if lines[0].StartsWith("Description:") then
-            let name = lines[1].Split(" ") |> Seq.map (fun x -> x.Trim()) |>  Seq.filter (String.IsNullOrEmpty >> not) |> Seq.item 1
+            let name = lines[1].Split(" ") |> Seq.map (fun x -> x.Trim()) |> Seq.filter (String.IsNullOrEmpty >> not) |> Seq.item 1
             let description = lines[2].Trim()
             [ name, description ]
 
@@ -77,7 +78,7 @@ type Pipeline with
                         psInfo.FileName <- Diagnostics.Process.GetQualifiedFileName "dotnet"
                         psInfo.Arguments <- $"fsi \"{f}\" -- -h"
 
-                        let! result = 
+                        let! result =
                             Async.StartChild(
                                 Diagnostics.Process.StartAsync(psInfo, "", "", printOutput = false, captureOutput = true),
                                 millisecondsTimeout = 60_000

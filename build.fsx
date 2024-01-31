@@ -1,4 +1,4 @@
-#r "nuget: Fun.Build, 1.0.8"
+#r "nuget: Fun.Build"
 
 open System.IO
 open Fun.Result
@@ -14,17 +14,11 @@ let options = {|
 |}
 
 
-let stage_checkEnv =
-    stage "Check environment" {
-        run "dotnet tool restore"
-    }
+let stage_checkEnv = stage "Check environment" { run "dotnet tool restore" }
 
 let stage_lint =
     stage "Lint" {
-        stage "Format" {
-            whenGithubAction
-            run "dotnet fantomas . -r"
-        }
+        stage "Format" { run "dotnet fantomas . -r" }
         stage "Check" {
             whenGithubAction
             run "dotnet fantomas . -r --check"
