@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.1.5] - 2024-02-03
+
+- No need to limit histories when prompt
+
 ## [0.1.4] - 2024-01-23
 
 - Support to parse scripts which only contains only one pipeline 

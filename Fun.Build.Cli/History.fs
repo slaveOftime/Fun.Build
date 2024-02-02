@@ -30,7 +30,7 @@ type History =
             with _ ->
                 0
 
-        if lines > 100 then File.Move(History.File 0, History.File 1, overwrite = true)
+        if lines > 200 then File.Move(History.File 0, History.File 1, overwrite = true)
 
         File.AppendAllLines(
             History.File 0,
@@ -77,11 +77,7 @@ type History =
 
     static member PromptSelect() =
         let historyLines = History.LoadAll()
-
-        let limit = 10
-        let count = historyLines |> Seq.length
-        let skipCount = if count > limit then count - limit else 0
-        let histories = historyLines |> Seq.skip skipCount |> Seq.rev |> Seq.toList
+        let histories = historyLines |> Seq.rev |> Seq.toList
 
         if histories.IsEmpty then
             AnsiConsole.MarkupLine("[yellow]No history found[/]")
