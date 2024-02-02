@@ -132,6 +132,15 @@ type StageBuilder(name: string) =
     member inline this.failIfNoActiveSubStage([<InlineIfLambda>] build: BuildStage) = this.failIfNoActiveSubStage (build, true)
 
 
+    /// Continue pipeline execution (consider this stage as success) even if the stage's step is failed, default is true
+    [<CustomOperation("continueOnStepFailure")>]
+    member inline _.continueOnStepFailure([<InlineIfLambda>] build: BuildStage, ?flag) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with ContinueOnStepFailure = defaultArg flag true }
+        )
+
+
     /// Set timeout for every step under the current stage.
     /// Unit is second.
     [<CustomOperation("timeout")>]

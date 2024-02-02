@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.1.0] - 2024-01-31
+
+- Support continueOnStepFailure for stage
+
 ## [1.0.9] - 2024-01-22
 
 - Add when' for ConditionsBuilder

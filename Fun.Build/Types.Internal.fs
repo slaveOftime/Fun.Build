@@ -51,6 +51,8 @@ type StageContext = {
     Name: string
     IsActive: StageContext -> bool
     IsParallel: StageContext -> bool
+    /// When this is ture, the stage's final execution result will also be considered as true, so the pipeline can continue too.
+    ContinueOnStepFailure: bool
     Timeout: TimeSpan voption
     TimeoutForStep: TimeSpan voption
     WorkingDir: string voption

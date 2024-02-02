@@ -16,6 +16,7 @@ module StageContextExtensionsInternal =
             Name = name
             IsActive = fun _ -> true
             IsParallel = fun _ -> false
+            ContinueOnStepFailure = false
             Timeout = ValueNone
             TimeoutForStep = ValueNone
             WorkingDir = ValueNone
@@ -249,7 +250,7 @@ module StageContextExtensionsInternal =
                                 )
                                 if i = stage.Steps.Length - 1 then AnsiConsole.WriteLine()
 
-                                if not isSuccess then stepErrorCTS.Cancel()
+                                if not isSuccess && not stage.ContinueOnStepFailure then stepErrorCTS.Cancel()
                                 return isSuccess
 
                             with
@@ -265,7 +266,7 @@ module StageContextExtensionsInternal =
                                 AnsiConsole.MarkupLineInterpolated $"[red]{prefix} exception hanppened.[/]"
                                 AnsiConsole.WriteException ex
                                 stepExns.Add ex
-                                stepErrorCTS.Cancel()
+                                if not stage.ContinueOnStepFailure then stepErrorCTS.Cancel()
                                 return false
                         })
 
@@ -280,7 +281,7 @@ module StageContextExtensionsInternal =
                                         completers.Add completer
 
                                     let mutable i = 0
-                                    while i < completers.Count && isSuccess do
+                                    while i < completers.Count && (stage.ContinueOnStepFailure || isSuccess) do
                                         let! result = completers[i]
                                         i <- i + 1
                                         isSuccess <- isSuccess && result
@@ -289,7 +290,7 @@ module StageContextExtensionsInternal =
                                 async {
                                     let mutable i = 0
                                     let length = Seq.length steps
-                                    while i < length && isSuccess do
+                                    while i < length && (stage.ContinueOnStepFailure || isSuccess) do
                                         let! completer = Async.StartChild(Seq.item i steps, timeoutForStep)
                                         let! result = completer
                                         i <- i + 1
@@ -338,7 +339,7 @@ module StageContextExtensionsInternal =
             finally
                 pipeline |> Option.iter (fun x -> x.RunAfterEachStage stage)
 
-            isSuccess, stepExns
+            stage.ContinueOnStepFailure || isSuccess, stepExns
 
 
     let inline buildStageIsActive ([<InlineIfLambda>] build: BuildStage) ([<InlineIfLambda>] conditionFn) =
