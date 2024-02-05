@@ -329,3 +329,147 @@ let ``continueOnStepFailure should work`` () =
         runImmediate
     }
     Assert.Equal<int>([ 1; 2; 3; 4 ], list)
+
+
+[<Fact>]
+let ``continueStepOnStepFailure should work`` () =
+    let list = System.Collections.Generic.List()
+    Assert.Throws<PipelineFailedException>(fun _ ->
+        pipeline "" {
+            stage "" {
+                continueStepOnStepFailure
+                run (fun _ -> list.Add(1))
+                run (fun _ ->
+                    list.Add(2)
+                    Error ""
+                )
+                run (fun _ -> list.Add(3))
+            }
+            stage "" { run (fun _ -> list.Add(4)) }
+            runImmediate
+        }
+    )
+    |> ignore
+    Assert.Equal<int>([ 1; 2; 3 ], list)
+
+    list.Clear()
+    Assert.Throws<PipelineFailedException>(fun _ ->
+        shouldNotBeCalled (fun fn ->
+            pipeline "" {
+                stage "" {
+                    paralle
+                    continueStepOnStepFailure
+                    run (fun _ -> list.Add(1))
+                    run (fun _ ->
+                        list.Add(2)
+                        Error ""
+                    )
+                    run (fun _ -> list.Add(3))
+                }
+                stage "" { run fn }
+                runImmediate
+            }
+        )
+    )
+    |> ignore
+    Assert.Equal<int>([ 1; 2; 3 ], Seq.sort list)
+
+    list.Clear()
+    Assert.Throws<PipelineFailedException>(fun _ ->
+        pipeline "" {
+            stage "" {
+                continueStepOnStepFailure false
+                run (fun _ -> list.Add(1))
+                run (fun _ ->
+                    list.Add(2)
+                    Error ""
+                )
+                run (fun _ -> list.Add(3))
+            }
+            stage "" { run (fun _ -> list.Add(4)) }
+            runImmediate
+        }
+    )
+    |> ignore
+    Assert.Equal<int>([ 1; 2 ], list)
+
+    list.Clear()
+    Assert.Throws<PipelineFailedException>(fun _ ->
+        shouldNotBeCalled (fun fn ->
+            pipeline "" {
+                stage "" {
+                    paralle
+                    continueStepOnStepFailure false
+                    run (fun _ -> list.Add(1))
+                    run (fun _ -> async {
+                        do! Async.Sleep 100
+                        list.Add(2)
+                        return Error ""
+                    })
+                    run (fun _ -> async {
+                        do! Async.Sleep 500
+                        list.Add(3)
+                    })
+                }
+                stage "" { run fn }
+                runImmediate
+            }
+        )
+    )
+    |> ignore
+    Assert.Equal<int>([ 1; 2 ], list)
+
+
+[<Fact>]
+let ``continueStageOnStepFailure should work`` () =
+    let list = System.Collections.Generic.List()
+    pipeline "" {
+        stage "" {
+            continueStageOnStepFailure
+            run (fun _ -> list.Add(1))
+            run (fun _ ->
+                list.Add(2)
+                Error ""
+            )
+            run (fun _ -> list.Add(3))
+        }
+        stage "" { run (fun _ -> list.Add(4)) }
+        runImmediate
+    }
+    Assert.Equal<int>([ 1; 2; 3; 4 ], list)
+
+    list.Clear()
+    pipeline "" {
+        stage "" {
+            continueStageOnStepFailure
+            run (fun _ -> list.Add(1))
+            run (fun _ ->
+                list.Add(2)
+                Error ""
+            )
+            run (fun _ -> list.Add(3))
+        }
+        stage "" { run (fun _ -> list.Add(4)) }
+        runImmediate
+    }
+    Assert.Equal<int>([ 1; 2; 3; 4 ], Seq.sort list)
+
+    list.Clear()
+    Assert.Throws<PipelineFailedException>(fun _ ->
+        pipeline "" {
+            stage "" {
+                continueStepOnStepFailure true
+                continueStageOnStepFailure false
+                run (fun _ -> list.Add(1))
+                run (fun _ ->
+                    list.Add(2)
+                    Error ""
+                )
+                run (fun _ -> list.Add(3))
+            }
+            stage "" { run (fun _ -> list.Add(4)) }
+            runImmediate
+        }
+    )
+    |> ignore
+    Assert.Equal<int>([ 1; 2; 3 ], list)
