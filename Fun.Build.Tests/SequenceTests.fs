@@ -332,12 +332,12 @@ let ``continueOnStepFailure should work`` () =
 
 
 [<Fact>]
-let ``continueStepOnStepFailure should work`` () =
+let ``continueStepsOnFailure should work`` () =
     let list = System.Collections.Generic.List()
     Assert.Throws<PipelineFailedException>(fun _ ->
         pipeline "" {
             stage "" {
-                continueStepOnStepFailure
+                continueStepsOnFailure
                 run (fun _ -> list.Add(1))
                 run (fun _ ->
                     list.Add(2)
@@ -358,7 +358,7 @@ let ``continueStepOnStepFailure should work`` () =
             pipeline "" {
                 stage "" {
                     paralle
-                    continueStepOnStepFailure
+                    continueStepsOnFailure
                     run (fun _ -> list.Add(1))
                     run (fun _ ->
                         list.Add(2)
@@ -378,7 +378,7 @@ let ``continueStepOnStepFailure should work`` () =
     Assert.Throws<PipelineFailedException>(fun _ ->
         pipeline "" {
             stage "" {
-                continueStepOnStepFailure false
+                continueStepsOnFailure false
                 run (fun _ -> list.Add(1))
                 run (fun _ ->
                     list.Add(2)
@@ -399,7 +399,7 @@ let ``continueStepOnStepFailure should work`` () =
             pipeline "" {
                 stage "" {
                     paralle
-                    continueStepOnStepFailure false
+                    continueStepsOnFailure false
                     run (fun _ -> list.Add(1))
                     run (fun _ -> async {
                         do! Async.Sleep 100
@@ -421,11 +421,11 @@ let ``continueStepOnStepFailure should work`` () =
 
 
 [<Fact>]
-let ``continueStageOnStepFailure should work`` () =
+let ``continueStageOnFailure should work`` () =
     let list = System.Collections.Generic.List()
     pipeline "" {
         stage "" {
-            continueStageOnStepFailure
+            continueStageOnFailure
             run (fun _ -> list.Add(1))
             run (fun _ ->
                 list.Add(2)
@@ -441,7 +441,7 @@ let ``continueStageOnStepFailure should work`` () =
     list.Clear()
     pipeline "" {
         stage "" {
-            continueStageOnStepFailure
+            continueStageOnFailure
             run (fun _ -> list.Add(1))
             run (fun _ ->
                 list.Add(2)
@@ -458,8 +458,8 @@ let ``continueStageOnStepFailure should work`` () =
     Assert.Throws<PipelineFailedException>(fun _ ->
         pipeline "" {
             stage "" {
-                continueStepOnStepFailure true
-                continueStageOnStepFailure false
+                continueStepsOnFailure true
+                continueStageOnFailure false
                 run (fun _ -> list.Add(1))
                 run (fun _ ->
                     list.Add(2)

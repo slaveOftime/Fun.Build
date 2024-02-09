@@ -2,7 +2,9 @@
 
 ## [Unreleased]
 
-- Support continueStepOnStepFailure and continueStageOnStepFailure
+## [1.1.1] - 2024-02-09
+
+- Support continueStepsOnFailure and continueStageOnFailure for stage
 
 ## [1.1.0] - 2024-01-31
 

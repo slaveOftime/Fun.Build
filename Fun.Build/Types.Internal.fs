@@ -51,8 +51,8 @@ type StageContext = {
     Name: string
     IsActive: StageContext -> bool
     IsParallel: StageContext -> bool
-    ContinueStepOnStepFailure: bool
-    ContinueStageOnStepFailure: bool
+    ContinueStepsOnFailure: bool
+    ContinueStageOnFailure: bool
     Timeout: TimeSpan voption
     TimeoutForStep: TimeSpan voption
     WorkingDir: string voption
