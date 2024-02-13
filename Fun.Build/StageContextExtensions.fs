@@ -218,6 +218,7 @@ module StageContextExtensionsInternal =
                         indexedSteps
                         |> Seq.map (fun (i, step) -> async {
                             let prefix = stage.BuildStepPrefix(i)
+                            let exns = ResizeArray<Exception>()
                             try
                                 let sw = Stopwatch.StartNew()
                                 AnsiConsole.WriteLine()
@@ -241,8 +242,8 @@ module StageContextExtensionsInternal =
                                             { subStage with
                                                 ParentContext = ValueSome(StageParent.Stage stage)
                                             }
-                                        let isSuccess, exn = subStage.Run(StageIndex.Step i, linkedStepCTS.Token)
-                                        stepExns.AddRange exn
+                                        let isSuccess, es = subStage.Run(StageIndex.Step i, linkedStepCTS.Token)
+                                        exns.AddRange es
                                         return isSuccess
                                       }
 
@@ -251,29 +252,30 @@ module StageContextExtensionsInternal =
                                 )
                                 if i = stage.Steps.Length - 1 then AnsiConsole.WriteLine()
 
-                                if not isSuccess && not (stage.ContinueStepsOnFailure || stage.ContinueStageOnFailure) then
-                                    stepErrorCTS.Cancel()
-                                return isSuccess
+                                return isSuccess, exns
 
                             with
                             | :? StepSoftCancelledException as ex ->
                                 AnsiConsole.MarkupLineInterpolated $"[yellow]{prefix} {ex.Message}.[/]"
-                                return true
+                                return true, exns
                             | :? StageSoftCancelledException as ex ->
                                 AnsiConsole.MarkupLineInterpolated $"[yellow]{prefix} {ex.Message}.[/]"
                                 isStageSoftCancelled <- true
                                 stepErrorCTS.Cancel()
-                                return true
+                                return true, exns
                             | ex ->
                                 AnsiConsole.MarkupLineInterpolated $"[red]{prefix} exception hanppened.[/]"
                                 AnsiConsole.WriteException ex
-                                stepExns.Add ex
-                                if not (stage.ContinueStepsOnFailure || stage.ContinueStageOnFailure) then
-                                    stepErrorCTS.Cancel()
-                                return false
+                                if not stage.ContinueStageOnFailure then exns.Add ex
+                                return false, exns
                         })
 
                     try
+                        let handleExn (exns: ResizeArray<Exception>) =
+                            if exns.Count > 0 then
+                                if not stage.ContinueStageOnFailure then stepExns.AddRange exns
+                                if not stage.ContinueStepsOnFailure then stepErrorCTS.Cancel()
+
                         let ts =
                             if isParallel then
                                 async {
@@ -284,8 +286,10 @@ module StageContextExtensionsInternal =
                                         completers.Add completer
 
                                     let mutable i = 0
-                                    while i < completers.Count && (stage.ContinueStepsOnFailure || stage.ContinueStageOnFailure || isSuccess) do
-                                        let! result = completers[i]
+                                    while i < completers.Count && (stage.ContinueStepsOnFailure || isSuccess) do
+                                        let! result, exns = completers[i]
+                                        handleExn exns
+                                        if not result && not stage.ContinueStepsOnFailure then stepErrorCTS.Cancel()
                                         i <- i + 1
                                         isSuccess <- isSuccess && result
                                 }
@@ -293,9 +297,10 @@ module StageContextExtensionsInternal =
                                 async {
                                     let mutable i = 0
                                     let length = Seq.length steps
-                                    while i < length && (stage.ContinueStepsOnFailure || stage.ContinueStageOnFailure || isSuccess) do
+                                    while i < length && (stage.ContinueStepsOnFailure || isSuccess) do
                                         let! completer = Async.StartChild(Seq.item i steps, timeoutForStep)
-                                        let! result = completer
+                                        let! result, exns = completer
+                                        handleExn exns
                                         i <- i + 1
                                         isSuccess <- isSuccess && result
                                 }

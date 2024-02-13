@@ -436,23 +436,29 @@ let ``continueStageOnFailure should work`` () =
         stage "" { run (fun _ -> list.Add(4)) }
         runImmediate
     }
-    Assert.Equal<int>([ 1; 2; 3; 4 ], list)
+    Assert.Equal<int>([ 1; 2; 4 ], list)
 
     list.Clear()
     pipeline "" {
         stage "" {
+            paralle
             continueStageOnFailure
             run (fun _ -> list.Add(1))
-            run (fun _ ->
+            run (fun _ -> async {
+                do! Async.Sleep 100
                 list.Add(2)
-                Error ""
-            )
-            run (fun _ -> list.Add(3))
+                failwith "demo"
+                return Error ""
+            })
+            run (fun _ -> async {
+                do! Async.Sleep 200
+                list.Add(3)
+            })
         }
         stage "" { run (fun _ -> list.Add(4)) }
         runImmediate
     }
-    Assert.Equal<int>([ 1; 2; 3; 4 ], Seq.sort list)
+    Assert.Equal<int>([ 1; 2; 4 ], Seq.sort list)
 
     list.Clear()
     Assert.Throws<PipelineFailedException>(fun _ ->
@@ -473,3 +479,70 @@ let ``continueStageOnFailure should work`` () =
     )
     |> ignore
     Assert.Equal<int>([ 1; 2; 3 ], list)
+
+    list.Clear()
+    Assert.Throws<PipelineFailedException>(fun _ ->
+        pipeline "" {
+            stage "" {
+                paralle
+                continueStepsOnFailure true
+                continueStageOnFailure false
+                run (fun _ -> list.Add(1))
+                run (fun _ ->
+                    list.Add(2)
+                    Error ""
+                )
+                run (fun _ -> async {
+                    do! Async.Sleep 200
+                    list.Add(3)
+                })
+            }
+            stage "" { run (fun _ -> list.Add(4)) }
+            runImmediate
+        }
+    )
+    |> ignore
+    Assert.Equal<int>([ 1; 2; 3 ], Seq.sort list)
+
+
+[<Fact>]
+let ``continueStepsOnFailure for nested stage should work`` () =
+    let list = System.Collections.Generic.List()
+    Assert.Throws<PipelineFailedException>(fun _ ->
+        pipeline "" {
+            stage "" {
+                continueStepsOnFailure
+                run (fun _ -> list.Add(1))
+                stage "" {
+                    run (fun _ ->
+                        list.Add(2)
+                        Error ""
+                    )
+                }
+                run (fun _ -> list.Add(3))
+            }
+            stage "" { run (fun _ -> list.Add(4)) }
+            runImmediate
+        }
+    )
+    |> ignore
+    Assert.Equal<int>([ 1; 2; 3 ], list)
+
+    list.Clear()
+    pipeline "" {
+        stage "" {
+            continueStageOnFailure
+            run (fun _ -> list.Add(1))
+            stage "" {
+                run (fun _ ->
+                    list.Add(2)
+                    failwith ""
+                    ()
+                )
+            }
+            run (fun _ -> list.Add(3))
+        }
+        stage "" { run (fun _ -> list.Add(4)) }
+        runImmediate
+    }
+    Assert.Equal<int>([ 1; 2; 4 ], list)

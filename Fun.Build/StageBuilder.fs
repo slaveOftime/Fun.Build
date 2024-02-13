@@ -132,7 +132,7 @@ type StageBuilder(name: string) =
     member inline this.failIfNoActiveSubStage([<InlineIfLambda>] build: BuildStage) = this.failIfNoActiveSubStage (build, true)
 
 
-    /// Continue current stage's rest steps if any of its steps failed, but still make the current stage failed if ContinueStageOnFailure is not set to true.
+    /// Continue current stage's rest steps if any of its steps failed.
     /// By default this operation will set ContinueStepsOnFailure to true.
     [<CustomOperation("continueStepsOnFailure")>]
     member inline _.continueStepsOnFailure([<InlineIfLambda>] build: BuildStage, ?flag) =
@@ -141,17 +141,13 @@ type StageBuilder(name: string) =
             { ctx with ContinueStepsOnFailure = defaultArg flag true }
         )
 
-    /// Continue current stage's rest steps if any of its steps failed, and make the current stage success if set to true.
-    /// By default this operation will set both ContinueStageOnFailure and ContinueStageOnFailure to true when you use this operation.
+    /// Continue current stage (mark it as success) even if its steps are failed.
+    /// By default this operation will set ContinueStageOnFailure to true.
     [<CustomOperation("continueStageOnFailure")>]
     member inline _.continueStageOnFailure([<InlineIfLambda>] build: BuildStage, ?flag) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
-            let shouldContinue = defaultArg flag true
-            { ctx with
-                ContinueStepsOnFailure = shouldContinue || ctx.ContinueStepsOnFailure
-                ContinueStageOnFailure = shouldContinue
-            }
+            { ctx with ContinueStageOnFailure = defaultArg flag true }
         )
 
     /// Continue pipeline execution (consider this stage as success) even if any of the stage's steps is failed.
