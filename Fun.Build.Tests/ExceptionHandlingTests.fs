@@ -25,7 +25,7 @@ let ``exception handling should work for sync steps`` () =
         exn <- ValueSome ex
 
     Assert.True exn.IsSome
-    Assert.Equal("test", exn.Value.InnerException.Message)
+    Assert.Equal("/step-0> test", exn.Value.InnerException.Message)
 
 
 [<Fact>]
@@ -57,4 +57,4 @@ let ``exception handling should work for parallel steps`` () =
         exn <- ValueSome ex
 
     Assert.True exn.IsSome
-    Assert.Equal("test", exn.Value.InnerException.Message)
+    Assert.Equal("/step-0> test", exn.Value.InnerException.Message)

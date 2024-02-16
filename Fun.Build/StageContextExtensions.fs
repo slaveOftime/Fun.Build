@@ -266,7 +266,8 @@ module StageContextExtensionsInternal =
                             | ex ->
                                 AnsiConsole.MarkupLineInterpolated $"[red]{prefix} exception hanppened.[/]"
                                 AnsiConsole.WriteException ex
-                                if not stage.ContinueStageOnFailure then exns.Add ex
+                                if not stage.ContinueStageOnFailure then
+                                    exns.Add(Exception(prefix + " " + ex.Message, ex.InnerException))
                                 return false, exns
                         })
 
@@ -311,10 +312,10 @@ module StageContextExtensionsInternal =
                     | _ when isStageSoftCancelled -> isSuccess <- true
                     | ex ->
                         isSuccess <- false
-                        if linkedCTS.Token.IsCancellationRequested then
+                        if linkedCTS.Token.IsCancellationRequested && not stepErrorCTS.IsCancellationRequested then
                             AnsiConsole.MarkupLine $"[yellow]Stage is cancelled or timeouted.[/]"
                             AnsiConsole.WriteLine()
-                        else
+                        else if not stepErrorCTS.IsCancellationRequested then
                             AnsiConsole.MarkupLine $"[red]Stage's step is failed[/]"
                             AnsiConsole.WriteException ex
                             AnsiConsole.WriteLine()

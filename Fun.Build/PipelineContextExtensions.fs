@@ -117,16 +117,6 @@ module PipelineContextExtensionsInternal =
             let pipelineExns = ResizeArray<exn>()
             use cts = new Threading.CancellationTokenSource(timeoutForPipeline)
 
-            Console.CancelKeyPress.Add(fun e ->
-                cts.Cancel()
-                e.Cancel <- true
-
-                AnsiConsole.WriteLine()
-                AnsiConsole.MarkupLine "[yellow]Pipeline is cancelled by console.[/]"
-                Environment.Exit(1)
-                AnsiConsole.WriteLine()
-            )
-
             AnsiConsole.MarkupLine $"[turquoise4]Run stages[/]"
             let hasFailedStage, stageExns = this.RunStages(this.Stages, cts.Token, failfast = true)
             pipelineExns.AddRange stageExns
@@ -164,8 +154,9 @@ module PipelineContextExtensionsInternal =
 
             if pipelineExns.Count > 0 then
                 for exn in pipelineExns do
-                    AnsiConsole.WriteException exn
-                    AnsiConsole.WriteLine()
+                    let innerMessage = if exn.InnerException <> null then exn.InnerException.Message else ""
+                    AnsiConsole.MarkupLineInterpolated $"[red]Error: {exn.Message} {innerMessage}[/]"
+                AnsiConsole.WriteLine()
                 raise (PipelineFailedException("Pipeline is failed because of exception", pipelineExns[0]))
             else if hasError then
                 AnsiConsole.MarkupLine "[red]Pipeline is failed because result is not indicating as successful[/]"
