@@ -220,7 +220,8 @@ let ``parallel should work`` () =
         }
         runImmediate
     }
-    Assert.True(sw.ElapsedMilliseconds >= 3000)
+    let elapsed = sw.ElapsedMilliseconds
+    Assert.True(elapsed >= 3000, $"Expect timeout to be greater than 3000, actual is {elapsed}")
 
 
 [<Fact>]
