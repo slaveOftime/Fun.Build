@@ -132,12 +132,35 @@ type StageBuilder(name: string) =
     member inline this.failIfNoActiveSubStage([<InlineIfLambda>] build: BuildStage) = this.failIfNoActiveSubStage (build, true)
 
 
-    /// Continue pipeline execution (consider this stage as success) even if the stage's step is failed, default is true
+    /// Continue current stage's rest steps if any of its steps failed.
+    /// By default this operation will set ContinueStepsOnFailure to true.
+    [<CustomOperation("continueStepsOnFailure")>]
+    member inline _.continueStepsOnFailure([<InlineIfLambda>] build: BuildStage, ?flag) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with ContinueStepsOnFailure = defaultArg flag true }
+        )
+
+    /// Continue current stage (mark it as success) even if its steps are failed.
+    /// By default this operation will set ContinueStageOnFailure to true.
+    [<CustomOperation("continueStageOnFailure")>]
+    member inline _.continueStageOnFailure([<InlineIfLambda>] build: BuildStage, ?flag) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with ContinueStageOnFailure = defaultArg flag true }
+        )
+
+    /// Continue pipeline execution (consider this stage as success) even if any of the stage's steps is failed.
+    /// By default this operation will set both ContinueStepsOnFailure and ContinueStageOnFailure to true, otherwise set both to false.
     [<CustomOperation("continueOnStepFailure")>]
     member inline _.continueOnStepFailure([<InlineIfLambda>] build: BuildStage, ?flag) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with ContinueOnStepFailure = defaultArg flag true }
+            let shouldContinue = defaultArg flag true
+            { ctx with
+                ContinueStepsOnFailure = shouldContinue
+                ContinueStageOnFailure = shouldContinue
+            }
         )
 
 
@@ -229,7 +252,7 @@ type StageBuilder(name: string) =
 
     /// Add a step.
     [<CustomOperation("run")>]
-    member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] buildStep: StageContext -> BuildStep) =
+    member _.run(build: BuildStage, buildStep: StageContext -> BuildStep) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
             { ctx with
@@ -247,13 +270,12 @@ type StageBuilder(name: string) =
 
     /// Add a step to run command. This will not encrypt any sensitive information when print to console.
     [<CustomOperation("run")>]
-    member inline _.run([<InlineIfLambda>] build: BuildStage, exe: string, args: string) =
+    member _.run(build: BuildStage, exe: string, args: string) =
         BuildStage(fun ctx -> build.Invoke(ctx).AddCommandStep(fun _ -> async { return exe + " " + args }))
 
     /// Add a step to run command. This will not encrypt any sensitive information when print to console.
     [<CustomOperation("run")>]
-    member inline _.run([<InlineIfLambda>] build: BuildStage, command: string) =
-        BuildStage(fun ctx -> build.Invoke(ctx).AddCommandStep(fun _ -> async { return command }))
+    member _.run(build: BuildStage, command: string) = BuildStage(fun ctx -> build.Invoke(ctx).AddCommandStep(fun _ -> async { return command }))
 
     /// Add a step to run command. This will not encrypt any sensitive information when print to console.
     [<CustomOperation("run")>]
@@ -278,7 +300,7 @@ type StageBuilder(name: string) =
 
     /// Add a step to run a async.
     [<CustomOperation("run")>]
-    member inline _.run([<InlineIfLambda>] build: BuildStage, step: Async<unit>) =
+    member _.run(build: BuildStage, step: Async<unit>) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
             { ctx with
@@ -295,7 +317,7 @@ type StageBuilder(name: string) =
 
     /// Add a step to run a async with an exit code returned.
     [<CustomOperation("run")>]
-    member inline _.run([<InlineIfLambda>] build: BuildStage, step: Async<int>) =
+    member _.run(build: BuildStage, step: Async<int>) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
             { ctx with
@@ -313,7 +335,7 @@ type StageBuilder(name: string) =
 
     /// Add a step to run.
     [<CustomOperation("run")>]
-    member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] step: StageContext -> unit) =
+    member _.run(build: BuildStage, step: StageContext -> unit) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
             { ctx with
@@ -330,7 +352,7 @@ type StageBuilder(name: string) =
 
     /// Add a step to run and return an exit code.
     [<CustomOperation("run")>]
-    member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] step: StageContext -> int) =
+    member _.run(build: BuildStage, step: StageContext -> int) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
             { ctx with
@@ -341,7 +363,7 @@ type StageBuilder(name: string) =
 
     /// Add a step to run.
     [<CustomOperation("run")>]
-    member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] step: StageContext -> Async<unit>) =
+    member _.run(build: BuildStage, step: StageContext -> Async<unit>) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
             { ctx with
@@ -358,7 +380,7 @@ type StageBuilder(name: string) =
 
     /// Add a step to run and return an exit code.
     [<CustomOperation("run")>]
-    member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] step: StageContext -> Async<int>) =
+    member _.run(build: BuildStage, step: StageContext -> Async<int>) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
             { ctx with
@@ -376,7 +398,7 @@ type StageBuilder(name: string) =
 
     /// Add a step to run with a Result<unit, string> to indicate if step is successful.
     [<CustomOperation("run")>]
-    member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] step: StageContext -> Async<Result<unit, string>>) =
+    member _.run(build: BuildStage, step: StageContext -> Async<Result<unit, string>>) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
             { ctx with
@@ -386,7 +408,7 @@ type StageBuilder(name: string) =
 
     /// Add a step to run with a Result<unit, string> to indicate if step is successful.
     [<CustomOperation("run")>]
-    member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] step: StageContext -> Task<Result<unit, string>>) =
+    member _.run(build: BuildStage, step: StageContext -> Task<Result<unit, string>>) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
             { ctx with
@@ -396,7 +418,7 @@ type StageBuilder(name: string) =
 
     /// Add a step to run with a Result<unit, string> to indicate if step is successful.
     [<CustomOperation("run")>]
-    member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] step: StageContext -> Result<unit, string>) =
+    member _.run(build: BuildStage, step: StageContext -> Result<unit, string>) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
             { ctx with
@@ -407,7 +429,7 @@ type StageBuilder(name: string) =
 
     /// Add a step to run.
     [<CustomOperation("run")>]
-    member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] step: StageContext -> Task) =
+    member _.run(build: BuildStage, step: StageContext -> Task) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
             { ctx with
@@ -424,7 +446,7 @@ type StageBuilder(name: string) =
 
     /// Add a step to run.
     [<CustomOperation("run")>]
-    member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] step: StageContext -> Task<unit>) =
+    member _.run(build: BuildStage, step: StageContext -> Task<unit>) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
             { ctx with
@@ -441,7 +463,7 @@ type StageBuilder(name: string) =
 
     /// Add a step to run.
     [<CustomOperation("run")>]
-    member inline _.run([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] step: StageContext -> Task<int>) =
+    member _.run(build: BuildStage, step: StageContext -> Task<int>) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
             { ctx with

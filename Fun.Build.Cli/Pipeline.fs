@@ -52,7 +52,7 @@ type Pipeline with
     static member ClearCache() = Directory.GetFiles(pipelineInfoDir, "*", EnumerationOptions(RecurseSubdirectories = true)) |> Seq.iter File.Delete
 
 
-    static member BuildCache(dir: string) =
+    static member BuildCache(dir: string, ?timeout, ?paralleCount) =
         AnsiConsole.MarkupLine($"Start to build pipeline info cache for: [green]{dir}[/]")
 
         let pipelineInfoDir = pipelineInfoDir </> hashString dir |> ensureDir
@@ -81,7 +81,7 @@ type Pipeline with
                         let! result =
                             Async.StartChild(
                                 Diagnostics.Process.StartAsync(psInfo, "", "", printOutput = false, captureOutput = true),
-                                millisecondsTimeout = 60_000
+                                millisecondsTimeout = defaultArg timeout 60_000
                             )
                         let! result = result
 
@@ -98,7 +98,7 @@ type Pipeline with
                     AnsiConsole.MarkupLineInterpolated($"[red]Process script {f} failed: {ex.Message}[/]")
                     return None
             })
-            |> Async.Parallel
+            |> fun ls -> Async.Parallel(ls, maxDegreeOfParallelism = defaultArg paralleCount 4)
             |> Async.map (Seq.choose id)
 
         async {

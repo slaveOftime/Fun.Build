@@ -245,6 +245,12 @@ type PipelineBuilder(name: string) =
 
         runIfOnlySpecifiedPipelines.Add(specified, ctx)
 
+        Console.CancelKeyPress.Add(fun _ ->
+            AnsiConsole.WriteLine()
+            AnsiConsole.MarkupLine "[yellow]Pipeline is terminated by console.[/]"
+            Environment.Exit(1)
+        )
+
         try
             if isHelp then
                 match pipelineIndex with

@@ -75,6 +75,7 @@ pipeline "test" {
     description "Format code and run tests"
     collapseGithubActionLogs
     stage_checkEnv
+    stage_buildVersion
     stage_lint
     stage_test
     runIfOnlySpecified
