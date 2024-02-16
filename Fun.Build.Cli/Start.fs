@@ -49,9 +49,16 @@ pipeline "source" {
     }
     stage "refresh" {
         whenCmdArg "--refresh" "" "Rebuild pipelines and cache for current source again"
-        run (fun _ -> async {
+        whenAny {
+            when' true
+            cmdArg "--timeout" "" ""
+            cmdArg "--paralle-count" "" ""
+        }
+        run (fun ctx -> async {
+            let timeout = ctx.TryGetCmdArg("--timeout") |> ValueOption.map Int32.Parse |> ValueOption.defaultValue 60_000
+            let paralleCount = ctx.TryGetCmdArg("--paralle-count") |> ValueOption.map Int32.Parse |> ValueOption.defaultValue 4
             for source in Source.Sources do
-                do! Pipeline.BuildCache source
+                do! Pipeline.BuildCache(source, timeout = timeout, paralleCount = paralleCount)
             Environment.Exit(0)
         })
     }
