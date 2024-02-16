@@ -4,9 +4,9 @@ on:
   push:
     branches:
     - master
-    paths:
-    - Fun.Build/CHANGELOG.md
-    - Fun.Build.Cli/CHANGELOG.md
+    # paths:
+    # - Fun.Build/CHANGELOG.md
+    # - Fun.Build.Cli/CHANGELOG.md
     
 jobs:
   build:
