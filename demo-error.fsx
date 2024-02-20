@@ -8,6 +8,7 @@ pipeline "demo" {
     stage "continueation" {
         paralle
         continueOnStepFailure
+        run (fun _ -> Error "error0")
         run (fun _ ->
             failwith "error1"
             ()

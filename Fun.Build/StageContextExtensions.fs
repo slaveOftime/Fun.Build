@@ -230,10 +230,10 @@ module StageContextExtensionsInternal =
                                         match! fn (stage, i) with
                                         | Error e ->
                                             if String.IsNullOrEmpty e |> not then
-                                                if stage.GetNoPrefixForStep() then
-                                                    AnsiConsole.MarkupLineInterpolated $"""[red]{e}[/]"""
+                                                if not isParallel && stage.GetNoPrefixForStep() then
+                                                    AnsiConsole.MarkupLineInterpolated $"""[red]Error: {e}[/]"""
                                                 else
-                                                    AnsiConsole.MarkupLineInterpolated $"""{prefix} error: [red]{e}[/]"""
+                                                    AnsiConsole.MarkupLineInterpolated $"""[red]Error: {prefix} {e}[/]"""
                                             return false
                                         | Ok _ -> return true
                                       }
@@ -247,8 +247,10 @@ module StageContextExtensionsInternal =
                                         return isSuccess
                                       }
 
+                                let color = if isSuccess then "grey50" else "red"
+
                                 AnsiConsole.MarkupLineInterpolated(
-                                    $"""[grey50]{prefix} finished{if isParallel then " in parallel." else "."} {sw.ElapsedMilliseconds}ms.[/]"""
+                                    $"""[{color}]{prefix} finished{if isParallel then " in parallel." else "."} {sw.ElapsedMilliseconds}ms.[/]"""
                                 )
                                 if i = stage.Steps.Length - 1 then AnsiConsole.WriteLine()
 

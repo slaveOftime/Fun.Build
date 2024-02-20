@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.1.2] - 2024-02-20
+
+- Improve errors printing
+
 ## [1.1.1] - 2024-02-09
 
 - Support continueStepsOnFailure and continueStageOnFailure for stage
