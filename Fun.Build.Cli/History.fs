@@ -94,41 +94,74 @@ type History =
             )
 
 
-    static member Run(ctx: Internal.StageContext, history: HistoryItem, ?withLastArgs: bool) = asyncResult {
-        let withLastArgs = defaultArg withLastArgs false
-        let scriptFile = Path.GetFileName history.Pipeline.Script
-        let scriptDir = Path.GetDirectoryName history.Pipeline.Script
+    static member Run
+        (
+            ctx: Internal.StageContext,
+            history: HistoryItem,
+            ?withLastArgs: bool,
+            ?promptForContinuation: bool,
+            ?continuationItems: Collections.Generic.List<HistoryItem>
+        ) =
+        asyncResult {
+            let withLastArgs = defaultArg withLastArgs false
+            let scriptFile = Path.GetFileName history.Pipeline.Script
+            let scriptDir = Path.GetDirectoryName history.Pipeline.Script
+            let promptForContinuation = defaultArg promptForContinuation false
 
-        let table = Table()
-        table.ShowHeaders <- false
-        table.AddColumns("", "") |> ignore
-        table.AddRow("Script", $"[green]{scriptFile}[/]") |> ignore
-        table.AddRow("Pipeline", $"[bold green]{history.Pipeline.Name}[/]") |> ignore
-        table.AddRow("WorkingDir", $"[green]{scriptDir}[/]") |> ignore
-        table.AddRow("Arguments", history.Args) |> ignore
+            let table = Table()
+            table.ShowHeaders <- false
+            table.AddColumns("", "") |> ignore
+            table.AddRow("Script", $"[green]{scriptFile}[/]") |> ignore
+            table.AddRow("Pipeline", $"[bold green]{history.Pipeline.Name}[/]") |> ignore
+            table.AddRow("WorkingDir", $"[green]{scriptDir}[/]") |> ignore
+            table.AddRow("Arguments", history.Args) |> ignore
 
-        AnsiConsole.Write table
-        AnsiConsole.MarkupLine("New arguments (leave empty to use the one from history):")
+            AnsiConsole.Write table
+            AnsiConsole.MarkupLine("New arguments (leave empty to use the one from history):")
 
-        let args =
-            if withLastArgs then
-                history.Args
-            else
-                let text = TextPrompt<string>("> ")
-                text.AllowEmpty <- true
-                let newArgs = AnsiConsole.Prompt text
-                if String.IsNullOrEmpty newArgs then history.Args else newArgs
+            let args =
+                if withLastArgs then
+                    history.Args
+                else
+                    let text = TextPrompt<string>("> ")
+                    text.AllowEmpty <- true
+                    let newArgs = AnsiConsole.Prompt text
+                    if String.IsNullOrEmpty newArgs then history.Args else newArgs
 
-        let isHelpCommand = args = "-h"
+            AnsiConsole.MarkupLine("")
 
-        if not isHelpCommand then
-            History.Add { history with Args = args; StartedTime = DateTime.Now }
+            let currentItems = continuationItems |> Option.defaultWith (fun () -> Collections.Generic.List())
+            currentItems.Add({ history with Args = args })
 
-        AnsiConsole.MarkupLine("")
+            if promptForContinuation && not withLastArgs then
+                if AnsiConsole.Confirm("Do you want to select another history to continue?", defaultValue = false) then
+                    match History.PromptSelect() with
+                    | ValueSome item -> do! History.Run(ctx, item, continuationItems = currentItems, promptForContinuation = true)
+                    | _ -> ()
+                AnsiConsole.MarkupLine("")
 
-        do!
-            ctx.RunCommand($"dotnet fsi \"{scriptFile}\" -- -p {history.Pipeline.Name} {args}", workingDir = scriptDir)
-            |> Async.map (ignore >> Ok)
+            // If there is no continuation commands need to fill, then we consider it should be executed now
+            if continuationItems.IsNone then
+                for index, history in Seq.indexed currentItems do
+                    let scriptFile = Path.GetFileName history.Pipeline.Script
+                    let scriptDir = Path.GetDirectoryName history.Pipeline.Script
+                    let isHelpCommand = history.Args.Trim().ToLower() = "-h"
 
-        if isHelpCommand then do! History.Run(ctx, history)
-    }
+                    if not isHelpCommand then
+                        History.Add { history with StartedTime = DateTime.Now }
+
+                    if index = 0 then
+                        AnsiConsole.Console.MarkupLine("[green]Start executing...[/]")
+                    else
+                        AnsiConsole.Console.MarkupLine("[green]Continue executing...[/]")
+                    AnsiConsole.Console.WriteLine()
+
+                    try
+                        do!
+                            ctx.RunCommand($"dotnet fsi \"{scriptFile}\" -- -p {history.Pipeline.Name} {history.Args}", workingDir = scriptDir)
+                            |> Async.map (ignore >> Ok)
+                    with _ ->
+                        ()
+
+                    if currentItems.Count = 1 && isHelpCommand then do! History.Run(ctx, history)
+        }

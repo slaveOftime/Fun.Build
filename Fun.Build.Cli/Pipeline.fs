@@ -142,7 +142,7 @@ type Pipeline with
         )
 
 
-    static member PromtSelect() =
+    static member PromptSelect() =
         AnsiConsole.PromptQueryAndSelection(
             "Select pipeline to run",
             Pipeline.LoadAll(),
@@ -151,39 +151,74 @@ type Pipeline with
         )
 
 
-    static member Run(ctx: Internal.StageContext, pipeline: Pipeline) = asyncResult {
-        let scriptFile = Path.GetFileName pipeline.Script
-        let scriptDir = Path.GetDirectoryName pipeline.Script
+    static member Run
+        (
+            ctx: Internal.StageContext,
+            pipeline: Pipeline,
+            ?promptForContinuation: bool,
+            ?continuationCommands: Collections.Generic.List<{| Pipeline: Pipeline; Args: string |}>
+        ) =
+        asyncResult {
+            let promtForContinuation = defaultArg promptForContinuation false
+            let scriptFile = Path.GetFileName pipeline.Script
+            let scriptDir = Path.GetDirectoryName pipeline.Script
 
-        let table = Table()
-        table.ShowHeaders <- false
-        table.AddColumns("", "") |> ignore
-        table.AddRow("Script", $"[green]{scriptFile}[/]") |> ignore
-        table.AddRow("Pipeline", $"[bold green]{pipeline.Name}[/]") |> ignore
-        table.AddRow("WorkingDir", $"[green]{scriptDir}[/]") |> ignore
-        if String.IsNullOrEmpty(pipeline.Description.Trim()) |> not then
-            table.AddRow("Description", $"[green]{pipeline.Description}[/]") |> ignore
+            let table = Table()
+            table.ShowHeaders <- false
+            table.AddColumns("", "") |> ignore
+            table.AddRow("Script", $"[green]{scriptFile}[/]") |> ignore
+            table.AddRow("Pipeline", $"[bold green]{pipeline.Name}[/]") |> ignore
+            table.AddRow("WorkingDir", $"[green]{scriptDir}[/]") |> ignore
+            if String.IsNullOrEmpty(pipeline.Description.Trim()) |> not then
+                table.AddRow("Description", $"[green]{pipeline.Description}[/]") |> ignore
 
-        AnsiConsole.Write table
+            AnsiConsole.Write table
 
-        let textPrompt = TextPrompt<string>("Arguments (-h for help): ")
-        textPrompt.AllowEmpty <- true
-        let args = AnsiConsole.Prompt textPrompt
-        let isHelpCommand = args.Trim() = "-h"
+            let textPrompt = TextPrompt<string>("Arguments (-h for help): ")
+            textPrompt.AllowEmpty <- true
+            let args = AnsiConsole.Prompt textPrompt
 
-        if not isHelpCommand then
-            History.Add
-                {
-                    Pipeline = pipeline
-                    Args = args
-                    StartedTime = DateTime.Now
-                }
 
-        AnsiConsole.MarkupLine("")
+            let currentCommands = continuationCommands |> Option.defaultWith (fun () -> Collections.Generic.List())
+            currentCommands.Add({| Pipeline = pipeline; Args = args |})
 
-        do!
-            ctx.RunCommand($"dotnet fsi \"{scriptFile}\" -- -p {pipeline.Name} {args}", workingDir = scriptDir)
-            |> Async.map (ignore >> Ok)
 
-        if isHelpCommand then do! Pipeline.Run(ctx, pipeline)
-    }
+            AnsiConsole.MarkupLine("")
+
+            if promtForContinuation then
+                if AnsiConsole.Confirm("Do you want to select another pipeline to continue?", defaultValue = false) then
+                    match Pipeline.PromptSelect() with
+                    | ValueSome item -> do! Pipeline.Run(ctx, item, continuationCommands = currentCommands, promptForContinuation = true)
+                    | _ -> ()
+                AnsiConsole.MarkupLine("")
+
+            if continuationCommands.IsNone then
+                for index, command in Seq.indexed currentCommands do
+                    let scriptFile = Path.GetFileName command.Pipeline.Script
+                    let scriptDir = Path.GetDirectoryName command.Pipeline.Script
+                    let isHelpCommand = command.Args.Trim().ToLower() = "-h"
+
+                    if not isHelpCommand then
+                        History.Add
+                            {
+                                Pipeline = pipeline
+                                Args = args
+                                StartedTime = DateTime.Now
+                            }
+
+                    if index = 0 then
+                        AnsiConsole.Console.MarkupLine("[green]Start executing...[/]")
+                    else
+                        AnsiConsole.Console.MarkupLine("[green]Continue executing...[/]")
+                    AnsiConsole.Console.WriteLine()
+
+                    try
+                        do!
+                            ctx.RunCommand($"dotnet fsi \"{scriptFile}\" -- -p {command.Pipeline.Name} {command.Args}", workingDir = scriptDir)
+                            |> Async.map (ignore >> Ok)
+                    with _ ->
+                        ()
+
+                    if isHelpCommand && currentCommands.Count = 1 then
+                        do! Pipeline.Run(ctx, pipeline)
+        }

@@ -85,7 +85,7 @@ pipeline "run" {
             | Some history -> do! History.Run(ctx, history, withLastArgs = (ctx.TryGetCmdArg(executionOptions.withLastArgs) |> Option.isSome))
             | None ->
                 AnsiConsole.MarkupLine("[yellow]No history found to run automatically[/]")
-                match Pipeline.PromtSelect() with
+                match Pipeline.PromptSelect() with
                 | ValueSome p -> do! Pipeline.Run(ctx, p)
                 | _ -> do! AsyncResult.ofError "No pipelines are selected"
             Environment.Exit(0)
@@ -95,13 +95,13 @@ pipeline "run" {
         whenNot { cmdArg executionOptions.useLastRun }
         run (fun ctx -> asyncResult {
             let selectPipelineAndRun () =
-                match Pipeline.PromtSelect() with
-                | ValueSome p -> Pipeline.Run(ctx, p)
+                match Pipeline.PromptSelect() with
+                | ValueSome p -> Pipeline.Run(ctx, p, promptForContinuation = true)
                 | _ -> AsyncResult.ofError "No pipelines are selected"
 
             if AnsiConsole.Confirm("Re-run pipeline from history?", true) then
                 match History.PromptSelect() with
-                | ValueSome history -> do! History.Run(ctx, history)
+                | ValueSome history -> do! History.Run(ctx, history, promptForContinuation = true)
                 | _ -> do! selectPipelineAndRun ()
             else
                 do! selectPipelineAndRun ()

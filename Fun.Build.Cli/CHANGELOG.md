@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.1.7] - 2024-02-22
+
+- Support select multiple history/pipeline to run in sequence 
+
 ## [0.1.6] - 2024-02-16
 
 - Support --timeout and --paralle-count for -source --refresh
