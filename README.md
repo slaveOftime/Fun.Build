@@ -302,4 +302,4 @@ Pipelines:
       --with-last-args            Use the last run arugments
 ```
 
-After first setup, we can run the it without any arugments, it will pompt related question to guide you.
+After first setup, we can run it without any arguments, it will prompt related question to guide you.
