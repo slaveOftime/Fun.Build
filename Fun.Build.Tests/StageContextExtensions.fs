@@ -255,3 +255,24 @@ let ``FailIfNoActiveSubStage`` () =
             runImmediate
         }
     )
+
+
+[<Fact>]
+let ``runHttpHealthCheck should work`` () =
+    shouldBeCalled (fun fn ->
+        pipeline "" {
+            stage "" {
+                runHttpHealthCheck "https://www.bing.com/"
+                run fn
+            }
+            runImmediate
+        }
+    )
+
+    Assert.Throws<PipelineFailedException>(fun _ ->
+        use cts = new System.Threading.CancellationTokenSource(3000)
+        pipeline "" {
+            stage "" { run (fun ctx -> ctx.RunHttpHealthCheck("https://unknown/", cancellationToken = cts.Token)) }
+            runImmediate
+        }
+    )

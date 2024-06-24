@@ -518,6 +518,27 @@ type StageBuilder(name: string) =
         )
 
 
+    /// Add a step to run http health check.
+    [<CustomOperation("runHttpHealthCheck")>]
+    member _.runHttpHealthCheck(build: BuildStage, url: string, ?configRequest, ?cancellationToken) =
+        BuildStage(fun ctx ->
+            let ctx = build.Invoke ctx
+            { ctx with
+                Steps =
+                    ctx.Steps
+                    @ [
+                        Step.StepFn(fun (ctx, _) ->
+                            ctx.RunHttpHealthCheck(
+                                url,
+                                configRequest = defaultArg configRequest ignore,
+                                cancellationToken = defaultArg cancellationToken CancellationToken.None
+                            )
+                        )
+                    ]
+            }
+        )
+
+
     /// Add a step to run.
     [<CustomOperation("echo")>]
     member inline _.echo([<InlineIfLambda>] build: BuildStage, msg: StageContext -> string) =

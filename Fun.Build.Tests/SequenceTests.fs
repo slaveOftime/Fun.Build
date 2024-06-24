@@ -402,12 +402,12 @@ let ``continueStepsOnFailure should work`` () =
                     continueStepsOnFailure false
                     run (fun _ -> list.Add(1))
                     run (fun _ -> async {
-                        do! Async.Sleep 100
+                        do! Async.Sleep 1000
                         list.Add(2)
                         return Error ""
                     })
                     run (fun _ -> async {
-                        do! Async.Sleep 500
+                        do! Async.Sleep 3000
                         list.Add(3)
                     })
                 }
