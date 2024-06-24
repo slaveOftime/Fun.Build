@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.1.3] - 2024-06-24
+
+- Support cancellationToken for stage's command steps
+
 ## [1.1.2] - 2024-02-20
 
 - Improve errors printing

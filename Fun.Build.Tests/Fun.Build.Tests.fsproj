@@ -14,6 +14,7 @@
 		<Compile Include="TimeoutTests.fs" />
 		<Compile Include="SequenceTests.fs" />
 		<Compile Include="ExceptionHandlingTests.fs" />
+		<Compile Include="CommandTests.fs" />
 		<Compile Include="Program.fs" />
 	</ItemGroup>
 

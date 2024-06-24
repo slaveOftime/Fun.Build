@@ -1,7 +1,7 @@
 ﻿namespace rec Fun.Build
 
 open System
-open System.Text
+open System.Threading
 open Spectre.Console
 open System.Diagnostics
 open System.Runtime.InteropServices
@@ -40,14 +40,14 @@ module BuiltinCmdsInternal =
 
 
         /// Add command to context
-        member ctx.AddCommandStep(commandStrFn: StageContext -> Async<string>) =
+        member ctx.AddCommandStep(commandStrFn: StageContext -> Async<string>, ?cancellationToken: CancellationToken) =
             { ctx with
                 Steps =
                     ctx.Steps
                     @ [
                         Step.StepFn(fun (ctx, i) -> async {
                             let! commandStr = commandStrFn ctx
-                            return! ctx.RunCommand(commandStr, i)
+                            return! ctx.RunCommand(commandStr, i, cancellationToken = defaultArg cancellationToken CancellationToken.None)
                         })
                     ]
             }
@@ -62,7 +62,7 @@ module BuiltinCmds =
     type StageContext with
 
         /// Run a command string with current context
-        member ctx.RunCommand(commandStr: string, ?step: int, ?workingDir: string) = async {
+        member ctx.RunCommand(commandStr: string, ?step: int, ?workingDir: string, ?cancellationToken: CancellationToken) = async {
             let command = ctx.BuildCommand(commandStr, ?workingDir = workingDir)
             let noPrefixForStep = ctx.GetNoPrefixForStep()
             let prefix =
@@ -76,8 +76,15 @@ module BuiltinCmds =
             if not noPrefixForStep then AnsiConsole.Markup $"[green]{prefix}[/] "
             AnsiConsole.WriteLine commandStr
 
-            let! result = Process.StartAsync(command, commandStr, prefix, printOutput = not (ctx.GetNoStdRedirectForStep()))
-            return ctx.MapExitCodeToResult result.ExitCode
+            let ct = defaultArg cancellationToken CancellationToken.None
+
+            let! result = Process.StartAsync(command, commandStr, prefix, printOutput = not (ctx.GetNoStdRedirectForStep()), cancellationToken = ct)
+
+            return
+                if ct.IsCancellationRequested then
+                    Ok()
+                else
+                    ctx.MapExitCodeToResult result.ExitCode
         }
 
         /// <summary>
@@ -86,7 +93,7 @@ module BuiltinCmds =
         /// <param name="commandStr">Command to run</param>
         /// <param name="step">Current step rank</param>
         /// <param name="workingDir">Working directory for command</param>
-        member ctx.RunCommandCaptureOutput(commandStr: string, ?step: int, ?workingDir: string) = async {
+        member ctx.RunCommandCaptureOutput(commandStr: string, ?step: int, ?workingDir: string, ?cancellationToken: CancellationToken) = async {
             let command = ctx.BuildCommand(commandStr, ?workingDir = workingDir)
             let noPrefixForStep = ctx.GetNoPrefixForStep()
             let prefix =
@@ -100,15 +107,28 @@ module BuiltinCmds =
             if not noPrefixForStep then AnsiConsole.Markup $"[green]{prefix}[/] "
             AnsiConsole.WriteLine commandStr
 
-            let! result = Process.StartAsync(command, commandStr, prefix, printOutput = not (ctx.GetNoStdRedirectForStep()), captureOutput = true)
-            if ctx.IsAcceptableExitCode result.ExitCode then
+            let ct = defaultArg cancellationToken CancellationToken.None
+
+            let! result =
+                Process.StartAsync(
+                    command,
+                    commandStr,
+                    prefix,
+                    printOutput = not (ctx.GetNoStdRedirectForStep()),
+                    captureOutput = true,
+                    cancellationToken = ct
+                )
+
+            if ct.IsCancellationRequested then
+                return Ok result.StandardOutput
+            else if ctx.IsAcceptableExitCode result.ExitCode then
                 return Ok result.StandardOutput
             else
                 return Error "Exit code is not indicating as successful."
         }
 
         /// Run a command string with current context, and encrypt the string for logging
-        member ctx.RunSensitiveCommand(commandStr: FormattableString, ?step: int, ?workingDir: string) = async {
+        member ctx.RunSensitiveCommand(commandStr: FormattableString, ?step: int, ?workingDir: string, ?cancellationToken: CancellationToken) = async {
             let command = ctx.BuildCommand(commandStr.ToString(), ?workingDir = workingDir)
             let noPrefixForStep = ctx.GetNoPrefixForStep()
             let args: obj[] = Array.create commandStr.ArgumentCount "*"
@@ -125,8 +145,16 @@ module BuiltinCmds =
             if not noPrefixForStep then AnsiConsole.Markup $"[green]{prefix}[/] "
             AnsiConsole.WriteLine encryptiedStr
 
-            let! result = Process.StartAsync(command, encryptiedStr, prefix, printOutput = not (ctx.GetNoStdRedirectForStep()))
-            return ctx.MapExitCodeToResult result.ExitCode
+            let ct = defaultArg cancellationToken CancellationToken.None
+
+            let! result =
+                Process.StartAsync(command, encryptiedStr, prefix, printOutput = not (ctx.GetNoStdRedirectForStep()), cancellationToken = ct)
+
+            return
+                if ct.IsCancellationRequested then
+                    Ok()
+                else
+                    ctx.MapExitCodeToResult result.ExitCode
         }
 
 

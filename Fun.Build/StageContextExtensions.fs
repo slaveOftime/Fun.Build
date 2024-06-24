@@ -143,7 +143,7 @@ module StageContextExtensionsInternal =
 
 
         /// Run the stage. If index is not provided then it will be treated as sub-stage.
-        member stage.Run(index: StageIndex, cancelToken: Threading.CancellationToken) =
+        member stage.Run(index: StageIndex, cancellationToken: Threading.CancellationToken) =
             let mutable isSuccess = true
             let stepExns = ResizeArray<exn>()
 
@@ -192,7 +192,7 @@ module StageContextExtensionsInternal =
                     use cts = new Threading.CancellationTokenSource(timeoutForStage)
                     use stepErrorCTS = new Threading.CancellationTokenSource()
                     use linkedStepErrorCTS = Threading.CancellationTokenSource.CreateLinkedTokenSource(cts.Token, stepErrorCTS.Token)
-                    use linkedCTS = Threading.CancellationTokenSource.CreateLinkedTokenSource(linkedStepErrorCTS.Token, cancelToken)
+                    use linkedCTS = Threading.CancellationTokenSource.CreateLinkedTokenSource(linkedStepErrorCTS.Token, cancellationToken)
 
                     use stepCTS = new Threading.CancellationTokenSource(timeoutForStep)
                     use linkedStepCTS = Threading.CancellationTokenSource.CreateLinkedTokenSource(stepCTS.Token, linkedCTS.Token)
