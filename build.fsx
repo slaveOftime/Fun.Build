@@ -25,7 +25,7 @@ let stage_lint =
         }
     }
 
-let stage_test = stage "Run unit tests" { run "dotnet test" }
+let stage_test = stage "Run unit tests" { run "dotnet test -v m" }
 
 let stage_buildVersion =
     stage "generate Directory.build.props for version control" {

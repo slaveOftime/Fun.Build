@@ -209,7 +209,7 @@ let ``parallel should work`` () =
         }
         runImmediate
     }
-    Assert.True(sw.ElapsedMilliseconds < 1500)
+    Assert.InRange(sw.ElapsedMilliseconds, 1000, 2000)
 
     sw.Restart()
     pipeline "" {
