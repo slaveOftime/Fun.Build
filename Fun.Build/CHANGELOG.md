@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.1.4] - 2024-06-24
+
+- Add runHttpHealthCheck
+
 ## [1.1.3] - 2024-06-24
 
 - Support cancellationToken for stage's command steps

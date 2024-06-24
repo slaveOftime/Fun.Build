@@ -1,8 +1,12 @@
 ﻿namespace rec Fun.Build
 
 open System
+open System.Threading
+open System.Threading.Tasks
+open System.Net.Http
 open System.Diagnostics
 open Spectre.Console
+open Fun.Result
 open Fun.Build
 open Fun.Build.Internal
 
@@ -485,3 +489,32 @@ module StageContextExtensions =
 
         /// It will cancel current stage but mark it as successful
         member _.SoftCancelStage() = raise (StageSoftCancelledException "Stage is soft cancelled")
+
+
+        member _.RunHttpHealthCheck(url: string, ?configRequest: HttpRequestMessage -> unit, ?cancellationToken: CancellationToken) = asyncResult {
+            use client = new HttpClient()
+            let ct = defaultArg cancellationToken CancellationToken.None
+
+            let mutable shouldContinue = true
+            while shouldContinue && not ct.IsCancellationRequested do
+                try
+                    AnsiConsole.MarkupLineInterpolated($"[yellow]Check {url} ...[/]")
+
+                    use message = new HttpRequestMessage(HttpMethod.Get, url)
+
+                    configRequest |> Option.iter (fun fn -> fn message)
+
+                    let! result = client.SendAsync(message, cancellationToken = ct) |> AsyncResult.ofTask
+                    shouldContinue <- not result.IsSuccessStatusCode
+
+                with
+                | :? TaskCanceledException when ct.IsCancellationRequested -> shouldContinue <- false
+                | ex -> AnsiConsole.MarkupLineInterpolated($"[red]Health check failed: {ex.Message}[/]")
+
+                do! Async.Sleep 1000 |> Async.map Ok
+
+            if ct.IsCancellationRequested then
+                do! AsyncResult.ofError "Health check is cancelled"
+            else
+                AnsiConsole.MarkupLineInterpolated($"[green]{url} is healthy![/]")
+        }
