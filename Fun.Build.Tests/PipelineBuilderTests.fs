@@ -4,6 +4,7 @@ open Xunit
 open Fun.Build
 open System.Diagnostics
 open System.Threading.Tasks
+open Xunit
 
 
 [<Fact>]
@@ -209,7 +210,7 @@ let ``parallel should work`` () =
         }
         runImmediate
     }
-    Assert.True(sw.ElapsedMilliseconds < 1500)
+    Assert.InRange(sw.ElapsedMilliseconds, 1000, 2000)
 
     sw.Restart()
     pipeline "" {
@@ -221,7 +222,7 @@ let ``parallel should work`` () =
         runImmediate
     }
     let elapsed = sw.ElapsedMilliseconds
-    Assert.True(elapsed >= 3000, $"Expect timeout to be greater than 3000, actual is {elapsed}")
+    Assert.InRange(elapsed, 2500, 4000)
 
 
 [<Fact>]

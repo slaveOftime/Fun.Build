@@ -2,6 +2,7 @@
 module Fun.Build.StageBuilder
 
 open System
+open System.Threading
 open System.Threading.Tasks
 open Fun.Build.Internal
 open Fun.Build.StageContextExtensionsInternal
@@ -268,32 +269,70 @@ type StageBuilder(name: string) =
         )
 
 
+    /// <summary>
     /// Add a step to run command. This will not encrypt any sensitive information when print to console.
+    /// </summary>
+    /// <param name="cancellationToken">This can be used to cancel a command and mark it as success</param>
     [<CustomOperation("run")>]
-    member _.run(build: BuildStage, exe: string, args: string) =
-        BuildStage(fun ctx -> build.Invoke(ctx).AddCommandStep(fun _ -> async { return exe + " " + args }))
+    member _.run(build: BuildStage, exe: string, args: string, ?cancellationToken: CancellationToken) =
+        BuildStage(fun ctx ->
+            build
+                .Invoke(ctx)
+                .AddCommandStep(
+                    (fun _ -> async { return exe + " " + args }),
+                    cancellationToken = defaultArg cancellationToken CancellationToken.None
+                )
+        )
 
+    /// <summary>
     /// Add a step to run command. This will not encrypt any sensitive information when print to console.
+    /// </summary>
+    /// <param name="cancellationToken">This can be used to cancel a command and mark it as success</param>
     [<CustomOperation("run")>]
-    member _.run(build: BuildStage, command: string) = BuildStage(fun ctx -> build.Invoke(ctx).AddCommandStep(fun _ -> async { return command }))
+    member _.run(build: BuildStage, command: string, ?cancellationToken: CancellationToken) =
+        BuildStage(fun ctx ->
+            build
+                .Invoke(ctx)
+                .AddCommandStep((fun _ -> async { return command }), cancellationToken = defaultArg cancellationToken CancellationToken.None)
+        )
 
+    /// <summary>
     /// Add a step to run command. This will not encrypt any sensitive information when print to console.
+    /// </summary>
+    /// <param name="cancellationToken">This can be used to cancel a command and mark it as success</param>
     [<CustomOperation("run")>]
-    member _.run(build: BuildStage, step: StageContext -> string) =
-        BuildStage(fun ctx -> build.Invoke(ctx).AddCommandStep(fun ctx -> async { return step ctx }))
+    member _.run(build: BuildStage, step: StageContext -> string, ?cancellationToken: CancellationToken) =
+        BuildStage(fun ctx ->
+            build
+                .Invoke(ctx)
+                .AddCommandStep((fun ctx -> async { return step ctx }), cancellationToken = defaultArg cancellationToken CancellationToken.None)
+        )
 
+    /// <summary>
     /// Add a step to run command. This will not encrypt any sensitive information when print to console.
+    /// </summary>
+    /// <param name="cancellationToken">This can be used to cancel a command and mark it as success</param>
     [<CustomOperation("run")>]
-    member _.run(build: BuildStage, step: StageContext -> Async<string>) = BuildStage(fun ctx -> build.Invoke(ctx).AddCommandStep(step))
+    member _.run(build: BuildStage, step: StageContext -> Async<string>, ?cancellationToken: CancellationToken) =
+        BuildStage(fun ctx -> build.Invoke(ctx).AddCommandStep(step, cancellationToken = defaultArg cancellationToken CancellationToken.None))
 
 
+    /// <summary>
     /// Add a step to run command. This will encrypt information which is provided as formattable arguments when print to console.
+    /// </summary>
+    /// <param name="cancellationToken">This can be used to cancel a command and mark it as success</param>
     [<CustomOperation("runSensitive")>]
-    member inline _.runSensitive([<InlineIfLambda>] build: BuildStage, command: FormattableString) =
+    member inline _.runSensitive([<InlineIfLambda>] build: BuildStage, command: FormattableString, ?cancellationToken: CancellationToken) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
             { ctx with
-                Steps = ctx.Steps @ [ Step.StepFn(fun (ctx, step) -> ctx.RunSensitiveCommand(command, step)) ]
+                Steps =
+                    ctx.Steps
+                    @ [
+                        Step.StepFn(fun (ctx, step) ->
+                            ctx.RunSensitiveCommand(command, step, cancellationToken = defaultArg cancellationToken CancellationToken.None)
+                        )
+                    ]
             }
         )
 
