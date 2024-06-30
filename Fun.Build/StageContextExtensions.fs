@@ -270,7 +270,7 @@ module StageContextExtensionsInternal =
                                 stepErrorCTS.Cancel()
                                 return true, exns
                             | ex ->
-                                AnsiConsole.MarkupLineInterpolated $"[red]{prefix} exception hanppened.[/]"
+                                AnsiConsole.MarkupLineInterpolated $"[red]{prefix} exception happened.[/]"
                                 AnsiConsole.WriteException ex
                                 if not stage.ContinueStageOnFailure then
                                     exns.Add(Exception(prefix + " " + ex.Message, ex.InnerException))
