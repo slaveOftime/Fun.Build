@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.1.5] - 2024-07-01
+
+- Improve process kill
+
 ## [1.1.4] - 2024-06-24
 
 - Add runHttpHealthCheck
