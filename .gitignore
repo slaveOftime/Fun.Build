@@ -364,3 +364,9 @@ FodyWeavers.xsd
 
 .idea/
 Directory.Build.props
+LongRunningServer/appsettings.Development.json
+LongRunningServer/appsettings.json
+LongRunningServer/LongRunningServer.csproj
+LongRunningServer/LongRunningServer.http
+LongRunningServer/Program.cs
+LongRunningServer/Properties/launchSettings.json
