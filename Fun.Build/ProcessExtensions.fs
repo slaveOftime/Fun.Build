@@ -148,7 +148,7 @@ type Process with
             use! cd =
                 Async.OnCancel(fun _ ->
                     AnsiConsole.Markup $"[yellow]{logPrefix}[/] "
-                    AnsiConsole.WriteLine $"{commandLogString} is cancelled or timed out and the process will be killed."
+                    AnsiConsole.WriteLine $"{commandLogString}: is cancelled or timed out and the process will be killed."
                     Native.kill result
                 )
 
