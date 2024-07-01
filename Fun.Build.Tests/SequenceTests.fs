@@ -546,3 +546,30 @@ let ``continueStepsOnFailure for nested stage should work`` () =
         runImmediate
     }
     Assert.Equal<int>([ 1; 2; 4 ], list)
+
+
+[<Fact>]
+let ``pipeline should be terminated correctly when parallel step are failed`` () =
+    Assert.Throws<PipelineFailedException>(fun _ ->
+        pipeline "" {
+            stage "" {
+                paralle
+                stage "timer" {
+                    whenWindows
+                    run (fun ctx -> ctx.RunCommand("timeout /t 10"))
+                }
+                stage "timer" {
+                    whenNot { platformWindows }
+                    run (fun ctx -> ctx.RunCommand("sleep 10"))
+                }
+                stage "" {
+                    run (Async.Sleep 1000)
+                    run (fun _ ->
+                        failwith "Demo"
+                        ()
+                    )
+                }
+            }
+            runImmediate
+        }
+    )
