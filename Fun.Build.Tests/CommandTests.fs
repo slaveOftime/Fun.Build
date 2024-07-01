@@ -86,3 +86,5 @@ let ``start a long running server and cancel it after health check`` () =
         }
         runImmediate
     }
+
+    Assert.True(cts.IsCancellationRequested)
