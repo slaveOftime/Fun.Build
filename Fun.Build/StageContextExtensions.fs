@@ -119,7 +119,7 @@ module StageContextExtensionsInternal =
                     sprintf "%s/step-%s" (parentStage.BuildCurrentStepPrefix()) postfix
 
             if String.IsNullOrEmpty prefix then ctx.Name
-            else if isSubStage then sprintf "%s/%s" prefix ctx.Name
+            else if isSubStage then sprintf "%s-%s" prefix ctx.Name
             else sprintf "%s/%s" prefix ctx.Name
 
 
@@ -147,7 +147,7 @@ module StageContextExtensionsInternal =
 
 
         /// Run the stage. If index is not provided then it will be treated as sub-stage.
-        member stage.Run(index: StageIndex, cancellationToken: Threading.CancellationToken) =
+        member stage.Run(index: StageIndex, cancellationToken: CancellationToken) =
             let mutable isSuccess = true
             let stepExns = ResizeArray<exn>()
 
@@ -193,13 +193,13 @@ module StageContextExtensionsInternal =
 
                     let mutable isStageSoftCancelled = false
 
-                    use cts = new Threading.CancellationTokenSource(timeoutForStage)
-                    use stepErrorCTS = new Threading.CancellationTokenSource()
-                    use linkedStepErrorCTS = Threading.CancellationTokenSource.CreateLinkedTokenSource(cts.Token, stepErrorCTS.Token)
-                    use linkedCTS = Threading.CancellationTokenSource.CreateLinkedTokenSource(linkedStepErrorCTS.Token, cancellationToken)
+                    use cts = new CancellationTokenSource(timeoutForStage)
+                    use stepErrorCTS = new CancellationTokenSource()
+                    use linkedStepErrorCTS = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, stepErrorCTS.Token)
+                    use linkedCTS = CancellationTokenSource.CreateLinkedTokenSource(linkedStepErrorCTS.Token, cancellationToken)
 
-                    use stepCTS = new Threading.CancellationTokenSource(timeoutForStep)
-                    use linkedStepCTS = Threading.CancellationTokenSource.CreateLinkedTokenSource(stepCTS.Token, linkedCTS.Token)
+                    use stepCTS = new CancellationTokenSource(timeoutForStep)
+                    use linkedStepCTS = CancellationTokenSource.CreateLinkedTokenSource(stepCTS.Token, linkedCTS.Token)
 
                     AnsiConsole.WriteLine()
 
@@ -221,7 +221,16 @@ module StageContextExtensionsInternal =
                     let steps =
                         indexedSteps
                         |> Seq.map (fun (i, step) -> async {
-                            let prefix = stage.BuildStepPrefix(i)
+                            let prefix =
+                                match step with
+                                | Step.StepFn _ -> stage.BuildStepPrefix(i)
+                                | Step.StepOfStage s ->
+                                    let subStage =
+                                        { s with
+                                            ParentContext = ValueSome(StageParent.Stage stage)
+                                        }
+                                    subStage.BuildCurrentStepPrefix() + ">"
+
                             let exns = ResizeArray<Exception>()
                             try
                                 let sw = Stopwatch.StartNew()
@@ -253,9 +262,14 @@ module StageContextExtensionsInternal =
 
                                 let color = if isSuccess then "grey50" else "red"
 
+                                let shouldCancelStage = not isSuccess && not stage.ContinueStepsOnFailure && not stepErrorCTS.IsCancellationRequested
+
                                 AnsiConsole.MarkupLineInterpolated(
-                                    $"""[{color}]{prefix} finished{if isParallel then " in parallel." else "."} {sw.ElapsedMilliseconds}ms.[/]"""
+                                    $"""[{color}]{prefix} finished{if isParallel then " in parallel." else "."} {sw.ElapsedMilliseconds}ms. {if shouldCancelStage then "will trigger canncellation." else ""}[/]"""
                                 )
+
+                                if shouldCancelStage then stepErrorCTS.Cancel()
+
                                 if i = stage.Steps.Length - 1 then AnsiConsole.WriteLine()
 
                                 return isSuccess, exns
@@ -319,10 +333,10 @@ module StageContextExtensionsInternal =
                     | ex ->
                         isSuccess <- false
                         if linkedCTS.Token.IsCancellationRequested && not stepErrorCTS.IsCancellationRequested then
-                            AnsiConsole.MarkupLine $"[yellow]Stage is cancelled or timeouted.[/]"
+                            AnsiConsole.MarkupLineInterpolated $"[yellow]{stage.BuildCurrentStepPrefix()}> stage is cancelled or timeouted.[/]"
                             AnsiConsole.WriteLine()
                         else if not stepErrorCTS.IsCancellationRequested then
-                            AnsiConsole.MarkupLine $"[red]Stage's step is failed[/]"
+                            AnsiConsole.MarkupLineInterpolated $"[red]{stage.BuildCurrentStepPrefix()}> stage's step is failed[/]"
                             AnsiConsole.WriteException ex
                             AnsiConsole.WriteLine()
 

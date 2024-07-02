@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.1.5] - 2024-07-01
+
+- Improve process kill
+- Should cancel other steps if some steps are cancelled and ContinueStepsOnFailure is set to false
+
 ## [1.1.4] - 2024-06-24
 
 - Add runHttpHealthCheck

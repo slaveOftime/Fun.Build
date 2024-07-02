@@ -67,3 +67,24 @@ let ``use cts to cancle a parallel command through ctx.RunCommand should work`` 
     }
 
     if count <> 2 then Assert.Fail("Should run through all stages/steps success")
+
+
+[<Fact>]
+let ``start a long running server and cancel it after health check`` () =
+    let cts = new CancellationTokenSource()
+    pipeline "run" {
+        stage "" {
+            paralle
+            stage "server" {
+                run "dotnet new webapi -o LongRunningServer --force"
+                run "dotnet run --urls http://localhost:8088 --project LongRunningServer/LongRunningServer.csproj" cts.Token
+            }
+            stage "check" {
+                runHttpHealthCheck "http://localhost:8088/weatherforecast/"
+                run (fun _ -> cts.Cancel())
+            }
+        }
+        runImmediate
+    }
+
+    Assert.True(cts.IsCancellationRequested)

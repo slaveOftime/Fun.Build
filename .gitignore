@@ -364,3 +364,4 @@ FodyWeavers.xsd
 
 .idea/
 Directory.Build.props
+LongRunningServer
