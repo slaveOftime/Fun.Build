@@ -2,7 +2,10 @@
 
 ## [Unreleased]
 
+## [1.1.6] - 2024-07-22
+
 - Add RunSensitiveCommandCaptureOutput
+- Add concurrent as alias of paralle
 
 ## [1.1.5] - 2024-07-01
 
