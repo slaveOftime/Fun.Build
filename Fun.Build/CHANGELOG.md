@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Add RunSensitiveCommandCaptureOutput
+
 ## [1.1.5] - 2024-07-01
 
 - Improve process kill
