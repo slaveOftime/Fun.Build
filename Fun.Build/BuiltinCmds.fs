@@ -5,6 +5,7 @@ open System.Threading
 open Spectre.Console
 open System.Diagnostics
 open System.Runtime.InteropServices
+open Fun.Result
 open Fun.Build.Internal
 open Fun.Build.StageContextExtensionsInternal
 
@@ -127,35 +128,61 @@ module BuiltinCmds =
                 return Error "Exit code is not indicating as successful."
         }
 
+
         /// Run a command string with current context, and encrypt the string for logging
-        member ctx.RunSensitiveCommand(commandStr: FormattableString, ?step: int, ?workingDir: string, ?cancellationToken: CancellationToken) = async {
-            let command = ctx.BuildCommand(commandStr.ToString(), ?workingDir = workingDir)
-            let noPrefixForStep = ctx.GetNoPrefixForStep()
-            let args: obj[] = Array.create commandStr.ArgumentCount "*"
-            let encryptiedStr = String.Format(commandStr.Format, args)
+        member ctx.RunSensitiveCommandCaptureOutput
+            (
+                commandStr: FormattableString,
+                ?step: int,
+                ?workingDir: string,
+                ?cancellationToken: CancellationToken
+            ) : Async<Result<string, string>> =
+            async {
+                let command = ctx.BuildCommand(commandStr.ToString(), ?workingDir = workingDir)
+                let noPrefixForStep = ctx.GetNoPrefixForStep()
+                let args: obj[] = Array.create commandStr.ArgumentCount "*"
+                let encryptiedStr = String.Format(commandStr.Format, args)
 
-            let prefix =
-                if noPrefixForStep then
-                    ""
-                else
-                    match step with
-                    | Some i -> ctx.BuildStepPrefix i
-                    | None -> ctx.GetNamePath()
+                let prefix =
+                    if noPrefixForStep then
+                        ""
+                    else
+                        match step with
+                        | Some i -> ctx.BuildStepPrefix i
+                        | None -> ctx.GetNamePath()
 
-            if not noPrefixForStep then AnsiConsole.Markup $"[green]{prefix}[/] "
-            AnsiConsole.WriteLine encryptiedStr
+                if not noPrefixForStep then AnsiConsole.Markup $"[green]{prefix}[/] "
+                AnsiConsole.WriteLine encryptiedStr
 
-            let ct = defaultArg cancellationToken CancellationToken.None
+                let ct = defaultArg cancellationToken CancellationToken.None
 
-            let! result =
-                Process.StartAsync(command, encryptiedStr, prefix, printOutput = not (ctx.GetNoStdRedirectForStep()), cancellationToken = ct)
+                let! result =
+                    Process.StartAsync(
+                        command,
+                        encryptiedStr,
+                        prefix,
+                        printOutput = not (ctx.GetNoStdRedirectForStep()),
+                        captureOutput = true,
+                        cancellationToken = ct
+                    )
 
-            return
-                if ct.IsCancellationRequested then
-                    Ok()
-                else
-                    ctx.MapExitCodeToResult result.ExitCode
-        }
+                return
+                    if ct.IsCancellationRequested then
+                        Ok result.StandardOutput
+                    else
+                        ctx.MapExitCodeToResult result.ExitCode |> Result.map (fun _ -> "")
+            }
+
+        /// Run a command string with current context, and encrypt the string for logging
+        member ctx.RunSensitiveCommand
+            (
+                commandStr: FormattableString,
+                ?step: int,
+                ?workingDir: string,
+                ?cancellationToken: CancellationToken
+            ) : Async<Result<unit, string>> =
+            ctx.RunSensitiveCommandCaptureOutput(commandStr, ?step = step, ?workingDir = workingDir, ?cancellationToken = cancellationToken)
+            |> AsyncResult.map ignore
 
 
         member ctx.OpenBrowser(url: string, ?step: int) = async {
