@@ -20,7 +20,7 @@ Every **step** is just a **async<Result<unit, string>>**, string is for the erro
 ## Minimal example and conventions
 
 ```fsharp
-#r "nuget: Fun.Build, 1.1.0"
+#r "nuget: Fun.Build, 1.1.6"
 open Fun.Build
 
 pipeline "demo" {
@@ -30,7 +30,7 @@ pipeline "demo" {
     // stages goes here
     stage "foo" {
         // configuration for stage itself goes first
-        paralle     
+        paralle   
         // steps or nested stages goes here
         run ...
     }
@@ -67,7 +67,7 @@ dotnet fsi build.fsx -- -p your_pipeline -h
 Below example covered most of the apis and usage example, take it as the documents😊:
 
 ```fsharp
-#r "nuget: Fun.Build, 1.1.0"
+#r "nuget: Fun.Build, 1.1.6"
 
 open Fun.Result
 open Fun.Build
