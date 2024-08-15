@@ -76,6 +76,9 @@ open Fun.Build
 module Extensions =
     open Fun.Build.Internal
 
+    // Below is an example on how to create custom operation
+    // If you want to use collapseGithubActionLogs in your project
+    // You can access it by opening `Fun.Build.Github` in your file
     type PipelineBuilder with
 
         [<CustomOperation "collapseGithubActionLogs">]
