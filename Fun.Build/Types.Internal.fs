@@ -29,6 +29,7 @@ type StageParent =
 type StageIndex =
     | Step of step: int
     | Stage of stage: int
+    | WhenStage
 
 
 type CommandHelpContext = {

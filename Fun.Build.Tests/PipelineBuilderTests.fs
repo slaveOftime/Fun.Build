@@ -328,6 +328,32 @@ let ``Verification should work`` () =
         }
     )
 
+[<Fact>]
+let ``when' stage should use stage execution result as verification condition for pipeline`` () =
+    Assert.Throws<PipelineFailedException>(fun _ ->
+        shouldNotBeCalled (fun call ->
+            pipeline "" {
+                when' (stage "" {run (fun ctx -> 1)})
+                stage "" {
+                    run call
+                }
+                runImmediate
+            }
+        )
+    )
+    |> ignore
+
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            when' (stage "" {run (fun ctx -> 0)})
+            stage "" {
+                run call
+            }
+            runImmediate
+        }
+    )
+
+
 
 [<Fact>]
 let ``Should fail if stage is ignored`` () =

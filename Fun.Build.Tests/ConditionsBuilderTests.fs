@@ -223,6 +223,81 @@ let ``whenEnvVar should work`` () =
 
 
 [<Fact>]
+let ``when' stage should use stage execution result as when' condition for stage`` () =
+    shouldNotBeCalled (fun call ->
+        pipeline "" {
+            stage "" {
+                when' (stage "" {run (fun ctx -> 1)})
+                run call
+            }
+            runImmediate
+        }
+    )
+
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            stage "" {
+                when' (stage "" {run (fun ctx -> 0)})
+                run call
+            }
+            runImmediate
+        }
+    )
+
+[<Fact>]
+let ``when' stage should use stage execution result as when' condition for nested stage`` () =
+    shouldNotBeCalled (fun call ->
+        pipeline "" {
+            stage "" {
+                stage "nested" {
+                    when' (stage "" {run (fun ctx -> 1)})
+                    run call
+                }
+            }
+            runImmediate
+        }
+    )
+
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            stage "" {
+                stage "nested" {
+                    when' (stage "" {run (fun ctx -> 0)})
+                    run call
+                }
+            }
+            runImmediate
+        }
+    )
+
+[<Fact>]
+let ``when' stage should use stage execution result as when' condition in composed when`` () =
+    shouldNotBeCalled (fun call ->
+        pipeline "" {
+            stage "" {
+                whenAll {
+                    when' (stage "" {run (fun ctx -> 1)})
+                }
+                run call
+            }
+            runImmediate
+        }
+    )
+
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            stage "" {
+                whenAll {
+                    when' (stage "" {run (fun ctx -> 0)})
+                }
+                run call
+            }
+            runImmediate
+        }
+    )
+
+
+[<Fact>]
 let ``whenAny should work`` () =
     let condition = whenAny {
         cmdArg "test1"
