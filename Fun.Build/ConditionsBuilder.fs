@@ -217,7 +217,7 @@ type ConditionsBuilder() =
     member inline _.when'([<InlineIfLambda>] builder: BuildConditions, arg: bool) = buildConditions builder (fun ctx -> ctx.When'(arg))
 
     [<CustomOperation("when'")>]
-    member inline _.when'([<InlineIfLambda>] build: BuildConditions, whenStage: StageContext) = buildConditions build (fun ctx -> ctx.WhenStage whenStage)
+    member inline _.when'([<InlineIfLambda>] builder: BuildConditions, whenStage: StageContext) = buildConditions builder (fun ctx -> ctx.WhenStage whenStage)
 
 
     [<CustomOperation("envVar")>]
@@ -294,7 +294,7 @@ type StageBuilder with
     [<CustomOperation("when'")>]
     member inline _.when'([<InlineIfLambda>] build: BuildStage, value: bool) = buildStageIsActive build (fun ctx -> ctx.When' value)
 
-    // Set thage stage is active or should run depending on the results of the whenStage
+    // Set if stage is active or should run depending on the results of the whenStage
     [<CustomOperation("when'")>]
     member inline _.when'([<InlineIfLambda>] build: BuildStage, whenStage: StageContext) = buildStageIsActive build (fun ctx -> ctx.WhenStage whenStage)
 
@@ -378,7 +378,7 @@ type PipelineBuilder with
     [<CustomOperation("when'")>]
     member inline _.when'([<InlineIfLambda>] build: BuildPipeline, value: bool) = buildPipelineVerification build (fun ctx -> ctx.When' value)
 
-    // Set thage stage is active or should run depending on the results of the whenStage
+    // Set if pipeline can run depending on the results of the whenStage
     [<CustomOperation("when'")>]
     member inline _.when'([<InlineIfLambda>] build: BuildPipeline, whenStage: StageContext) = buildPipelineVerification build (fun ctx -> ctx.WhenStage whenStage)
 
