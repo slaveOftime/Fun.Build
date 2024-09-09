@@ -32,9 +32,16 @@ module Internal =
                 false
             | Mode.Execution -> isTrue
 
-        member _.WhenStage(stage: StageContext) =
-            let result, exns = stage.Run(StageIndex.WhenStage, System.Threading.CancellationToken.None)
-            result
+        member ctx.WhenStage(stage: StageContext) =
+            match ctx.GetMode() with
+            | Mode.Execution ->
+                let result, exns = stage.Run(StageIndex.WhenStage, System.Threading.CancellationToken.None)
+                result
+            | Mode.Verification ->
+                AnsiConsole.MarkupLineInterpolated($"[yellow]? Check results of WHEN STAGE {stage.Name} above.[/]")
+                false
+            | _ ->
+                false
 
         member ctx.WhenEnvArg(info: EnvArg) =
             if info.Name |> String.IsNullOrEmpty then
