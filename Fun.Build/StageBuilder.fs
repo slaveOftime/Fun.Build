@@ -218,7 +218,11 @@ type StageBuilder(name: string) =
     /// Set if the steps in current stage should run in concurrent. Alias of paralle.
     [<CustomOperation("concurrent")>]
     member inline _.concurrent([<InlineIfLambda>] build: BuildStage, ?value: bool) =
-        BuildStage(fun ctx -> { build.Invoke ctx with IsParallel = fun _ ->defaultArg  value true })
+        BuildStage(fun ctx ->
+            { build.Invoke ctx with
+                IsParallel = fun _ -> defaultArg value true
+            }
+        )
 
 
     /// Set workding dir for all steps under the stage.

@@ -232,7 +232,7 @@ module StageContextExtensionsInternal =
                                             ParentContext = ValueSome(StageParent.Stage stage)
                                         }
                                     subStage.BuildCurrentStepPrefix() + ">"
-  
+
 
                             let exns = ResizeArray<Exception>()
                             try
