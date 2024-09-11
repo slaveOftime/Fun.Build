@@ -35,15 +35,16 @@ module Internal =
         member ctx.WhenStage(stage: StageContext) =
             match ctx.GetMode() with
             | Mode.Execution ->
-                let result, exns =
-                    { stage with ParentContext = ctx.ParentContext }
-                        .Run(StageIndex.Condition, System.Threading.CancellationToken.None)
+                let stage =
+                    { stage with
+                        ParentContext = ValueSome(StageParent.Stage ctx)
+                    }
+                let result, _ = stage.Run(StageIndex.Condition, System.Threading.CancellationToken.None)
                 result
             | Mode.Verification ->
                 AnsiConsole.MarkupLineInterpolated($"[yellow]? [/]{ctx.BuildIndent().Substring(2)}check results of stage [yellow]{stage.Name}[/]")
                 false
-            | _ ->
-                false
+            | _ -> false
 
         member ctx.WhenEnvArg(info: EnvArg) =
             if info.Name |> String.IsNullOrEmpty then
@@ -226,7 +227,8 @@ type ConditionsBuilder() =
     member inline _.when'([<InlineIfLambda>] builder: BuildConditions, arg: bool) = buildConditions builder (fun ctx -> ctx.When'(arg))
 
     [<CustomOperation("when'")>]
-    member inline _.when'([<InlineIfLambda>] builder: BuildConditions, whenStage: StageContext) = buildConditions builder (fun ctx -> ctx.WhenStage whenStage)
+    member inline _.when'([<InlineIfLambda>] builder: BuildConditions, whenStage: StageContext) =
+        buildConditions builder (fun ctx -> ctx.WhenStage whenStage)
 
 
     [<CustomOperation("envVar")>]
@@ -305,7 +307,8 @@ type StageBuilder with
 
     // Set if stage is active or should run depending on the results of the whenStage
     [<CustomOperation("when'")>]
-    member inline _.when'([<InlineIfLambda>] build: BuildStage, whenStage: StageContext) = buildStageIsActive build (fun ctx -> ctx.WhenStage whenStage)
+    member inline _.when'([<InlineIfLambda>] build: BuildStage, whenStage: StageContext) =
+        buildStageIsActive build (fun ctx -> ctx.WhenStage whenStage)
 
     /// Set if stage is active or should run by check the environment variable.
     [<CustomOperation("whenEnvVar")>]
@@ -389,7 +392,8 @@ type PipelineBuilder with
 
     // Set if pipeline can run depending on the results of the whenStage
     [<CustomOperation("when'")>]
-    member inline _.when'([<InlineIfLambda>] build: BuildPipeline, whenStage: StageContext) = buildPipelineVerification build (fun ctx -> ctx.WhenStage whenStage)
+    member inline _.when'([<InlineIfLambda>] build: BuildPipeline, whenStage: StageContext) =
+        buildPipelineVerification build (fun ctx -> ctx.WhenStage whenStage)
 
     /// Set if pipeline can run by check the environment variable.
     [<CustomOperation("whenEnvVar")>]
@@ -681,6 +685,13 @@ type WhenEnvBuilder() =
     member inline _.optional([<InlineIfLambda>] build: BuildEnvInfo) = BuildEnvInfo(fun info -> { build.Invoke(info) with IsOptional = true })
 
 
+type WhenStageBuilder(name) =
+
+    inherit StageBuilder(name)
+
+    member _.Run(build: BuildStage) = BuildStageIsActive(fun ctx -> ctx.WhenStage(build.Invoke(StageContext.Create name)))
+
+
 /// When any of the added conditions are satisified, the stage will be active
 let whenAny = WhenAnyBuilder()
 /// When all of the added conditions are satisified, the stage will be active
@@ -691,3 +702,5 @@ let whenNot = WhenNotBuilder()
 let whenCmd = WhenCmdBuilder()
 /// When the ENV is matched, the stage will be active
 let whenEnv = WhenEnvBuilder()
+/// When the stage is finished successfully, the stage will be active
+let whenStage name = WhenStageBuilder name

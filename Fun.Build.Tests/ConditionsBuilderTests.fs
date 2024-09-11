@@ -227,7 +227,7 @@ let ``when' stage should use stage execution result as when' condition for stage
     shouldNotBeCalled (fun call ->
         pipeline "" {
             stage "" {
-                when' (stage "" {run (fun ctx -> 1)})
+                when' (stage "" { run (fun ctx -> 1) })
                 run call
             }
             runImmediate
@@ -237,7 +237,27 @@ let ``when' stage should use stage execution result as when' condition for stage
     shouldBeCalled (fun call ->
         pipeline "" {
             stage "" {
-                when' (stage "" {run (fun ctx -> 0)})
+                when' (stage "" { run (fun ctx -> 0) })
+                run call
+            }
+            runImmediate
+        }
+    )
+
+    shouldNotBeCalled (fun call ->
+        pipeline "" {
+            stage "" {
+                whenStage "" { run (fun _ -> 1) }
+                run call
+            }
+            runImmediate
+        }
+    )
+
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            stage "" {
+                whenStage "" { run (fun _ -> 0) }
                 run call
             }
             runImmediate
@@ -250,7 +270,18 @@ let ``when' stage should have parent context in execution mode`` () =
         pipeline "" {
             envVars [ "ENV", "0" ]
             stage "" {
-                when' (stage "" {run (fun ctx -> ctx.GetEnvVar("ENV") |> int)})
+                when' (stage "" { run (fun ctx -> ctx.GetEnvVar("ENV") |> int) })
+                run call
+            }
+            runImmediate
+        }
+    )
+
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            envVars [ "ENV", "0" ]
+            stage "" {
+                whenStage "" { run (fun ctx -> ctx.GetEnvVar("ENV") |> int) }
                 run call
             }
             runImmediate
@@ -263,7 +294,7 @@ let ``when' stage should use stage execution result as when' condition for neste
         pipeline "" {
             stage "" {
                 stage "nested" {
-                    when' (stage "" {run (fun ctx -> 1)})
+                    when' (stage "" { run (fun ctx -> 1) })
                     run call
                 }
             }
@@ -275,7 +306,7 @@ let ``when' stage should use stage execution result as when' condition for neste
         pipeline "" {
             stage "" {
                 stage "nested" {
-                    when' (stage "" {run (fun ctx -> 0)})
+                    when' (stage "" { run (fun ctx -> 0) })
                     run call
                 }
             }
@@ -288,9 +319,7 @@ let ``when' stage should use stage execution result as when' condition in compos
     shouldNotBeCalled (fun call ->
         pipeline "" {
             stage "" {
-                whenAll {
-                    when' (stage "" {run (fun ctx -> 1)})
-                }
+                whenAll { when' (stage "" { run (fun ctx -> 1) }) }
                 run call
             }
             runImmediate
@@ -300,15 +329,66 @@ let ``when' stage should use stage execution result as when' condition in compos
     shouldBeCalled (fun call ->
         pipeline "" {
             stage "" {
-                whenAll {
-                    when' (stage "" {run (fun ctx -> 0)})
-                }
+                whenAll { when' (stage "" { run (fun ctx -> 0) }) }
                 run call
             }
             runImmediate
         }
     )
 
+    shouldNotBeCalled (fun call ->
+        pipeline "" {
+            stage "" {
+                whenAll { whenStage "" { run (fun _ -> 1) } }
+                run call
+            }
+            runImmediate
+        }
+    )
+
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            stage "" {
+                whenAll { whenStage "" { run (fun _ -> 0) } }
+                run call
+            }
+            runImmediate
+        }
+    )
+
+[<Fact>]
+let ``when' stage should work in pipeline directly`` () =
+    Assert.Throws<PipelineFailedException>(fun _ ->
+        pipeline "" {
+            when' (stage "" { run (fun _ -> 1) })
+            runImmediate
+        }
+    )
+    |> ignore
+
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            when' (stage "" { run (fun _ -> 0) })
+            stage "" { run call }
+            runImmediate
+        }
+    )
+
+    Assert.Throws<PipelineFailedException>(fun _ ->
+        pipeline "" {
+            whenStage "" { run (fun _ -> 1) }
+            runImmediate
+        }
+    )
+    |> ignore
+
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            whenStage "" { run (fun _ -> 0) }
+            stage "" { run call }
+            runImmediate
+        }
+    )
 
 [<Fact>]
 let ``whenAny should work`` () =

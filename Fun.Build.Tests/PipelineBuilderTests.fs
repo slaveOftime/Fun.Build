@@ -334,12 +334,15 @@ let ``when' stage should use stage execution result as verification condition fo
     Assert.Throws<PipelineFailedException>(fun _ ->
         shouldNotBeCalled (fun call ->
             pipeline "" {
-                when' (stage "whenStageShouldFail" {run (fun ctx ->
-                    numChecks <- numChecks + 1
-                    1)})
-                stage "" {
-                    run call
-                }
+                when' (
+                    stage "whenStageShouldFail" {
+                        run (fun ctx ->
+                            numChecks <- numChecks + 1
+                            1
+                        )
+                    }
+                )
+                stage "" { run call }
                 runImmediate
             }
         )
@@ -349,10 +352,8 @@ let ``when' stage should use stage execution result as verification condition fo
 
     shouldBeCalled (fun call ->
         pipeline "" {
-            when' (stage "whenStageShouldPass" {run (fun ctx -> 0)})
-            stage "" {
-                run call
-            }
+            when' (stage "whenStageShouldPass" { run (fun ctx -> 0) })
+            stage "" { run call }
             runImmediate
         }
     )
