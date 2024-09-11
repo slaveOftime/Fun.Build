@@ -245,6 +245,19 @@ let ``when' stage should use stage execution result as when' condition for stage
     )
 
 [<Fact>]
+let ``when' stage should have parent context in execution mode`` () =
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            envVars [ "ENV", "0" ]
+            stage "" {
+                when' (stage "" {run (fun ctx -> ctx.GetEnvVar("ENV") |> int)})
+                run call
+            }
+            runImmediate
+        }
+    )
+
+[<Fact>]
 let ``when' stage should use stage execution result as when' condition for nested stage`` () =
     shouldNotBeCalled (fun call ->
         pipeline "" {

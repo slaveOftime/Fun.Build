@@ -35,10 +35,12 @@ module Internal =
         member ctx.WhenStage(stage: StageContext) =
             match ctx.GetMode() with
             | Mode.Execution ->
-                let result, exns = stage.Run(StageIndex.WhenStage, System.Threading.CancellationToken.None)
+                let result, exns =
+                    { stage with ParentContext = ctx.ParentContext }
+                        .Run(StageIndex.Condition, System.Threading.CancellationToken.None)
                 result
             | Mode.Verification ->
-                AnsiConsole.MarkupLineInterpolated($"[yellow]? Check results of WHEN STAGE {stage.Name} above.[/]")
+                AnsiConsole.MarkupLineInterpolated($"[yellow]? [/]{ctx.BuildIndent().Substring(2)}check results of stage [yellow]{stage.Name}[/]")
                 false
             | _ ->
                 false

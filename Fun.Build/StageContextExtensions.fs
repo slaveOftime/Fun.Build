@@ -205,8 +205,8 @@ module StageContextExtensionsInternal =
 
                     let extraInfo = $"timeout: {timeoutForStage}ms. step timeout: {timeoutForStep}ms."
                     match index with
-                    | StageIndex.WhenStage ->
-                        AnsiConsole.Write(Rule($"[grey50]WHEN STAGE [bold turquoise4]{namePath}[/] started. {extraInfo}[/]").LeftJustified())
+                    | StageIndex.Condition ->
+                        AnsiConsole.Write(Rule($"[grey50]CONDITION STAGE [bold turquoise4]{namePath}[/] started. {extraInfo}[/]").LeftJustified())
                     | StageIndex.Stage i ->
                         AnsiConsole.Write(Rule($"[grey50]STAGE #{i} [bold turquoise4]{namePath}[/] started. {extraInfo}[/]").LeftJustified())
                     | StageIndex.Step _ ->
@@ -346,9 +346,9 @@ module StageContextExtensionsInternal =
 
                     let color = if isSuccess then "turquoise4" else "red"
                     match index with
-                    | StageIndex.WhenStage ->
+                    | StageIndex.Condition ->
                         AnsiConsole.Write(
-                            Rule($"""[grey50]WHEN STAGE [bold {color}]{namePath}[/] finished. {stageSW.ElapsedMilliseconds}ms.[/]""")
+                            Rule($"""[grey50]CONDITION STAGE [bold {color}]{namePath}[/] finished. {stageSW.ElapsedMilliseconds}ms.[/]""")
                                 .LeftJustified()
                         )
                     | StageIndex.Stage i ->
@@ -367,7 +367,7 @@ module StageContextExtensionsInternal =
                     AnsiConsole.WriteLine()
 
                     match index with
-                    | StageIndex.WhenStage -> AnsiConsole.Write(Rule($"[grey50]WHEN STAGE {namePath} is [yellow]inactive[/][/]").LeftJustified())
+                    | StageIndex.Condition -> AnsiConsole.Write(Rule($"[grey50]CONDITION STAGE {namePath} is [yellow]inactive[/][/]").LeftJustified())
                     | StageIndex.Stage i -> AnsiConsole.Write(Rule($"[grey50]STAGE #{i} {namePath} is [yellow]inactive[/][/]").LeftJustified())
                     | StageIndex.Step _ ->
                         AnsiConsole.MarkupLineInterpolated($"[grey50]{stage.BuildCurrentStepPrefix()}> sub-stage is [yellow]inactive[/][/]")
