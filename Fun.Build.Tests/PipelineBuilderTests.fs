@@ -328,6 +328,36 @@ let ``Verification should work`` () =
         }
     )
 
+[<Fact>]
+let ``when' stage should use stage execution result as verification condition for pipeline`` () =
+    let mutable numChecks = 0
+    Assert.Throws<PipelineFailedException>(fun _ ->
+        shouldNotBeCalled (fun call ->
+            pipeline "" {
+                when' (stage "whenStageShouldFail" {run (fun ctx ->
+                    numChecks <- numChecks + 1
+                    1)})
+                stage "" {
+                    run call
+                }
+                runImmediate
+            }
+        )
+    )
+    |> ignore
+    Assert.Equal(1, numChecks)
+
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            when' (stage "whenStageShouldPass" {run (fun ctx -> 0)})
+            stage "" {
+                run call
+            }
+            runImmediate
+        }
+    )
+
+
 
 [<Fact>]
 let ``Should fail if stage is ignored`` () =

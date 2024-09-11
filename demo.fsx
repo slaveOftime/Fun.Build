@@ -63,6 +63,7 @@ pipeline "Fun.Build" {
             cmdArg "cmdKey" "" "Check has cmd arg"
             cmdArg "cmdKey" "cmdValue" "Check has cmd arg value which should be behind the cmdKey"
             whenNot { cmdArg "--not-demo" }
+            when' (stage "Check" {run (fun ctx -> Ok())}) // Check result of a stage, useful for dynamic checks
         }
         shuffleExecuteSequence // It can shuffle the sequence of steps executing sequence
         run "dotnet --version"

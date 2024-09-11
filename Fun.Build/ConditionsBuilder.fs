@@ -32,6 +32,19 @@ module Internal =
                 false
             | Mode.Execution -> isTrue
 
+        member ctx.WhenStage(stage: StageContext) =
+            match ctx.GetMode() with
+            | Mode.Execution ->
+                let result, exns =
+                    { stage with ParentContext = ctx.ParentContext }
+                        .Run(StageIndex.Condition, System.Threading.CancellationToken.None)
+                result
+            | Mode.Verification ->
+                AnsiConsole.MarkupLineInterpolated($"[yellow]? [/]{ctx.BuildIndent().Substring(2)}check results of stage [yellow]{stage.Name}[/]")
+                false
+            | _ ->
+                false
+
         member ctx.WhenEnvArg(info: EnvArg) =
             if info.Name |> String.IsNullOrEmpty then
                 failwith "ENV variable name cannot be empty"
@@ -212,6 +225,9 @@ type ConditionsBuilder() =
     [<CustomOperation("when'")>]
     member inline _.when'([<InlineIfLambda>] builder: BuildConditions, arg: bool) = buildConditions builder (fun ctx -> ctx.When'(arg))
 
+    [<CustomOperation("when'")>]
+    member inline _.when'([<InlineIfLambda>] builder: BuildConditions, whenStage: StageContext) = buildConditions builder (fun ctx -> ctx.WhenStage whenStage)
+
 
     [<CustomOperation("envVar")>]
     member inline _.envVar([<InlineIfLambda>] builder: BuildConditions, arg: EnvArg) = buildConditions builder (fun ctx -> ctx.WhenEnvArg(arg))
@@ -287,6 +303,9 @@ type StageBuilder with
     [<CustomOperation("when'")>]
     member inline _.when'([<InlineIfLambda>] build: BuildStage, value: bool) = buildStageIsActive build (fun ctx -> ctx.When' value)
 
+    // Set if stage is active or should run depending on the results of the whenStage
+    [<CustomOperation("when'")>]
+    member inline _.when'([<InlineIfLambda>] build: BuildStage, whenStage: StageContext) = buildStageIsActive build (fun ctx -> ctx.WhenStage whenStage)
 
     /// Set if stage is active or should run by check the environment variable.
     [<CustomOperation("whenEnvVar")>]
@@ -368,6 +387,9 @@ type PipelineBuilder with
     [<CustomOperation("when'")>]
     member inline _.when'([<InlineIfLambda>] build: BuildPipeline, value: bool) = buildPipelineVerification build (fun ctx -> ctx.When' value)
 
+    // Set if pipeline can run depending on the results of the whenStage
+    [<CustomOperation("when'")>]
+    member inline _.when'([<InlineIfLambda>] build: BuildPipeline, whenStage: StageContext) = buildPipelineVerification build (fun ctx -> ctx.WhenStage whenStage)
 
     /// Set if pipeline can run by check the environment variable.
     [<CustomOperation("whenEnvVar")>]
