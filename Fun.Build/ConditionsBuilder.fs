@@ -685,6 +685,13 @@ type WhenEnvBuilder() =
     member inline _.optional([<InlineIfLambda>] build: BuildEnvInfo) = BuildEnvInfo(fun info -> { build.Invoke(info) with IsOptional = true })
 
 
+type WhenStageBuilder(name) =
+
+    inherit StageBuilder(name)
+
+    member _.Run(build: BuildStage) = BuildStageIsActive(fun ctx -> ctx.WhenStage(build.Invoke(StageContext.Create name)))
+
+
 /// When any of the added conditions are satisified, the stage will be active
 let whenAny = WhenAnyBuilder()
 /// When all of the added conditions are satisified, the stage will be active
@@ -695,3 +702,5 @@ let whenNot = WhenNotBuilder()
 let whenCmd = WhenCmdBuilder()
 /// When the ENV is matched, the stage will be active
 let whenEnv = WhenEnvBuilder()
+/// When the stage is finished successfully, the stage will be active
+let whenStage name = WhenStageBuilder name
