@@ -17,6 +17,15 @@ Every **step** is just a **async<Result<unit, string>>**, string is for the erro
 - Generate command line help information automatically
 
 
+## Donation
+
+If you find my projects helpful and would like to support my work, consider making a donation via PayPal. Your support is greatly appreciated!
+
+<a href="https://paypal.me/wubinwen" style="display: flex; align-items: center; gap: 12px;">
+    <img src="https://www.paypalobjects.com/paypal-ui/logos/svg/paypal-color.svg" height="30">
+</a>
+
+
 ## Minimal example and conventions
 
 ```fsharp
