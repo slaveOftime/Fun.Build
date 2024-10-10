@@ -268,7 +268,7 @@ module StageContextExtensionsInternal =
                                 let shouldCancelStage = not isSuccess && not stage.ContinueStepsOnFailure && not stepErrorCTS.IsCancellationRequested
 
                                 AnsiConsole.MarkupLineInterpolated(
-                                    $"""[{color}]{prefix} finished{if isParallel then " in parallel." else "."} {sw.ElapsedMilliseconds}ms. {if shouldCancelStage then "will trigger canncellation." else ""}[/]"""
+                                    $"""[{color}]{prefix} finished{if isParallel then " in parallel." else "."} {sw.ElapsedMilliseconds}ms. {if shouldCancelStage then "will trigger cancellation." else ""}[/]"""
                                 )
 
                                 if shouldCancelStage then stepErrorCTS.Cancel()
