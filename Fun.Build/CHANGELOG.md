@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.1.8] - 2024-10-11
+
+- Fix RunSensitiveCommandCaptureOutput
+
 ## [1.1.7] - 2024-09-11
 
 - Add overloads for **when' (stage "some condition" {})**

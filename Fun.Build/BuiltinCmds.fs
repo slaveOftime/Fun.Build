@@ -166,11 +166,12 @@ module BuiltinCmds =
                         cancellationToken = ct
                     )
 
-                return
-                    if ct.IsCancellationRequested then
-                        Ok result.StandardOutput
-                    else
-                        ctx.MapExitCodeToResult result.ExitCode |> Result.map (fun _ -> "")
+                if ct.IsCancellationRequested then
+                    return Ok result.StandardOutput
+                else if ctx.IsAcceptableExitCode result.ExitCode then
+                    return Ok result.StandardOutput
+                else
+                    return Error "Exit code is not indicating as successful."
             }
 
         /// Run a command string with current context, and encrypt the string for logging
