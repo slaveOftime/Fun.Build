@@ -63,38 +63,8 @@ module BuiltinCmds =
     type StageContext with
 
         /// Run a command string with current context
-        member ctx.RunCommand(commandStr: string, ?step: int, ?workingDir: string, ?cancellationToken: CancellationToken) = async {
-            let command = ctx.BuildCommand(commandStr, ?workingDir = workingDir)
-            let noPrefixForStep = ctx.GetNoPrefixForStep()
-            let prefix =
-                if noPrefixForStep then
-                    ""
-                else
-                    match step with
-                    | Some i -> ctx.BuildStepPrefix i
-                    | None -> ctx.GetNamePath()
-
-            if not noPrefixForStep then AnsiConsole.Markup $"[green]{prefix}[/] "
-            AnsiConsole.WriteLine commandStr
-
-            let ct = defaultArg cancellationToken CancellationToken.None
-
-            let! result = Process.StartAsync(command, commandStr, prefix, printOutput = not (ctx.GetNoStdRedirectForStep()), cancellationToken = ct)
-
-            return
-                if ct.IsCancellationRequested then
-                    Ok()
-                else
-                    ctx.MapExitCodeToResult result.ExitCode
-        }
-
-        /// <summary>
-        /// Run a command string with current context, and return the standard output if the exit code is acceptable.
-        /// </summary>
-        /// <param name="commandStr">Command to run</param>
-        /// <param name="step">Current step rank</param>
-        /// <param name="workingDir">Working directory for command</param>
-        member ctx.RunCommandCaptureOutput(commandStr: string, ?step: int, ?workingDir: string, ?cancellationToken: CancellationToken) = async {
+        member ctx.RunCommand(commandStr: string, ?step: int, ?workingDir: string, ?disablePrintOutput: bool, ?cancellationToken: CancellationToken) = async {
+            let disablePrintOutput = defaultArg disablePrintOutput false
             let command = ctx.BuildCommand(commandStr, ?workingDir = workingDir)
             let noPrefixForStep = ctx.GetNoPrefixForStep()
             let prefix =
@@ -115,18 +85,65 @@ module BuiltinCmds =
                     command,
                     commandStr,
                     prefix,
-                    printOutput = not (ctx.GetNoStdRedirectForStep()),
-                    captureOutput = true,
+                    printOutput = (not disablePrintOutput && not (ctx.GetNoStdRedirectForStep())),
                     cancellationToken = ct
                 )
 
-            if ct.IsCancellationRequested then
-                return Ok result.StandardOutput
-            else if ctx.IsAcceptableExitCode result.ExitCode then
-                return Ok result.StandardOutput
-            else
-                return Error "Exit code is not indicating as successful."
+            return
+                if ct.IsCancellationRequested then
+                    Ok()
+                else
+                    ctx.MapExitCodeToResult result.ExitCode
         }
+
+        /// <summary>
+        /// Run a command string with current context, and return the standard output if the exit code is acceptable.
+        /// </summary>
+        /// <param name="commandStr">Command to run</param>
+        /// <param name="step">Current step rank</param>
+        /// <param name="workingDir">Working directory for command</param>
+        member ctx.RunCommandCaptureOutput
+            (
+                commandStr: string,
+                ?step: int,
+                ?workingDir: string,
+                ?disablePrintOutput: bool,
+                ?cancellationToken: CancellationToken
+            ) =
+            async {
+                let disablePrintOutput = defaultArg disablePrintOutput false
+                let command = ctx.BuildCommand(commandStr, ?workingDir = workingDir)
+                let noPrefixForStep = ctx.GetNoPrefixForStep()
+                let prefix =
+                    if noPrefixForStep then
+                        ""
+                    else
+                        match step with
+                        | Some i -> ctx.BuildStepPrefix i
+                        | None -> ctx.GetNamePath()
+
+                if not noPrefixForStep then AnsiConsole.Markup $"[green]{prefix}[/] "
+                AnsiConsole.WriteLine commandStr
+
+                let ct = defaultArg cancellationToken CancellationToken.None
+
+                let! result =
+                    Process.StartAsync(
+                        command,
+                        commandStr,
+                        prefix,
+                        printOutput = (not disablePrintOutput && not (ctx.GetNoStdRedirectForStep())),
+                        captureOutput = true,
+                        cancellationToken = ct
+                    )
+
+                if ct.IsCancellationRequested then
+                    return Ok result.StandardOutput
+                else if ctx.IsAcceptableExitCode result.ExitCode then
+                    return Ok result.StandardOutput
+                else
+                    return Error "Exit code is not indicating as successful."
+            }
 
 
         /// Run a command string with current context, and encrypt the string for logging
@@ -135,9 +152,11 @@ module BuiltinCmds =
                 commandStr: FormattableString,
                 ?step: int,
                 ?workingDir: string,
+                ?disablePrintOutput: bool,
                 ?cancellationToken: CancellationToken
             ) : Async<Result<string, string>> =
             async {
+                let disablePrintOutput = defaultArg disablePrintOutput false
                 let command = ctx.BuildCommand(commandStr.ToString(), ?workingDir = workingDir)
                 let noPrefixForStep = ctx.GetNoPrefixForStep()
                 let args: obj[] = Array.create commandStr.ArgumentCount "*"
@@ -161,7 +180,7 @@ module BuiltinCmds =
                         command,
                         encryptiedStr,
                         prefix,
-                        printOutput = not (ctx.GetNoStdRedirectForStep()),
+                        printOutput = (not disablePrintOutput && not (ctx.GetNoStdRedirectForStep())),
                         captureOutput = true,
                         cancellationToken = ct
                     )
@@ -180,9 +199,16 @@ module BuiltinCmds =
                 commandStr: FormattableString,
                 ?step: int,
                 ?workingDir: string,
+                ?disablePrintOutput: bool,
                 ?cancellationToken: CancellationToken
             ) : Async<Result<unit, string>> =
-            ctx.RunSensitiveCommandCaptureOutput(commandStr, ?step = step, ?workingDir = workingDir, ?cancellationToken = cancellationToken)
+            ctx.RunSensitiveCommandCaptureOutput(
+                commandStr,
+                ?step = step,
+                ?workingDir = workingDir,
+                ?disablePrintOutput = disablePrintOutput,
+                ?cancellationToken = cancellationToken
+            )
             |> AsyncResult.map ignore
 
 

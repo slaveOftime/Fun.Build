@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.1.9] - 2024-10-18
+
+- Support disablePrintOutput for RunCommand
+
 ## [1.1.8] - 2024-10-11
 
 - Fix RunSensitiveCommandCaptureOutput
