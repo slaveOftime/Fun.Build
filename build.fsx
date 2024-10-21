@@ -14,7 +14,11 @@ let options = {|
 |}
 
 
-let stage_checkEnv = stage "Check environment" { run "dotnet tool restore" }
+let stage_checkEnv =
+    stage "Check environment" {
+        run (fun _ -> Spectre.Console.AnsiConsole.MarkupLine("[red]::error::demo error[/]"))
+        run "dotnet tool restore"
+    }
 
 let stage_lint =
     stage "Lint" {
