@@ -16,7 +16,10 @@ let options = {|
 
 let stage_checkEnv =
     stage "Check environment" {
-        run (fun _ -> Spectre.Console.AnsiConsole.WriteLine("::error title=[stage] asd::demo error"))
+        run (fun _ -> Spectre.Console.AnsiConsole.WriteLine("""::error title=[stage] asd::demo error
+    sdfsd
+    sdfsd    
+    """))
         run "dotnet tool restore"
     }
 
