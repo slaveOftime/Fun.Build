@@ -64,8 +64,8 @@ module StageContextExtensionsInternal =
 
         member ctx.GetErrorPrefix() =
             match ctx.TryGetEnvVar("GITHUB_ENV") with
-            | ValueSome _ -> "::error"
-            | _ -> "Error:"
+            | ValueSome _ -> "::error::"
+            | _ -> "Error: "
 
 
         member ctx.GetNoPrefixForStep() =
@@ -253,9 +253,9 @@ module StageContextExtensionsInternal =
                                         | Error e ->
                                             if String.IsNullOrEmpty e |> not then
                                                 if not isParallel && stage.GetNoPrefixForStep() then
-                                                    AnsiConsole.MarkupLineInterpolated $"""[red]{stage.GetErrorPrefix()} {e}[/]"""
+                                                    AnsiConsole.MarkupLineInterpolated $"""[red]{stage.GetErrorPrefix()}{e}[/]"""
                                                 else
-                                                    AnsiConsole.MarkupLineInterpolated $"""[red]{stage.GetErrorPrefix()} {prefix} {e}[/]"""
+                                                    AnsiConsole.MarkupLineInterpolated $"""[red]{stage.GetErrorPrefix()}{prefix} {e}[/]"""
                                             return false
                                         | Ok _ -> return true
                                       }
