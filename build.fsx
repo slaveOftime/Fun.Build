@@ -16,7 +16,7 @@ let options = {|
 
 let stage_checkEnv =
     stage "Check environment" {
-        run (fun _ -> Spectre.Console.AnsiConsole.MarkupLineInterpolated($"""[red]::error title=[stage] asd::check/step-0> One or more errors occurred. (Errors: Package 
+        run (fun _ -> Spectre.Console.AnsiConsole.MarkupLine($"""[red]::error title=STAGE asd::check/step-0> One or more errors occurred. (Errors: Package 
 Microsoft.AspNetCore.Components.QuickGrid should be updated from 8.0.8 to 8.0.10
 Package Microsoft.AspNetCore.Components.Web should be updated from 8.0.8 to 
 8.0.10
