@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.1.13] - 2024-10-21
+
+- Improve error reporting in github actions
+
 ## [1.1.12] - 2024-10-21
 
 - Improve error reporting in github actions

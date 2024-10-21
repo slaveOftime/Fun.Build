@@ -59,12 +59,12 @@ module PipelineContextExtensionsInternal =
             }
 
 
-        member this.GetErrorPrefix() =
+        member this.PrintError(msg: string) =
             if this.EnvVars.ContainsKey("GITHUB_ENV") then
                 let title = "[PIPELINE] " + this.Name.Replace(",", "_")
-                $"::error title={title}::"
+                AnsiConsole.WriteLine $"::error title={title}::{msg}"
             else
-                "Error: "
+                AnsiConsole.MarkupLineInterpolated $"[red]Error: {msg}[/]"
 
 
         member this.RunStages(stages: StageContext seq, cancelToken: Threading.CancellationToken, ?failfast: bool) =
@@ -163,7 +163,7 @@ module PipelineContextExtensionsInternal =
             if pipelineExns.Count > 0 then
                 for exn in pipelineExns do
                     let innerMessage = if exn.InnerException <> null then exn.InnerException.Message else ""
-                    AnsiConsole.MarkupLineInterpolated $"[red]{this.GetErrorPrefix()}{exn.Message} {innerMessage}[/]"
+                    this.PrintError(exn.Message + " " + innerMessage)
                 AnsiConsole.WriteLine()
                 raise (PipelineFailedException("Pipeline is failed because of exception", pipelineExns[0]))
             else if hasError then

@@ -62,12 +62,13 @@ module StageContextExtensionsInternal =
             |> fun x -> x + ctx.Name
 
 
-        member ctx.GetErrorPrefix() =
+        member ctx.PrinterError(msg: string) =
             match ctx.TryGetEnvVar("GITHUB_ENV") with
             | ValueSome _ ->
                 let title = "[STAGE] " + ctx.GetNamePath().Replace(",", "_")
-                $"::error title={title}::"
-            | _ -> "Error: "
+                AnsiConsole.WriteLine $"::error title={title}::{msg}"
+
+            | _ -> AnsiConsole.MarkupLineInterpolated $"""[red]Error: {msg}[/]"""
 
 
         member ctx.GetNoPrefixForStep() =
@@ -255,10 +256,12 @@ module StageContextExtensionsInternal =
                                         | Error e ->
                                             if String.IsNullOrEmpty e |> not then
                                                 if not isParallel && stage.GetNoPrefixForStep() then
-                                                    AnsiConsole.MarkupLineInterpolated $"""[red]{stage.GetErrorPrefix()}{e}[/]"""
+                                                    stage.PrinterError(e)
                                                 else
-                                                    AnsiConsole.MarkupLineInterpolated $"""[red]{stage.GetErrorPrefix()}{prefix} {e}[/]"""
+                                                    stage.PrinterError(prefix + " " + e)
+
                                             return false
+
                                         | Ok _ -> return true
                                       }
                                     | Step.StepOfStage subStage -> async {
