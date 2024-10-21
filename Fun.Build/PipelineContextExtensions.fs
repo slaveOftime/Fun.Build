@@ -59,7 +59,12 @@ module PipelineContextExtensionsInternal =
             }
 
 
-        member this.GetErrorPrefix() = if this.EnvVars.ContainsKey("GITHUB_ENV") then "::error::" else "Error: "
+        member this.GetErrorPrefix() =
+            if this.EnvVars.ContainsKey("GITHUB_ENV") then
+                let title = "[PIPELINE] " + this.Name.Replace(",", "_")
+                $"::error title={title}::"
+            else
+                "Error: "
 
 
         member this.RunStages(stages: StageContext seq, cancelToken: Threading.CancellationToken, ?failfast: bool) =

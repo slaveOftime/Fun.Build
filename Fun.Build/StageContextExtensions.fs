@@ -64,7 +64,9 @@ module StageContextExtensionsInternal =
 
         member ctx.GetErrorPrefix() =
             match ctx.TryGetEnvVar("GITHUB_ENV") with
-            | ValueSome _ -> "::error::"
+            | ValueSome _ ->
+                let title = "[STAGE] " + ctx.GetNamePath().Replace(",", "_")
+                $"::error title={title}::"
             | _ -> "Error: "
 
 
