@@ -125,28 +125,36 @@ module PipelineContextExtensionsInternal =
             let pipelineExns = ResizeArray<exn>()
             use cts = new Threading.CancellationTokenSource(timeoutForPipeline)
 
-            AnsiConsole.MarkupLine $"[turquoise4]Run stages[/]"
-            let hasFailedStage, stageExns = this.RunStages(this.Stages, cts.Token, failfast = true)
-            pipelineExns.AddRange stageExns
-            AnsiConsole.MarkupLine $"[turquoise4]Run stages finished[/]"
-            AnsiConsole.WriteLine()
-            AnsiConsole.WriteLine()
 
-            let mutable hasFailedPostStage = false
-            if cts.IsCancellationRequested |> not then
-                AnsiConsole.MarkupLine $"[turquoise4]Run post stages[/]"
-                let result, postStageExns = this.RunStages(this.PostStages, cts.Token, failfast = false)
-                hasFailedPostStage <- result
-                pipelineExns.AddRange postStageExns
-                AnsiConsole.MarkupLine $"[turquoise4]Run post stages finished[/]"
+            let mutable hasErrors = false
+
+            try
+                AnsiConsole.MarkupLine $"[turquoise4]Run stages[/]"
+                let hasFailedStage, stageExns = this.RunStages(this.Stages, cts.Token, failfast = true)
+                pipelineExns.AddRange stageExns
+                AnsiConsole.MarkupLine $"[turquoise4]Run stages finished[/]"
                 AnsiConsole.WriteLine()
                 AnsiConsole.WriteLine()
 
+                let mutable hasFailedPostStage = false
+                if cts.IsCancellationRequested |> not then
+                    AnsiConsole.MarkupLine $"[turquoise4]Run post stages[/]"
+                    let result, postStageExns = this.RunStages(this.PostStages, cts.Token, failfast = false)
+                    hasFailedPostStage <- result
+                    pipelineExns.AddRange postStageExns
+                    AnsiConsole.MarkupLine $"[turquoise4]Run post stages finished[/]"
+                    AnsiConsole.WriteLine()
+                    AnsiConsole.WriteLine()
 
-            let hasError = hasFailedStage || hasFailedPostStage
+                hasErrors <- hasFailedStage || hasFailedPostStage
+
+            with ex ->
+                this.PrintError ex.Message
+                raise ex
+
 
             let color =
-                if hasError then "red"
+                if hasErrors then "red"
                 else if cts.IsCancellationRequested then "yellow"
                 else "lime"
 
@@ -166,8 +174,8 @@ module PipelineContextExtensionsInternal =
                     this.PrintError(exn.Message + " " + innerMessage)
                 AnsiConsole.WriteLine()
                 raise (PipelineFailedException("Pipeline is failed because of exception", pipelineExns[0]))
-            else if hasError then
-                AnsiConsole.MarkupLine "[red]Pipeline is failed because result is not indicating as successful[/]"
+            else if hasErrors then
+                this.PrintError "Pipeline is failed because result is not indicating as successful"
                 raise (PipelineFailedException "Pipeline is failed because result is not indicating as successful")
 
 

@@ -62,7 +62,7 @@ module StageContextExtensionsInternal =
             |> fun x -> x + ctx.Name
 
 
-        member ctx.PrinterError(msg: string) =
+        member ctx.PrintError(msg: string) =
             match ctx.TryGetEnvVar("GITHUB_ENV") with
             | ValueSome _ ->
                 let title = "[STAGE] " + ctx.GetNamePath().Replace(",", "_")
@@ -256,9 +256,9 @@ module StageContextExtensionsInternal =
                                         | Error e ->
                                             if String.IsNullOrEmpty e |> not then
                                                 if not isParallel && stage.GetNoPrefixForStep() then
-                                                    stage.PrinterError(e)
+                                                    stage.PrintError(e)
                                                 else
-                                                    stage.PrinterError(prefix + " " + e)
+                                                    stage.PrintError(prefix + " " + e)
 
                                             return false
 
@@ -289,6 +289,14 @@ module StageContextExtensionsInternal =
                                 return isSuccess, exns
 
                             with
+                            | :? PipelineCancelledException as ex ->
+                                raise ex
+                                return false, exns
+
+                            | :? PipelineFailedException as ex ->
+                                raise ex
+                                return false, exns
+
                             | :? StepSoftCancelledException as ex ->
                                 AnsiConsole.MarkupLineInterpolated $"[yellow]{prefix} {ex.Message}.[/]"
                                 return true, exns
@@ -343,6 +351,9 @@ module StageContextExtensionsInternal =
                         Async.RunSynchronously(ts, cancellationToken = linkedCTS.Token)
 
                     with
+                    | :? PipelineCancelledException as ex -> raise ex
+                    | :? PipelineFailedException as ex -> raise ex
+
                     | _ when isStageSoftCancelled -> isSuccess <- true
                     | ex ->
                         isSuccess <- false

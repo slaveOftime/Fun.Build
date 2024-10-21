@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.1.14] - 2024-10-21
+
+- PipelineFailedException and PipelineCancelledException should fail fast
+
 ## [1.1.13] - 2024-10-21
 
 - Improve error reporting in github actions
