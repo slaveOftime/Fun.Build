@@ -16,7 +16,7 @@ let options = {|
 
 let stage_checkEnv =
     stage "Check environment" {
-        run (fun _ -> Spectre.Console.AnsiConsole.WriteLine("""::error title=[stage] asd::check/step-0> One or more errors occurred. (Errors: Package 
+        run (fun _ -> Spectre.Console.AnsiConsole.MarkupLineInterpolated($"""[red]::error title=[stage] asd::check/step-0> One or more errors occurred. (Errors: Package 
 Microsoft.AspNetCore.Components.QuickGrid should be updated from 8.0.8 to 8.0.10
 Package Microsoft.AspNetCore.Components.Web should be updated from 8.0.8 to 
 8.0.10
@@ -35,7 +35,7 @@ Package Microsoft.FluentUI.AspNetCore.Components should be updated from 4.10.1
 to 4.10.2
 Package MudBlazor should be updated from 7.8.0 to 7.13.0
 Package Blazor-ApexCharts should be updated from 3.4.0 to 3.5.0
-    """))
+    [/]"""))
         run "dotnet tool restore"
     }
 
