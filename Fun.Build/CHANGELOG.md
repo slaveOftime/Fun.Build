@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.1.10] - 2024-10-21
+
+- Improve error reporting in github actions
+
 ## [1.1.9] - 2024-10-18
 
 - Support disablePrintOutput for RunCommand
