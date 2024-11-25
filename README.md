@@ -6,7 +6,7 @@ The basic idea is you have **pipeline** which can contain multiple stages.
 Every **stage** can contain multiple steps. In the stage you can set it to run in parallel or run under some conditions (when envVar, cmdArg, branch etc.).  
 Every **step** is just a **async<Result<unit, string>>**, string is for the error message. 
 
-[Fun.Build.Cli](#funbuildcli) is used to manage fsharp scripts which is using Fun.Build and tryPrintPipelineCommandHelp.
+[Fun.Build.Cli](#funbuildcli--) is used to manage fsharp scripts which is using Fun.Build and tryPrintPipelineCommandHelp.
 
 ## For what
 
