@@ -493,10 +493,38 @@ module StageContextExtensions =
         // If not find then return ""
         member inline ctx.GetEnvVar(key: string) = ctx.TryGetEnvVar key |> ValueOption.defaultValue ""
 
+        /// <summary>
+        /// Get the command arguments from the command line without the remaining arguments that are placed after <c>--</c>.
+        ///
+        /// For example, if you run the following arguments:
+        ///
+        /// <c> -p demo test1 v1 -- test2 v2</c>
+        ///
+        /// will return
+        ///
+        /// <c>[ "-p"; "demo"; "test1"; "v1" ]</c>
+        /// </summary>
         member ctx.GetAllCmdArgs() =
             match ctx.ParentContext with
             | ValueSome(StageParent.Pipeline p) -> p.CmdArgs
             | ValueSome(StageParent.Stage s) -> s.GetAllCmdArgs()
+            | ValueNone -> []
+
+        /// <summary>
+        /// Return the remaining command arguments they are the arguments placed after <c>--</c> in the command line.
+        ///
+        /// For example, if you run the following arguments:
+        ///
+        /// <c> -p demo test1 v1 -- test2 v2</c>
+        ///
+        /// will return
+        ///
+        /// <c>[ "test2"; "v2" ]</c>
+        /// </summary>
+        member ctx.GetRemainingCmdArgs() =
+            match ctx.ParentContext with
+            | ValueSome(StageParent.Pipeline p) -> p.RemainingCmdArgs
+            | ValueSome(StageParent.Stage s) -> s.GetRemainingCmdArgs()
             | ValueNone -> []
 
         member ctx.TryGetCmdArg(key: string) =

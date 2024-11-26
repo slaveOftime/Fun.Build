@@ -22,12 +22,15 @@ module PipelineContextExtensionsInternal =
                 with _ ->
                     envVars.Add(key, "")
 
+            let argsInfo = Environment.GetCommandLineArgs() |> Array.toList |> resolveCmdArgsAndRemainings
+
             {
                 Name = name
                 Description = ValueNone
                 Mode = Mode.Execution
                 Verify = fun _ -> true
-                CmdArgs = Seq.toList (Environment.GetCommandLineArgs())
+                CmdArgs = argsInfo.CmdArgs
+                RemainingCmdArgs = argsInfo.RemainingArgs
                 EnvVars = envVars |> Seq.map (fun (KeyValue(k, v)) -> k, v) |> Map.ofSeq
                 AcceptableExitCodes = set [| 0 |]
                 Timeout = ValueNone

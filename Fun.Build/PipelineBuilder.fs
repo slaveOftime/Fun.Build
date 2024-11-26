@@ -177,7 +177,13 @@ type PipelineBuilder(name: string) =
     member inline _.cmdArgs([<InlineIfLambda>] build: BuildPipeline, args: string list) =
         BuildPipeline(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with CmdArgs = args }
+
+            let argsInfo = resolveCmdArgsAndRemainings args
+
+            { ctx with
+                CmdArgs = argsInfo.CmdArgs
+                RemainingCmdArgs = argsInfo.RemainingArgs
+            }
         )
 
     /// Set working dir for all steps under the stage.
