@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.1.15] - 2024-11-27
+
+- Divide cmd args into CmdArgs and RemainingCmdArgs by **--**, [request](https://github.com/slaveOftime/Fun.Build/issues/81)
+
 ## [1.1.14] - 2024-10-21
 
 - PipelineFailedException and PipelineCancelledException should fail fast

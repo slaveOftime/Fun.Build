@@ -29,7 +29,7 @@ If you find my projects helpful and would like to support my work, consider maki
 ## Minimal example and conventions
 
 ```fsharp
-#r "nuget: Fun.Build, 1.1.14"
+#r "nuget: Fun.Build, 1.1.15"
 open Fun.Build
 
 pipeline "demo" {
@@ -76,7 +76,7 @@ dotnet fsi build.fsx -- -p your_pipeline -h
 Below example covered most of the apis and usage example, take it as the documents😊:
 
 ```fsharp
-#r "nuget: Fun.Build, 1.1.14"
+#r "nuget: Fun.Build, 1.1.15"
 
 open Fun.Result
 open Fun.Build
