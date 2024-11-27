@@ -485,3 +485,61 @@ let ``runBeforeEachStage and runAfterEachStage should work`` () =
     Assert.Equal(4, j)
     Assert.Equal(3, ti)
     Assert.Equal(3, tj)
+
+[<Fact>]
+let ``check GetAllCmdArgs and RemainingArgs works when remaining args is not empty`` () =
+    let mutable actualAllCmdArgs = []
+    let mutable actualRemainingArgs = []
+
+    pipeline "demo" {
+        cmdArgs [ "-p"; "demo"; "test1"; "v1"; "--"; "test2"; "v2" ]
+        stage "shows arguments" {
+            run (fun ctx ->
+                actualAllCmdArgs <- ctx.GetAllCmdArgs()
+                actualRemainingArgs <- ctx.GetRemainingCmdArgs()
+            )
+        }
+        runImmediate
+    }
+
+    Assert.Equal<string list>([ "-p"; "demo"; "test1"; "v1" ], actualAllCmdArgs)
+    Assert.Equal<string list>([ "test2"; "v2" ], actualRemainingArgs)
+
+[<Fact>]
+let ``check GetAllCmdArgs and RemainingArgs works when remaining args is provided but empty`` () =
+    let mutable actualAllCmdArgs = []
+    let mutable actualRemainingArgs = []
+
+    pipeline "demo" {
+        cmdArgs [ "-p"; "demo"; "test1"; "v1"; "--" ]
+        stage "shows arguments" {
+            run (fun ctx ->
+                actualAllCmdArgs <- ctx.GetAllCmdArgs()
+                actualRemainingArgs <- ctx.GetRemainingCmdArgs()
+            )
+        }
+        runImmediate
+    }
+
+    Assert.Equal<string list>([ "-p"; "demo"; "test1"; "v1" ], actualAllCmdArgs)
+    Assert.Equal<string list>([], actualRemainingArgs)
+
+
+[<Fact>]
+let ``check GetAllCmdArgs and RemainingArgs works when remaining args is not provided`` () =
+    let mutable actualAllCmdArgs = []
+    let mutable actualRemainingArgs = []
+
+    pipeline "demo" {
+        cmdArgs [ "-p"; "demo"; "test1"; "v1" ]
+        stage "shows arguments" {
+            run (fun ctx ->
+                actualAllCmdArgs <- ctx.GetAllCmdArgs()
+                actualRemainingArgs <- ctx.GetRemainingCmdArgs()
+            )
+        }
+        runImmediate
+    }
+
+    Assert.Equal<string list>([ "-p"; "demo"; "test1"; "v1" ], actualAllCmdArgs)
+    Assert.Equal<string list>([], actualRemainingArgs)

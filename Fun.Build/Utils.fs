@@ -74,6 +74,19 @@ let getFsiFileName () =
     else
         "your_script.fsx"
 
+let resolveCmdArgsAndRemainings (args: string list) =
+
+    let cmdArgs = args |> List.takeWhile (fun x -> x <> "--")
+
+    let remainingArgs =
+        let remainingArgsStartIndex = cmdArgs.Length + 1
+
+        if remainingArgsStartIndex < args.Length then
+            args.[remainingArgsStartIndex..]
+        else
+            []
+
+    {| CmdArgs = cmdArgs; RemainingArgs = remainingArgs |}
 
 module ValueOption =
 

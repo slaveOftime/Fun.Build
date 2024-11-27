@@ -76,6 +76,7 @@ type PipelineContext = {
     /// Verify before run pipeline, will throw PipelineFailedException if return false
     Verify: PipelineContext -> bool
     CmdArgs: string list
+    RemainingCmdArgs: string list
     EnvVars: Map<string, string>
     AcceptableExitCodes: Set<int>
     Timeout: TimeSpan voption
