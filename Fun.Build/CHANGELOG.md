@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.1.16] - 2025-01-13
+
+- Add optional argument disablePrintCommand
+
 ## [1.1.15] - 2024-11-27
 
 - Divide cmd args into CmdArgs and RemainingCmdArgs by **--**, [request](https://github.com/slaveOftime/Fun.Build/issues/81)
