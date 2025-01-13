@@ -63,38 +63,48 @@ module BuiltinCmds =
     type StageContext with
 
         /// Run a command string with current context
-        member ctx.RunCommand(commandStr: string, ?step: int, ?workingDir: string, ?disablePrintOutput: bool, ?cancellationToken: CancellationToken) = async {
-            let disablePrintOutput = defaultArg disablePrintOutput false
-            let command = ctx.BuildCommand(commandStr, ?workingDir = workingDir)
-            let noPrefixForStep = ctx.GetNoPrefixForStep()
-            let prefix =
-                if noPrefixForStep then
-                    ""
-                else
-                    match step with
-                    | Some i -> ctx.BuildStepPrefix i
-                    | None -> ctx.GetNamePath()
+        member ctx.RunCommand
+            (
+                commandStr: string,
+                ?step: int,
+                ?workingDir: string,
+                ?disablePrintOutput: bool,
+                ?disablePrintCommand: bool,
+                ?cancellationToken: CancellationToken
+            ) =
+            async {
+                let disablePrintOutput = defaultArg disablePrintOutput false
+                let disablePrintCommand = defaultArg disablePrintCommand false
+                let command = ctx.BuildCommand(commandStr, ?workingDir = workingDir)
+                let noPrefixForStep = ctx.GetNoPrefixForStep()
+                let prefix =
+                    if noPrefixForStep then
+                        ""
+                    else
+                        match step with
+                        | Some i -> ctx.BuildStepPrefix i
+                        | None -> ctx.GetNamePath()
 
-            if not noPrefixForStep then AnsiConsole.Markup $"[green]{prefix}[/] "
-            AnsiConsole.WriteLine commandStr
+                if not noPrefixForStep then AnsiConsole.Markup $"[green]{prefix}[/] "
+                if not disablePrintCommand then AnsiConsole.WriteLine commandStr
 
-            let ct = defaultArg cancellationToken CancellationToken.None
+                let ct = defaultArg cancellationToken CancellationToken.None
 
-            let! result =
-                Process.StartAsync(
-                    command,
-                    commandStr,
-                    prefix,
-                    printOutput = (not disablePrintOutput && not (ctx.GetNoStdRedirectForStep())),
-                    cancellationToken = ct
-                )
+                let! result =
+                    Process.StartAsync(
+                        command,
+                        commandStr,
+                        prefix,
+                        printOutput = (not disablePrintOutput && not (ctx.GetNoStdRedirectForStep())),
+                        cancellationToken = ct
+                    )
 
-            return
-                if ct.IsCancellationRequested then
-                    Ok()
-                else
-                    ctx.MapExitCodeToResult result.ExitCode
-        }
+                return
+                    if ct.IsCancellationRequested then
+                        Ok()
+                    else
+                        ctx.MapExitCodeToResult result.ExitCode
+            }
 
         /// <summary>
         /// Run a command string with current context, and return the standard output if the exit code is acceptable.
@@ -108,10 +118,12 @@ module BuiltinCmds =
                 ?step: int,
                 ?workingDir: string,
                 ?disablePrintOutput: bool,
+                ?disablePrintCommand: bool,
                 ?cancellationToken: CancellationToken
             ) =
             async {
                 let disablePrintOutput = defaultArg disablePrintOutput false
+                let disablePrintCommand = defaultArg disablePrintCommand false
                 let command = ctx.BuildCommand(commandStr, ?workingDir = workingDir)
                 let noPrefixForStep = ctx.GetNoPrefixForStep()
                 let prefix =
@@ -123,7 +135,7 @@ module BuiltinCmds =
                         | None -> ctx.GetNamePath()
 
                 if not noPrefixForStep then AnsiConsole.Markup $"[green]{prefix}[/] "
-                AnsiConsole.WriteLine commandStr
+                if not disablePrintCommand then AnsiConsole.WriteLine commandStr
 
                 let ct = defaultArg cancellationToken CancellationToken.None
 
@@ -153,10 +165,12 @@ module BuiltinCmds =
                 ?step: int,
                 ?workingDir: string,
                 ?disablePrintOutput: bool,
+                ?disablePrintCommand: bool,
                 ?cancellationToken: CancellationToken
             ) : Async<Result<string, string>> =
             async {
                 let disablePrintOutput = defaultArg disablePrintOutput false
+                let disablePrintCommand = defaultArg disablePrintCommand false
                 let command = ctx.BuildCommand(commandStr.ToString(), ?workingDir = workingDir)
                 let noPrefixForStep = ctx.GetNoPrefixForStep()
                 let args: obj[] = Array.create commandStr.ArgumentCount "*"
@@ -171,7 +185,7 @@ module BuiltinCmds =
                         | None -> ctx.GetNamePath()
 
                 if not noPrefixForStep then AnsiConsole.Markup $"[green]{prefix}[/] "
-                AnsiConsole.WriteLine encryptiedStr
+                if not disablePrintCommand then AnsiConsole.WriteLine encryptiedStr
 
                 let ct = defaultArg cancellationToken CancellationToken.None
 
@@ -200,6 +214,7 @@ module BuiltinCmds =
                 ?step: int,
                 ?workingDir: string,
                 ?disablePrintOutput: bool,
+                ?disablePrintCommand: bool,
                 ?cancellationToken: CancellationToken
             ) : Async<Result<unit, string>> =
             ctx.RunSensitiveCommandCaptureOutput(
@@ -207,6 +222,7 @@ module BuiltinCmds =
                 ?step = step,
                 ?workingDir = workingDir,
                 ?disablePrintOutput = disablePrintOutput,
+                ?disablePrintCommand = disablePrintCommand,
                 ?cancellationToken = cancellationToken
             )
             |> AsyncResult.map ignore
