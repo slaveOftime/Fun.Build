@@ -4,7 +4,6 @@ open Xunit
 open Fun.Build
 open System.Diagnostics
 open System.Threading.Tasks
-open Xunit
 
 
 [<Fact>]
@@ -194,6 +193,36 @@ let ``runIfOnlySpecified should work`` () =
             timeout 1
             stage "" { run call }
             runIfOnlySpecified false
+        }
+    )
+
+[<Fact>]
+let ``runIfOnlySpecified should work for multiple -p`` () =
+    shouldBeCalled (fun call ->
+        let p1 = "demo1"
+        let p2 = "demo2"
+        let args = [ "-p"; p1; "d1"; "--"; "d1-1"; "-p"; p2; "d2"; "--"; "d2-2" ]
+        pipeline p1 {
+            cmdArgs args
+            stage "" {
+                run (fun ctx ->
+                    call ctx
+                    Assert.Equal([| "-p"; p1; "d1" |], ctx.GetAllCmdArgs())
+                    Assert.Equal([| "d1-1" |], ctx.GetRemainingCmdArgs())
+                )
+            }
+            runIfOnlySpecified
+        }
+        pipeline p2 {
+            cmdArgs args
+            stage "" {
+                run (fun ctx ->
+                    call ctx
+                    Assert.Equal([| "-p"; p2; "d2" |], ctx.GetAllCmdArgs())
+                    Assert.Equal([| "d2-2" |], ctx.GetRemainingCmdArgs())
+                )
+            }
+            runIfOnlySpecified
         }
     )
 
