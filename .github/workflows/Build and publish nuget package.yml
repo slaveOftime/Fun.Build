@@ -7,11 +7,12 @@ on:
     paths:
     - Fun.Build/CHANGELOG.md
     - Fun.Build.Cli/CHANGELOG.md
+    - ".github/workflows/Build and publish nuget package.yml"
     
 jobs:
   build:
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v3
