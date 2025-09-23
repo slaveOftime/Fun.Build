@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [1.1.17] - 2025-09-23
+
+Support run multiple pipelines in one execution
+
+```bash
+dotnet fsi build.fsx -- -p pipeline1 ... -p pipeline2 ...
+```
+
 ## [1.1.16] - 2025-01-13
 
 - Add optional argument disablePrintCommand

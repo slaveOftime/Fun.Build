@@ -11,6 +11,9 @@ type private IsSpecified = bool
 /// Used to keep registered data for later usage
 let private runIfOnlySpecifiedPipelines = System.Collections.Generic.List<struct (IsSpecified * PipelineContext)>()
 
+let private getPipelineIndexes args =
+    args |> Seq.indexed |> Seq.filter (fun (_, arg) -> arg = "-p" || arg = "--pipeline") |> Seq.map fst |> Seq.toList
+
 
 type PipelineBuilder(name: string) =
 
@@ -244,10 +247,15 @@ type PipelineBuilder(name: string) =
         let specified = defaultArg specified true
         let ctx = build.Invoke(PipelineContext.Create name)
 
-        let args = ctx.CmdArgs @ Array.toList (Environment.GetCommandLineArgs())
+        let args =
+            if ctx.RemainingCmdArgs.IsEmpty then
+                ctx.CmdArgs
+            else
+                [ yield! ctx.CmdArgs; "--"; yield! ctx.RemainingCmdArgs ]
+
         let isHelp = args |> Seq.exists (fun arg -> arg = "-h" || arg = "--help")
         let verbose = args |> Seq.exists (fun arg -> arg = "-v" || arg = "--verbose")
-        let pipelineIndex = args |> Seq.tryFindIndex (fun arg -> arg = "-p" || arg = "--pipeline")
+        let pipelineIndexes = getPipelineIndexes args
 
         runIfOnlySpecifiedPipelines.Add(specified, ctx)
 
@@ -258,18 +266,24 @@ type PipelineBuilder(name: string) =
         )
 
         try
-            if isHelp then
-                match pipelineIndex with
-                | Some index when List.length args > index + 1 && ctx.Name.Equals(args[index + 1], StringComparison.OrdinalIgnoreCase) ->
-                    ctx.RunCommandHelp(verbose)
-                | _ -> ()
-            else
-                match pipelineIndex with
-                | Some index when List.length args > index + 1 ->
-                    if ctx.Name.Equals(args[index + 1], StringComparison.OrdinalIgnoreCase) then
-                        ctx.Run()
-                | None when not specified -> ctx.Run()
-                | _ -> ()
+            match pipelineIndexes with
+            | [] when not specified -> ctx.Run()
+            | [] -> ()
+            | _ :: _ ->
+                for i, index in Seq.indexed pipelineIndexes do
+                    if List.length args > index + 1 && ctx.Name.Equals(args[index + 1], StringComparison.OrdinalIgnoreCase) then
+                        let args =
+                            if i = Seq.length pipelineIndexes - 1 then
+                                args[index..]
+                            else
+                                args[index .. pipelineIndexes[i + 1] - 1]
+                        let argInfo = resolveCmdArgsAndRemainings args
+                        let ctx =
+                            { ctx with
+                                CmdArgs = argInfo.CmdArgs
+                                RemainingCmdArgs = argInfo.RemainingArgs
+                            }
+                        if isHelp then ctx.RunCommandHelp(verbose) else ctx.Run()
         with
         | :? PipelineFailedException
         | :? PipelineCancelledException ->
@@ -287,17 +301,18 @@ let inline pipeline name = PipelineBuilder name
 /// If you only have one specified pipeline, it will try to print its command only help information.
 let tryPrintPipelineCommandHelp () =
     let args = Environment.GetCommandLineArgs()
-    let pipelineIndex = args |> Seq.tryFindIndex (fun arg -> arg = "-p" || arg = "--pipeline")
+    let pipelineIndexes = getPipelineIndexes args
 
-    match pipelineIndex with
-    | Some index ->
-        let pipelineName = args[index + 1]
-        let isPipelineRegistered =
-            runIfOnlySpecifiedPipelines
-            |> Seq.exists (fun struct (_, x) -> x.Name.Equals(pipelineName, StringComparison.OrdinalIgnoreCase))
-        if not isPipelineRegistered then
-            AnsiConsole.MarkupLineInterpolated $"Pipeline [red]{pipelineName}[/] is not found."
-            AnsiConsole.MarkupLine "You can use [green]runIfOnlySpecified[/] for your pipline, or check if the name is correct."
+    match pipelineIndexes with
+    | _ :: _ ->
+        for index in pipelineIndexes do
+            let pipelineName = args[index + 1]
+            let isPipelineRegistered =
+                runIfOnlySpecifiedPipelines
+                |> Seq.exists (fun struct (_, x) -> x.Name.Equals(pipelineName, StringComparison.OrdinalIgnoreCase))
+            if not isPipelineRegistered then
+                AnsiConsole.MarkupLineInterpolated $"Pipeline [red]{pipelineName}[/] is not found."
+                AnsiConsole.MarkupLine "You can use [green]runIfOnlySpecified[/] for your pipline, or check if the name is correct."
 
     | _ ->
         let isHelp = args |> Seq.exists (fun arg -> arg = "-h" || arg = "--help")
