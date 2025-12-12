@@ -4,15 +4,25 @@
 
 open Fun.Build
 
-let script = "./demo-fsx.fsx"
+let script = "./fsx-demo.fsx"
 
 pipeline "eveluate" {
     stage "setup" {
-        workingDir "./Fun.Fsx"
-        whenNot { cmdArg "--no-setup" }
-        run "dotnet publish -c Release -o dist"
+        run "dotnet build"
+        stage "build fsx" {
+            workingDir "./Fun.Fsx"
+            whenNot { cmdArg "--no-setup" }
+            run "dotnet publish -c Release -o dist"
+        }
     }
-    stage "fsx" { run $"./Fun.Fsx/dist/fsx.exe {script} -v diag -- -arg1 1" }
+    stage "fsx" { 
+        whenWindows
+        run $"./Fun.Fsx/dist/fsx.exe {script} -v diag -- -arg1 1"
+    }
+    stage "fsx" { 
+        whenLinux
+        run $"./Fun.Fsx/dist/fsx {script} -v diag -- -arg1 1"
+    }
     stage "fsi" { run $"dotnet fsi {script} -- -arg1 1" }
     runIfOnlySpecified false
 }
