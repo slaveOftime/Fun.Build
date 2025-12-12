@@ -55,8 +55,15 @@ pipeline "packages" {
     stage_lint
     stage_test
     stage "Build packages" {
+        continueStepsOnFailure
         run "dotnet pack -c Release Fun.Build/Fun.Build.fsproj -o ."
         run "dotnet pack -c Release Fun.Build.Cli/Fun.Build.Cli.fsproj -o ."
+        run "dotnet pack -c Release Fun.Fsx/Fun.Fsx.fsproj -o . -r win-x64"
+        // run "dotnet pack -c Release Fun.Fsx/Fun.Fsx.fsproj -o . -r win-arm64"
+        // run "dotnet pack -c Release Fun.Fsx/Fun.Fsx.fsproj -o . -r linux-x64"
+        // run "dotnet pack -c Release Fun.Fsx/Fun.Fsx.fsproj -o . -r linux-arm64"
+        // run "dotnet pack -c Release Fun.Fsx/Fun.Fsx.fsproj -o . -r osx-x64"
+        // run "dotnet pack -c Release Fun.Fsx/Fun.Fsx.fsproj -o . -r osx-arm64"
     }
     stage "Publish packages to nuget" {
         whenBranch "master"

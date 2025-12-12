@@ -1,6 +1,6 @@
-# Fun.Build [![Nuget](https://img.shields.io/nuget/vpre/Fun.Build)](https://www.nuget.org/packages/Fun.Build)
+# Fun.Build [![Nuget](https://img.shields.io/nuget/vpre/Fun.Build)](https://www.nuget.org/packages/Fun.Build) Fun.Build.Cli [![Nuget](https://img.shields.io/nuget/vpre/Fun.Build.Cli)](https://www.nuget.org/packages/Fun.Build.Cli) Fun.Fsx [![Nuget](https://img.shields.io/nuget/vpre/Fun.Build)](https://www.nuget.org/packages/Fun.Fsx)
 
-This is a project mainly used for CICD, you can use it in a fsharp project or as a script. You can check the **build.fsx** or **demo.fsx** under the root folder to check how the Fun.Build project itself is built and published to nuget.
+[Fun.Build](#funbuild--) This is a project mainly used for CICD, you can use it in a fsharp project or as a script. You can check the **build.fsx** or **demo.fsx** under the root folder to check how the Fun.Build project itself is built and published to nuget.
 
 The basic idea is you have **pipeline** which can contain multiple stages.  
 Every **stage** can contain multiple steps. In the stage you can set it to run in parallel or run under some conditions (when envVar, cmdArg, branch etc.).  
@@ -8,13 +8,7 @@ Every **step** is just a **async<Result<unit, string>>**, string is for the erro
 
 [Fun.Build.Cli](#funbuildcli--) is used to manage fsharp scripts which is using Fun.Build and tryPrintPipelineCommandHelp.
 
-## For what
-
-- Simple and straight forward DSL
-- Type safety and extendable DSL
-- Build and compose complex pipelines
-- Test your pipelines locally
-- Generate command line help information automatically
+[Fun.Fsx](#funbuildcli--) is used to replace fsharp default `dotnet fsi xxx` for better startup time when you only want to execute your script directly.
 
 
 ## Donation
@@ -26,7 +20,15 @@ If you find my projects helpful and would like to support my work, consider maki
 </a>
 
 
-## Minimal example and conventions
+## Fun.Build
+
+- Simple and straight forward DSL
+- Type safety and extendable DSL
+- Build and compose complex pipelines
+- Test your pipelines locally
+- Generate command line help information automatically
+
+### Minimal example and conventions
 
 ```fsharp
 #r "nuget: Fun.Build, 1.1.15"
@@ -57,7 +59,7 @@ tryPrintPipelineCommandHelp ()
 ```
 
 
-## Print command line help information
+### Print command line help information
 
 You can call **tryPrintPipelineCommandHelp ()** at the end of your script to get some help infomation.  
 Then you can run below command to get the help info: 
@@ -71,7 +73,7 @@ dotnet fsi build.fsx -- -p your_pipeline -h
 ```
 
 
-## Example:
+### Example:
 
 Below example covered most of the apis and usage example, take it as the documents😊:
 
@@ -317,3 +319,24 @@ Pipelines:
 ```
 
 After first setup, we can run it without any arguments, it will prompt related question to guide you.
+
+
+## Fun.Fsx
+
+> If there is nothing changed and rerun, it is fast, but if the script is modified, the incremental build is too slow for fsharp. So currently, this experiment is dead.
+
+This is a project to run a script file with better performance than fsharp default `dotnet fsi`.
+
+The concept is very simple:
+
+```txt
+use the specified script as the entry
+build dependencies for scripts, packages, dll etc.
+if dependency script files are modified then
+  if packages are modified then
+    update or create a fsharp project and run it
+  else
+    update or create a fsharp project and run with --no-restore    
+else 
+    run with --no-restore --no-build
+```

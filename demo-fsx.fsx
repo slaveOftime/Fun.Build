@@ -1,15 +1,17 @@
 //sdk Microsoft.NET.Sdk
-//property OutputType=Exe
 //property TargetFramework=net10.0
 
-#r "nuget:FsHttp,15.0.3"
-#r "nuget: Fun.Build"
+#r "nuget: FsHttp, 15.0.3"
+#r "nuget: Fun.Build, 1.1.17"
+
 #load "demo-cmd.fsx"
-#load "demo.fsx"
 
-System.Console.ReadLine() |> printfn " => %s"
 
-printfn "Hello from demo-fsx! %s" __SOURCE_DIRECTORY__
+printfn "__SOURCE_DIRECTORY__ %s" __SOURCE_DIRECTORY__
 
-printfn "%A" (System.Environment.GetCommandLineArgs())
- 
+printfn "Env CommandArgs: %A" (System.Environment.GetCommandLineArgs())
+printfn "Fsi CommandArgs: %A" (fsi.CommandLineArgs)
+
+printfn "%A" (System.Text.Json.JsonSerializer.Serialize  fsi)
+
+printfn "Iteration 1"
