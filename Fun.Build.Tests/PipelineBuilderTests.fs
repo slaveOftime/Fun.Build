@@ -572,3 +572,46 @@ let ``check GetAllCmdArgs and RemainingArgs works when remaining args is not pro
 
     Assert.Equal<string list>([ "-p"; "demo"; "test1"; "v1" ], actualAllCmdArgs)
     Assert.Equal<string list>([], actualRemainingArgs)
+
+[<Fact>]
+let ``help without -p should not run default pipeline`` () =
+    let mutable called = false
+
+    pipeline "Build" {
+        cmdArgs [ "--help" ]
+        stage "build" { run (fun _ -> called <- true) }
+        runIfOnlySpecified false
+    }
+
+    Assert.False(called)
+
+[<Fact>]
+let ``help with -p should not run pipeline`` () =
+    let mutable called = false
+
+    pipeline "Build" {
+        cmdArgs [ "-p"; "Build"; "--help" ]
+        stage "build" { run (fun _ -> called <- true) }
+        runIfOnlySpecified
+    }
+
+    Assert.False(called)
+
+[<Fact>]
+let ``help without -p should not run any pipeline when multiple exist`` () =
+    let mutable buildCalled = false
+    let mutable otherCalled = false
+
+    pipeline "Build" {
+        cmdArgs [ "--help" ]
+        stage "build" { run (fun _ -> buildCalled <- true) }
+        runIfOnlySpecified false
+    }
+    pipeline "Other" {
+        cmdArgs [ "--help" ]
+        stage "other" { run (fun _ -> otherCalled <- true) }
+        runIfOnlySpecified true
+    }
+
+    Assert.False(buildCalled)
+    Assert.False(otherCalled)

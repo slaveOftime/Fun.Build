@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.1.18] - 2026-08-31
+
+- Fix: help without -p runs the default pipeline instead of printing help
+ #91
+
 ## [1.1.17] - 2025-09-23
 
 Support run multiple pipelines in one execution
