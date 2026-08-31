@@ -267,7 +267,7 @@ type PipelineBuilder(name: string) =
 
         try
             match pipelineIndexes with
-            | [] when not specified -> ctx.Run()
+            | [] when not specified && not isHelp -> ctx.Run()
             | [] -> ()
             | _ :: _ ->
                 for i, index in Seq.indexed pipelineIndexes do

@@ -12,10 +12,11 @@ module Apps =
 
     let all = [ app1; app2; app3 ]
 
-let args =
-    {| app = fun apps -> CmdArg.Create(shortName = "-a", longName = "--app", values = apps, description = "specify the app you want to dev")
-       path = CmdArg.Create("-f", "--file", "publish directory for the app")
-       watch = CmdArg.Create(shortName = "-w", description = "if is in watch mode") |}
+let args = {|
+    app = fun apps -> CmdArg.Create(shortName = "-a", longName = "--app", values = apps, description = "specify the app you want to dev")
+    path = CmdArg.Create("-f", "--file", "publish directory for the app")
+    watch = CmdArg.Create(shortName = "-w", description = "if is in watch mode")
+|}
 
 
 pipeline "demo" {
