@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- Add `RunCommandCaptureAll` and `RunSensitiveCommandCaptureAll` which return a `CommandOutput` record with the exit code, standard output and standard error, whatever the exit code was #93
+- Fix: standard error was never read when output is redirected (prefixed, silenced or captured), so it was lost. It is now printed like standard output.
+- Fix: captured standard output no longer ends with an extra empty line
+
 ## [1.1.18] - 2026-08-31
 
 - Fix: help without -p runs the default pipeline instead of printing help

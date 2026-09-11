@@ -112,14 +112,14 @@ let ``RunCommandCaptureOutput should work`` () =
             }
             run (fun ctx -> async {
                 let! result = ctx.RunCommandCaptureOutput "echo 42"
-                Assert.Equal(Ok "42\n\n", result)
+                Assert.Equal(Ok "42\n", result)
             })
         }
         stage "" {
             whenWindows
             run (fun ctx -> async {
                 let! result = ctx.RunCommandCaptureOutput "powershell echo 42"
-                Assert.Equal(Ok "42\r\n\r\n", result)
+                Assert.Equal(Ok "42\r\n", result)
             })
         }
         runImmediate
@@ -136,14 +136,14 @@ let ``RunCommandCaptureOutput in working directory should work`` () =
             run (fun ctx -> async {
                 let tmpFolder = System.IO.Path.GetTempPath()
                 let! result = ctx.RunCommandCaptureOutput("echo 42", workingDir = tmpFolder)
-                Assert.Equal(Ok "42\n\n", result)
+                Assert.Equal(Ok "42\n", result)
             })
         }
         stage "" {
             whenWindows
             run (fun ctx -> async {
                 let! result = ctx.RunCommandCaptureOutput "powershell echo 42"
-                Assert.Equal(Ok "42\r\n\r\n", result)
+                Assert.Equal(Ok "42\r\n", result)
             })
         }
         runImmediate
@@ -165,6 +165,88 @@ let ``RunCommandCaptureOutput should return an error if command failed`` () =
         )
     )
     |> ignore
+
+
+[<Fact>]
+let ``RunCommandCaptureAll should return exit code, stdout and stderr`` () =
+    pipeline "" {
+        stage "" {
+            whenAny {
+                platformOSX
+                platformLinux
+            }
+            run (fun ctx -> async {
+                let! result = ctx.RunCommandCaptureAll "sh -c \"echo out; echo err >&2; exit 3\""
+                Assert.Equal(3, result.ExitCode)
+                Assert.Equal("out\n", result.StandardOutput)
+                Assert.Equal("err\n", result.StandardError)
+            })
+        }
+        stage "" {
+            whenWindows
+            run (fun ctx -> async {
+                let! result = ctx.RunCommandCaptureAll "powershell -Command \"echo out; [Console]::Error.WriteLine('err'); exit 3\""
+                Assert.Equal(3, result.ExitCode)
+                Assert.Equal("out\r\n", result.StandardOutput)
+                Assert.Equal("err\r\n", result.StandardError)
+            })
+        }
+        runImmediate
+    }
+
+[<Fact>]
+let ``RunCommandCaptureAll should not fail the stage on a non zero exit code`` () =
+    shouldBeCalled (fun call ->
+        pipeline "" {
+            stage "" {
+                whenAny {
+                    platformOSX
+                    platformLinux
+                }
+                run (fun ctx -> async {
+                    let! result = ctx.RunCommandCaptureAll "sh -c \"exit 1\""
+                    Assert.Equal(1, result.ExitCode)
+                    call ()
+                })
+            }
+            stage "" {
+                whenWindows
+                run (fun ctx -> async {
+                    let! result = ctx.RunCommandCaptureAll "powershell -Command \"exit 1\""
+                    Assert.Equal(1, result.ExitCode)
+                    call ()
+                })
+            }
+            runImmediate
+        }
+    )
+
+[<Fact>]
+let ``RunSensitiveCommandCaptureAll should work`` () =
+    pipeline "" {
+        stage "" {
+            whenAny {
+                platformOSX
+                platformLinux
+            }
+            run (fun ctx -> async {
+                let! result = ctx.RunSensitiveCommandCaptureAll $"""echo {"42"}"""
+                Assert.Equal(0, result.ExitCode)
+                Assert.Equal("42\n", result.StandardOutput)
+                Assert.Equal("", result.StandardError)
+            })
+        }
+        stage "" {
+            whenWindows
+            run (fun ctx -> async {
+                let! result = ctx.RunSensitiveCommandCaptureAll $"""powershell echo {"42"}"""
+                Assert.Equal(0, result.ExitCode)
+                Assert.Equal("42\r\n", result.StandardOutput)
+                Assert.Equal("", result.StandardError)
+            })
+        }
+        runImmediate
+    }
 
 
 [<Fact>]

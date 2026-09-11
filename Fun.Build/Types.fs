@@ -14,6 +14,14 @@ type PipelineFailedException =
     new(msg: string, ex: exn) = { inherit Exception(msg, ex) }
 
 
+/// Everything a finished command handed back. No judgement is made about whether the exit code is acceptable.
+type CommandOutput = {
+    ExitCode: int
+    StandardOutput: string
+    StandardError: string
+}
+
+
 [<Struct; RequireQualifiedAccess>]
 type CmdName =
     | ShortName of shortName: string
