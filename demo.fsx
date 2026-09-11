@@ -27,6 +27,15 @@ let demo1 =
                 do! ctx.RunCommand "dotnet --version"
             }
         )
+        // You can also capture the exit code, standard output and standard error and decide yourself what to do with them
+        // Note an async { } block returning unit always reports success, so return a Result if the exit code should decide
+        run (fun ctx ->
+            async {
+                let! output = ctx.RunCommandCaptureAll "dotnet --version"
+                printfn "exit code %d, stdout %s, stderr %s" output.ExitCode output.StandardOutput output.StandardError
+                return ctx.MapExitCodeToResult output.ExitCode
+            }
+        )
         // You can run async functions
         run (Async.Sleep 1000)
         run (fun _ -> Async.Sleep 1000)

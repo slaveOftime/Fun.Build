@@ -1,5 +1,6 @@
 module Fun.Build.Tests.StageContextExtensions
 
+open System.Threading
 open Xunit
 open Fun.Build
 open Fun.Build.StageContextExtensionsInternal
@@ -156,30 +157,33 @@ let ``RunCommandCaptureOutput should return an error if command failed`` () =
 
 
 [<Fact>]
-let ``RunCommandCaptureAll should return exit code, stdout and stderr`` () = pipeline "" {
-    stage "" {
-        whenAny {
-            platformOSX
-            platformLinux
+let ``RunCommandCaptureAll should return exit code, stdout and stderr`` () =
+    shouldBeCalled (fun call -> pipeline "" {
+        stage "" {
+            whenAny {
+                platformOSX
+                platformLinux
+            }
+            run (fun ctx -> async {
+                let! result = ctx.RunCommandCaptureAll "sh -c \"echo out; echo err >&2; exit 3\""
+                Assert.Equal(3, result.ExitCode)
+                Assert.Equal("out\n", result.StandardOutput)
+                Assert.Equal("err\n", result.StandardError)
+                call ()
+            })
         }
-        run (fun ctx -> async {
-            let! result = ctx.RunCommandCaptureAll "sh -c \"echo out; echo err >&2; exit 3\""
-            Assert.Equal(3, result.ExitCode)
-            Assert.Equal("out\n", result.StandardOutput)
-            Assert.Equal("err\n", result.StandardError)
-        })
-    }
-    stage "" {
-        whenWindows
-        run (fun ctx -> async {
-            let! result = ctx.RunCommandCaptureAll "powershell -Command \"echo out; [Console]::Error.WriteLine('err'); exit 3\""
-            Assert.Equal(3, result.ExitCode)
-            Assert.Equal("out\r\n", result.StandardOutput)
-            Assert.Equal("err\r\n", result.StandardError)
-        })
-    }
-    runImmediate
-}
+        stage "" {
+            whenWindows
+            run (fun ctx -> async {
+                let! result = ctx.RunCommandCaptureAll "powershell -Command \"echo out; [Console]::Error.WriteLine('err'); exit 3\""
+                Assert.Equal(3, result.ExitCode)
+                Assert.Equal("out\r\n", result.StandardOutput)
+                Assert.Equal("err\r\n", result.StandardError)
+                call ()
+            })
+        }
+        runImmediate
+    })
 
 [<Fact>]
 let ``RunCommandCaptureAll should not fail the stage on a non zero exit code`` () =
@@ -207,30 +211,45 @@ let ``RunCommandCaptureAll should not fail the stage on a non zero exit code`` (
     })
 
 [<Fact>]
-let ``RunSensitiveCommandCaptureAll should work`` () = pipeline "" {
-    stage "" {
-        whenAny {
-            platformOSX
-            platformLinux
-        }
-        run (fun ctx -> async {
-            let! result = ctx.RunSensitiveCommandCaptureAll $"""echo {"42"}"""
-            Assert.Equal(0, result.ExitCode)
-            Assert.Equal("42\n", result.StandardOutput)
-            Assert.Equal("", result.StandardError)
-        })
-    }
-    stage "" {
-        whenWindows
-        run (fun ctx -> async {
-            let! result = ctx.RunSensitiveCommandCaptureAll $"""powershell echo {"42"}"""
-            Assert.Equal(0, result.ExitCode)
-            Assert.Equal("42\r\n", result.StandardOutput)
-            Assert.Equal("", result.StandardError)
-        })
-    }
-    runImmediate
-}
+let ``RunSensitiveCommandCaptureAll should work`` () =
+    let secret = "SENSITIVE97VALUE"
+    let mutable stdout = ""
+
+    shouldBeCalled (fun call ->
+        let out, _ =
+            captureConsole (fun () -> pipeline "" {
+                stage "" {
+                    whenAny {
+                        platformOSX
+                        platformLinux
+                    }
+                    run (fun ctx -> async {
+                        let! result = ctx.RunSensitiveCommandCaptureAll $"""echo {secret}"""
+                        Assert.Equal(0, result.ExitCode)
+                        // Captured output is the caller's own business, so it comes back unmasked.
+                        Assert.Equal(secret + "\n", result.StandardOutput)
+                        Assert.Equal("", result.StandardError)
+                        call ()
+                    })
+                }
+                stage "" {
+                    whenWindows
+                    run (fun ctx -> async {
+                        let! result = ctx.RunSensitiveCommandCaptureAll $"""powershell echo {secret}"""
+                        Assert.Equal(0, result.ExitCode)
+                        Assert.Equal(secret + "\r\n", result.StandardOutput)
+                        Assert.Equal("", result.StandardError)
+                        call ()
+                    })
+                }
+                runImmediate
+            })
+        stdout <- out
+    )
+
+    // Masking is the only thing this member does differently from RunCommandCaptureAll, and it was
+    // the one thing the original test never checked.
+    Assert.DoesNotContain(secret, stdout)
 
 
 // The markers below wrap the secret without any whitespace so that the whole thing survives as a
@@ -323,6 +342,73 @@ let ``The child's stderr should be written to stderr and not to stdout`` () =
 
     Assert.Contains(marker, stderr)
     Assert.DoesNotContain(marker, stdout)
+
+
+[<Fact>]
+let ``A cancelled command should be distinguishable from a failed one`` () =
+    shouldBeCalled (fun call -> pipeline "" {
+        stage "" {
+            whenAny {
+                platformOSX
+                platformLinux
+            }
+            run (fun ctx -> async {
+                use cts = new CancellationTokenSource(500)
+                let! result = ctx.RunCommandCaptureAll("sh -c \"sleep 30\"", cancellationToken = cts.Token)
+                // Without IsCancelled this is just exit code 143, the same shape as a real failure.
+                Assert.True(result.IsCancelled)
+                call ()
+            })
+        }
+        stage "" {
+            whenWindows
+            run (fun ctx -> async {
+                use cts = new CancellationTokenSource(500)
+                let! result = ctx.RunCommandCaptureAll("powershell -Command \"Start-Sleep -Seconds 30\"", cancellationToken = cts.Token)
+                Assert.True(result.IsCancelled)
+                call ()
+            })
+        }
+        runImmediate
+    })
+
+
+[<Fact>]
+let ``Every line of the child's output should still get the step prefix`` () =
+    // RunCommand no longer builds its own preamble, so pin the prefixing it used to own. line96b is
+    // written without a trailing newline, which exercises the last line of the stream.
+    let mutable stdout = ""
+
+    shouldBeCalled (fun call ->
+        let out, _ =
+            captureConsole (fun () -> pipeline "" {
+                noPrefixForStep false
+                stage "prefixed" {
+                    whenAny {
+                        platformOSX
+                        platformLinux
+                    }
+                    run (fun ctx -> async {
+                        do! ctx.RunCommand("sh -c \"echo line96a; printf line96b\"", disablePrintCommand = true) |> Async.Ignore
+                        call ()
+                    })
+                }
+                stage "prefixed" {
+                    whenWindows
+                    run (fun ctx -> async {
+                        do!
+                            ctx.RunCommand("powershell -Command \"echo line96a; [Console]::Out.Write('line96b')\"", disablePrintCommand = true)
+                            |> Async.Ignore
+                        call ()
+                    })
+                }
+                runImmediate
+            })
+        stdout <- out
+    )
+
+    Assert.Contains("prefixed line96a", stdout)
+    Assert.Contains("prefixed line96b", stdout)
 
 
 [<Fact>]

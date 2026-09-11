@@ -194,5 +194,9 @@ type Process with
             ExitCode = result.ExitCode
             StandardOutput = standardOutputSb.ToString()
             StandardError = standardErrorSb.ToString()
+            IsCancelled =
+                match cancellationToken with
+                | None -> false
+                | Some ct -> ct.IsCancellationRequested
         }
     }

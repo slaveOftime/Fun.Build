@@ -138,23 +138,6 @@ module StageContextExtensionsInternal =
         member ctx.BuildIndent(?margin) = String(' ', ctx.GetNamePath().Length - ctx.Name.Length + defaultArg margin 4)
 
 
-        /// Verify if the exit code is allowed.
-        member stage.IsAcceptableExitCode(exitCode: int) : bool =
-            let parentAcceptableExitCodes =
-                match stage.ParentContext with
-                | ValueNone -> Set.empty
-                | ValueSome(StageParent.Pipeline pipeline) -> pipeline.AcceptableExitCodes
-                | ValueSome(StageParent.Stage parentStage) -> parentStage.AcceptableExitCodes
-
-            Set.contains exitCode stage.AcceptableExitCodes || Set.contains exitCode parentAcceptableExitCodes
-
-        member stage.MapExitCodeToResult(exitCode: int) =
-            if stage.IsAcceptableExitCode exitCode then
-                Ok()
-            else
-                Error "Exit code is not indicating as successful."
-
-
         /// Run the stage. If index is not provided then it will be treated as sub-stage.
         member stage.Run(index: StageIndex, cancellationToken: CancellationToken) =
             let mutable isSuccess = true
@@ -423,6 +406,23 @@ module StageContextExtensionsInternal =
 module StageContextExtensions =
 
     type StageContext with
+
+        /// Verify if the exit code is allowed.
+        member stage.IsAcceptableExitCode(exitCode: int) : bool =
+            let parentAcceptableExitCodes =
+                match stage.ParentContext with
+                | ValueNone -> Set.empty
+                | ValueSome(StageParent.Pipeline pipeline) -> pipeline.AcceptableExitCodes
+                | ValueSome(StageParent.Stage parentStage) -> parentStage.AcceptableExitCodes
+
+            Set.contains exitCode stage.AcceptableExitCodes || Set.contains exitCode parentAcceptableExitCodes
+
+        member stage.MapExitCodeToResult(exitCode: int) =
+            if stage.IsAcceptableExitCode exitCode then
+                Ok()
+            else
+                Error "Exit code is not indicating as successful."
+
 
         /// Stage under pipeline should be level 0, the level will get increased for nested stages
         member ctx.GetStageLevel() =

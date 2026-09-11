@@ -2,11 +2,12 @@
 
 ## [Unreleased]
 
-- Add `RunCommandCaptureAll` and `RunSensitiveCommandCaptureAll` which return a `CommandOutput` record with the exit code, standard output and standard error, whatever the exit code was #93
-- Fix: standard error was never read when output is redirected (prefixed, silenced or captured), so it was lost. It is now printed like standard output.
+- Add `RunCommandCaptureAll` and `RunSensitiveCommandCaptureAll`, which return a `CommandOutput` record with the exit code, standard output, standard error and whether your cancellation token stopped the run, whatever the exit code was #93 #96
+- Breaking: `Process.StartAsync` now returns the `CommandOutput` record instead of the anonymous struct it returned in 1.1.18. Source and binary breaking if you call it directly #93
+- Fix: standard error was never read when output is redirected (prefixed, silenced or captured), so it was lost. It is now read, and written to standard error #95
 - Fix: captured standard output no longer ends with an extra empty line
 - Fix: `RunSensitiveCommand`, `RunSensitiveCommandCaptureOutput` and `RunSensitiveCommandCaptureAll` now mask the interpolated values in the child's own standard output and standard error, not only in the logged command #95
-- Fix: the child's standard error is written to standard error instead of standard output #95
+- `IsAcceptableExitCode` and `MapExitCodeToResult` moved to the auto opened `StageContextExtensions`, so a caller holding a `CommandOutput` can honour `acceptExitCodes` #96
 
 ## [1.1.18] - 2026-08-31
 

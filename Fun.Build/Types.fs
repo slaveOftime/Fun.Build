@@ -19,6 +19,10 @@ type CommandOutput = {
     ExitCode: int
     StandardOutput: string
     StandardError: string
+    /// True when the command was killed because your cancellation token fired. Without this a
+    /// cancelled command is indistinguishable from a genuine failure: it comes back as 143 on Linux
+    /// or -1 on Windows, with whatever output it had managed to produce.
+    IsCancelled: bool
 }
 
 
