@@ -12,6 +12,13 @@ open Fun.Build.StageContextExtensionsInternal
 
 module BuiltinCmdsInternal =
 
+    /// The interpolated argument values, so they can be replaced in the child's own output too.
+    /// Masking the logged command alone leaves the log looking safe while the child echoes the
+    /// secret straight back on stdout or stderr.
+    let maskedCommandValues (commandStr: FormattableString) =
+        commandStr.GetArguments() |> Array.map string |> Array.filter (String.IsNullOrEmpty >> not)
+
+
     type StageContext with
 
         /// Build a ProcessStartInfo object for a command string. If your command is a file path with white space, you should quote it with ' or ".
@@ -49,7 +56,8 @@ module BuiltinCmdsInternal =
                 ?workingDir: string,
                 ?disablePrintOutput: bool,
                 ?disablePrintCommand: bool,
-                ?cancellationToken: CancellationToken
+                ?cancellationToken: CancellationToken,
+                ?maskedValues: string seq
             ) : Async<CommandOutput> = async {
             let disablePrintOutput = defaultArg disablePrintOutput false
             let disablePrintCommand = defaultArg disablePrintCommand false
@@ -75,7 +83,8 @@ module BuiltinCmdsInternal =
                     prefix,
                     printOutput = (not disablePrintOutput && not (ctx.GetNoStdRedirectForStep())),
                     captureOutput = true,
-                    cancellationToken = ct
+                    cancellationToken = ct,
+                    ?maskedValues = maskedValues
                 )
         }
 
@@ -197,6 +206,8 @@ module BuiltinCmds =
 
 
         /// Run a command string with current context, and encrypt the string for logging
+        /// The interpolated arguments are also replaced with * in the child's own standard output and standard error.
+        /// This is a plain substring replacement, so a short value is replaced wherever it appears in that output.
         member ctx.RunSensitiveCommandCaptureOutput
             (
                 commandStr: FormattableString,
@@ -233,7 +244,8 @@ module BuiltinCmds =
                     prefix,
                     printOutput = (not disablePrintOutput && not (ctx.GetNoStdRedirectForStep())),
                     captureOutput = true,
-                    cancellationToken = ct
+                    cancellationToken = ct,
+                    maskedValues = maskedCommandValues commandStr
                 )
 
             if ct.IsCancellationRequested then
@@ -272,6 +284,8 @@ module BuiltinCmds =
 
 
         /// Same as RunCommandCaptureAll, but encrypt the string for logging
+        /// The interpolated arguments are also replaced with * in the child's own standard output and standard error.
+        /// This is a plain substring replacement, so a short value is replaced wherever it appears in that output.
         member ctx.RunSensitiveCommandCaptureAll
             (
                 commandStr: FormattableString,
@@ -290,11 +304,14 @@ module BuiltinCmds =
                 ?workingDir = workingDir,
                 ?disablePrintOutput = disablePrintOutput,
                 ?disablePrintCommand = disablePrintCommand,
-                ?cancellationToken = cancellationToken
+                ?cancellationToken = cancellationToken,
+                maskedValues = maskedCommandValues commandStr
             )
 
 
         /// Run a command string with current context, and encrypt the string for logging
+        /// The interpolated arguments are also replaced with * in the child's own standard output and standard error.
+        /// This is a plain substring replacement, so a short value is replaced wherever it appears in that output.
         member ctx.RunSensitiveCommand
             (
                 commandStr: FormattableString,

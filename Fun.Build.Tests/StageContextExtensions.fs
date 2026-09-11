@@ -233,6 +233,98 @@ let ``RunSensitiveCommandCaptureAll should work`` () = pipeline "" {
 }
 
 
+// The markers below wrap the secret without any whitespace so that the whole thing survives as a
+// single token through both `sh -c` and `powershell -Command`, and so the assertion can prove the
+// line was printed *and* that the secret inside it was replaced.
+[<Fact>]
+let ``RunSensitiveCommand should mask the secret out of the child's own output`` () =
+    let secret = "SUPERSECRET95"
+    let mutable stdout = ""
+    let mutable stderr = ""
+
+    shouldBeCalled (fun call ->
+        let out, err =
+            captureConsole (fun () -> pipeline "" {
+                stage "" {
+                    whenAny {
+                        platformOSX
+                        platformLinux
+                    }
+                    run (fun ctx -> async {
+                        // disablePrintCommand keeps the (already masked) command line out of the
+                        // buffers, so what we assert on can only have come from the child.
+                        do!
+                            ctx.RunSensitiveCommand(
+                                $"sh -c \"echo out95-{secret}-end95; echo err95-{secret}-end95 >&2\"",
+                                disablePrintCommand = true
+                            )
+                            |> Async.Ignore
+                        call ()
+                    })
+                }
+                stage "" {
+                    whenWindows
+                    run (fun ctx -> async {
+                        do!
+                            ctx.RunSensitiveCommand(
+                                $"powershell -Command \"echo out95-{secret}-end95; [Console]::Error.WriteLine('err95-{secret}-end95')\"",
+                                disablePrintCommand = true
+                            )
+                            |> Async.Ignore
+                        call ()
+                    })
+                }
+                runImmediate
+            })
+        stdout <- out
+        stderr <- err
+    )
+
+    Assert.DoesNotContain(secret, stdout)
+    Assert.DoesNotContain(secret, stderr)
+    Assert.Contains("out95-*-end95", stdout)
+    Assert.Contains("err95-*-end95", stderr)
+
+
+[<Fact>]
+let ``The child's stderr should be written to stderr and not to stdout`` () =
+    let marker = "stderr95routing"
+    let mutable stdout = ""
+    let mutable stderr = ""
+
+    shouldBeCalled (fun call ->
+        let out, err =
+            captureConsole (fun () -> pipeline "" {
+                stage "" {
+                    whenAny {
+                        platformOSX
+                        platformLinux
+                    }
+                    run (fun ctx -> async {
+                        let! result = ctx.RunCommandCaptureAll($"sh -c \"echo {marker} >&2\"", disablePrintCommand = true)
+                        Assert.Equal(0, result.ExitCode)
+                        call ()
+                    })
+                }
+                stage "" {
+                    whenWindows
+                    run (fun ctx -> async {
+                        let! result =
+                            ctx.RunCommandCaptureAll($"powershell -Command \"[Console]::Error.WriteLine('{marker}')\"", disablePrintCommand = true)
+                        Assert.Equal(0, result.ExitCode)
+                        call ()
+                    })
+                }
+                runImmediate
+            })
+        stdout <- out
+        stderr <- err
+    )
+
+    Assert.Contains(marker, stderr)
+    Assert.DoesNotContain(marker, stdout)
+
+
 [<Fact>]
 let ``Soft cancel should work`` () =
     let mutable i = 0

@@ -5,6 +5,8 @@
 - Add `RunCommandCaptureAll` and `RunSensitiveCommandCaptureAll` which return a `CommandOutput` record with the exit code, standard output and standard error, whatever the exit code was #93
 - Fix: standard error was never read when output is redirected (prefixed, silenced or captured), so it was lost. It is now printed like standard output.
 - Fix: captured standard output no longer ends with an extra empty line
+- Fix: `RunSensitiveCommand`, `RunSensitiveCommandCaptureOutput` and `RunSensitiveCommandCaptureAll` now mask the interpolated values in the child's own standard output and standard error, not only in the logged command #95
+- Fix: the child's standard error is written to standard error instead of standard output #95
 
 ## [1.1.18] - 2026-08-31
 
