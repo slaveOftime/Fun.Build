@@ -40,6 +40,47 @@ module BuiltinCmdsInternal =
             command
 
 
+        /// Run a command and hand back exit code, standard output and standard error, whatever the exit code was.
+        member ctx.RunCommandCaptureAllInternal
+            (
+                commandStr: string,
+                commandLogString: string,
+                ?step: int,
+                ?workingDir: string,
+                ?disablePrintOutput: bool,
+                ?disablePrintCommand: bool,
+                ?cancellationToken: CancellationToken
+            ) : Async<CommandOutput> =
+            async {
+                let disablePrintOutput = defaultArg disablePrintOutput false
+                let disablePrintCommand = defaultArg disablePrintCommand false
+                let command = ctx.BuildCommand(commandStr, ?workingDir = workingDir)
+                let noPrefixForStep = ctx.GetNoPrefixForStep()
+                let prefix =
+                    if noPrefixForStep then
+                        ""
+                    else
+                        match step with
+                        | Some i -> ctx.BuildStepPrefix i
+                        | None -> ctx.GetNamePath()
+
+                if not noPrefixForStep then AnsiConsole.Markup $"[green]{prefix}[/] "
+                if not disablePrintCommand then AnsiConsole.WriteLine commandLogString
+
+                let ct = defaultArg cancellationToken CancellationToken.None
+
+                return!
+                    Process.StartAsync(
+                        command,
+                        commandLogString,
+                        prefix,
+                        printOutput = (not disablePrintOutput && not (ctx.GetNoStdRedirectForStep())),
+                        captureOutput = true,
+                        cancellationToken = ct
+                    )
+            }
+
+
         /// Add command to context
         member ctx.AddCommandStep(commandStrFn: StageContext -> Async<string>, ?cancellationToken: CancellationToken) =
             { ctx with
@@ -206,6 +247,56 @@ module BuiltinCmds =
                 else
                     return Error "Exit code is not indicating as successful."
             }
+
+        /// <summary>
+        /// Run a command string with current context, and return the exit code, standard output and standard error
+        /// whatever the exit code was. Unlike RunCommandCaptureOutput, this does not decide whether the run succeeded.
+        /// </summary>
+        /// <param name="commandStr">Command to run</param>
+        /// <param name="step">Current step rank</param>
+        /// <param name="workingDir">Working directory for command</param>
+        member ctx.RunCommandCaptureAll
+            (
+                commandStr: string,
+                ?step: int,
+                ?workingDir: string,
+                ?disablePrintOutput: bool,
+                ?disablePrintCommand: bool,
+                ?cancellationToken: CancellationToken
+            ) : Async<CommandOutput> =
+            ctx.RunCommandCaptureAllInternal(
+                commandStr,
+                commandStr,
+                ?step = step,
+                ?workingDir = workingDir,
+                ?disablePrintOutput = disablePrintOutput,
+                ?disablePrintCommand = disablePrintCommand,
+                ?cancellationToken = cancellationToken
+            )
+
+
+        /// Same as RunCommandCaptureAll, but encrypt the string for logging
+        member ctx.RunSensitiveCommandCaptureAll
+            (
+                commandStr: FormattableString,
+                ?step: int,
+                ?workingDir: string,
+                ?disablePrintOutput: bool,
+                ?disablePrintCommand: bool,
+                ?cancellationToken: CancellationToken
+            ) : Async<CommandOutput> =
+            let args: obj[] = Array.create commandStr.ArgumentCount "*"
+            let encryptiedStr = String.Format(commandStr.Format, args)
+            ctx.RunCommandCaptureAllInternal(
+                commandStr.ToString(),
+                encryptiedStr,
+                ?step = step,
+                ?workingDir = workingDir,
+                ?disablePrintOutput = disablePrintOutput,
+                ?disablePrintCommand = disablePrintCommand,
+                ?cancellationToken = cancellationToken
+            )
+
 
         /// Run a command string with current context, and encrypt the string for logging
         member ctx.RunSensitiveCommand

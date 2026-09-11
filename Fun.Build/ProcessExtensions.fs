@@ -132,18 +132,21 @@ type Process with
 
             use result = Process.Start startInfo
             let standardOutputSb = StringBuilder()
+            let standardErrorSb = StringBuilder()
 
-            let handleDataReceived (ev: DataReceivedEventArgs) =
-                if captureOutput then standardOutputSb.AppendLine ev.Data |> ignore
-                if printOutput && not (String.IsNullOrEmpty ev.Data) then
-                    if noPrefix then
-                        Console.WriteLine(ev.Data)
-                    else
-                        Console.WriteLine(logPrefix + " " + ev.Data)
+            let handleDataReceived (sb: StringBuilder) (ev: DataReceivedEventArgs) =
+                // Data is null once the stream is closed
+                if ev.Data <> null then
+                    if captureOutput then sb.AppendLine ev.Data |> ignore
+                    if printOutput && not (String.IsNullOrEmpty ev.Data) then
+                        if noPrefix then
+                            Console.WriteLine(ev.Data)
+                        else
+                            Console.WriteLine(logPrefix + " " + ev.Data)
 
             if shouldRedirectOutput then
-                result.OutputDataReceived.Add handleDataReceived
-                result.ErrorDataReceived.Add handleDataReceived
+                result.OutputDataReceived.Add(handleDataReceived standardOutputSb)
+                result.ErrorDataReceived.Add(handleDataReceived standardErrorSb)
 
             use! cd =
                 Async.OnCancel(fun _ ->
@@ -165,12 +168,15 @@ type Process with
                         member _.Dispose() = ()
                     }
 
-            if shouldRedirectOutput then result.BeginOutputReadLine()
+            if shouldRedirectOutput then
+                result.BeginOutputReadLine()
+                result.BeginErrorReadLine()
 
             result.WaitForExit()
 
-            return struct {|
+            return {
                 ExitCode = result.ExitCode
                 StandardOutput = standardOutputSb.ToString()
-            |}
+                StandardError = standardErrorSb.ToString()
+            }
         }
