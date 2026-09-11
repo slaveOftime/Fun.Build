@@ -51,10 +51,9 @@ type Changelog =
         match version with
         | None -> None
         | Some v ->
-            Some
-                {|
-                    Version = v
-                    Preview = preview
-                    ReleaseNotes = releaseNotes.ToString()
-                    DateTime = dateTime
-                |}
+            Some {|
+                Version = v
+                Preview = preview
+                ReleaseNotes = releaseNotes.ToString()
+                DateTime = dateTime
+            |}

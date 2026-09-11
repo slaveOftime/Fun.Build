@@ -170,13 +170,13 @@ module StageContextExtensionsInternal =
                 if not isActive && stage.FailIfIgnored then
                     let msg = $"Stage ({stage.GetNamePath()}) cannot be ignored (inactive)"
                     AnsiConsole.MarkupLineInterpolated $"[red]{msg}[/]"
-                    let verifyStage =
-                        { stage with
+                    let verifyStage = {
+                        stage with
                             ParentContext =
                                 match stage.ParentContext with
                                 | ValueSome(StageParent.Pipeline p) -> ValueSome(StageParent.Pipeline { p with Mode = Mode.Verification })
                                 | x -> x
-                        }
+                    }
                     stage.IsActive(verifyStage) |> ignore
                     raise (PipelineFailedException msg)
 
@@ -236,10 +236,10 @@ module StageContextExtensionsInternal =
                                 match step with
                                 | Step.StepFn _ -> stage.BuildStepPrefix(i)
                                 | Step.StepOfStage s ->
-                                    let subStage =
-                                        { s with
+                                    let subStage = {
+                                        s with
                                             ParentContext = ValueSome(StageParent.Stage stage)
-                                        }
+                                    }
                                     subStage.BuildCurrentStepPrefix() + ">"
 
 
@@ -265,10 +265,10 @@ module StageContextExtensionsInternal =
                                         | Ok _ -> return true
                                       }
                                     | Step.StepOfStage subStage -> async {
-                                        let subStage =
-                                            { subStage with
+                                        let subStage = {
+                                            subStage with
                                                 ParentContext = ValueSome(StageParent.Stage stage)
-                                            }
+                                        }
                                         let isSuccess, es = subStage.Run(StageIndex.Step i, linkedStepCTS.Token)
                                         exns.AddRange es
                                         return isSuccess
@@ -375,8 +375,7 @@ module StageContextExtensionsInternal =
                         )
                     | StageIndex.Stage i ->
                         AnsiConsole.Write(
-                            Rule($"""[grey50]STAGE #{i} [bold {color}]{namePath}[/] finished. {stageSW.ElapsedMilliseconds}ms.[/]""")
-                                .LeftJustified()
+                            Rule($"""[grey50]STAGE #{i} [bold {color}]{namePath}[/] finished. {stageSW.ElapsedMilliseconds}ms.[/]""").LeftJustified()
                         )
                     | StageIndex.Step _ ->
                         AnsiConsole.MarkupLineInterpolated(
@@ -405,16 +404,17 @@ module StageContextExtensionsInternal =
     let inline buildStageIsActive ([<InlineIfLambda>] build: BuildStage) ([<InlineIfLambda>] conditionFn) =
         BuildStage(fun ctx ->
             let newCtx = build.Invoke ctx
-            { newCtx with
-                IsActive =
-                    fun ctx ->
-                        match ctx.GetMode() with
-                        | Mode.Execution -> newCtx.IsActive ctx && conditionFn ctx
-                        | Mode.Verification
-                        | Mode.CommandHelp _ ->
-                            newCtx.IsActive ctx |> ignore
-                            conditionFn ctx |> ignore
-                            false
+            {
+                newCtx with
+                    IsActive =
+                        fun ctx ->
+                            match ctx.GetMode() with
+                            | Mode.Execution -> newCtx.IsActive ctx && conditionFn ctx
+                            | Mode.Verification
+                            | Mode.CommandHelp _ ->
+                                newCtx.IsActive ctx |> ignore
+                                conditionFn ctx |> ignore
+                                false
             }
         )
 

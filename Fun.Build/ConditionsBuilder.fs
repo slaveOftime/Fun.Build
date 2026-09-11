@@ -35,10 +35,10 @@ module Internal =
         member ctx.WhenStage(stage: StageContext) =
             match ctx.GetMode() with
             | Mode.Execution ->
-                let stage =
-                    { stage with
+                let stage = {
+                    stage with
                         ParentContext = ValueSome(StageParent.Stage ctx)
-                    }
+                }
                 let result, _ = stage.Run(StageIndex.Condition, System.Threading.CancellationToken.None)
                 result
             | Mode.Verification ->
@@ -79,15 +79,12 @@ module Internal =
 
         member ctx.WhenEnvArg(name: string, ?argValue, ?description, ?isOptional) =
             let argValue = defaultArg argValue ""
-            ctx.WhenEnvArg
-                {
-                    EnvArg.Name = name
-                    Description = description
-                    Values = [
-                        if String.IsNullOrEmpty argValue |> not then argValue
-                    ]
-                    IsOptional = defaultArg isOptional false
-                }
+            ctx.WhenEnvArg {
+                EnvArg.Name = name
+                Description = description
+                Values = [ if String.IsNullOrEmpty argValue |> not then argValue ]
+                IsOptional = defaultArg isOptional false
+            }
 
 
         member ctx.WhenCmdArg(info: CmdArg) =
@@ -124,15 +121,12 @@ module Internal =
 
         member ctx.WhenCmdArg(name: CmdName, ?argValue: string, ?description, ?isOptional) =
             let argValue = defaultArg argValue ""
-            ctx.WhenCmdArg
-                {
-                    CmdArg.Name = name
-                    Description = description
-                    Values = [
-                        if String.IsNullOrEmpty argValue |> not then argValue
-                    ]
-                    IsOptional = defaultArg isOptional false
-                }
+            ctx.WhenCmdArg {
+                CmdArg.Name = name
+                Description = description
+                Values = [ if String.IsNullOrEmpty argValue |> not then argValue ]
+                IsOptional = defaultArg isOptional false
+            }
 
 
         member ctx.WhenBranch(branches: string seq) =
@@ -267,13 +261,8 @@ type ConditionsBuilder() =
 
     [<CustomOperation("cmdArg")>]
     member inline _.cmdArg
-        (
-            [<InlineIfLambda>] builder: BuildConditions,
-            argKeyLongName: string,
-            argValue: string,
-            description: string,
-            isOptional: bool
-        ) =
+        ([<InlineIfLambda>] builder: BuildConditions, argKeyLongName: string, argValue: string, description: string, isOptional: bool)
+        =
         buildConditions
             builder
             (fun ctx -> ctx.WhenCmdArg(CmdName.LongName argKeyLongName, argValue = argValue, description = description, isOptional = isOptional))
@@ -444,13 +433,8 @@ type PipelineBuilder with
     /// Set if pipeline can run by check the command line args.
     [<CustomOperation("whenCmdArg")>]
     member inline _.whenCmdArg
-        (
-            [<InlineIfLambda>] build: BuildPipeline,
-            argKeyLongName: string,
-            argValue: string,
-            description: string,
-            isOptional: bool
-        ) =
+        ([<InlineIfLambda>] build: BuildPipeline, argKeyLongName: string, argValue: string, description: string, isOptional: bool)
+        =
         buildPipelineVerification
             build
             (fun ctx ->
@@ -498,14 +482,14 @@ type WhenAnyBuilder() =
                 | Mode.CommandHelp { Verbose = true } -> AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}when any below conditions are met[/]"
                 | _ -> ()
 
-                let indentCtx =
-                    { StageContext.Create "  " with
+                let indentCtx = {
+                    StageContext.Create "  " with
                         ParentContext = ctx.ParentContext
-                    }
-                let newCtx =
-                    { ctx with
+                }
+                let newCtx = {
+                    ctx with
                         ParentContext = ValueSome(StageParent.Stage indentCtx)
-                    }
+                }
                 builder.Invoke [] |> Seq.iter (fun fn -> fn newCtx |> ignore)
                 false
         )
@@ -524,14 +508,14 @@ type WhenAllBuilder() =
                 | Mode.CommandHelp { Verbose = true } -> AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}when all below conditions are met[/]"
                 | _ -> ()
 
-                let indentCtx =
-                    { StageContext.Create "  " with
+                let indentCtx = {
+                    StageContext.Create "  " with
                         ParentContext = ctx.ParentContext
-                    }
-                let newCtx =
-                    { ctx with
+                }
+                let newCtx = {
+                    ctx with
                         ParentContext = ValueSome(StageParent.Stage indentCtx)
-                    }
+                }
                 builder.Invoke [] |> Seq.iter (fun fn -> fn newCtx |> ignore)
                 false
         )
@@ -551,14 +535,14 @@ type WhenNotBuilder() =
                     AnsiConsole.MarkupLine $"[olive]{ctx.BuildIndent()}when all below conditions are [bold red]NOT[/] met[/]"
                 | _ -> ()
 
-                let indentCtx =
-                    { StageContext.Create "  " with
+                let indentCtx = {
+                    StageContext.Create "  " with
                         ParentContext = ctx.ParentContext
-                    }
-                let newCtx =
-                    { ctx with
+                }
+                let newCtx = {
+                    ctx with
                         ParentContext = ValueSome(StageParent.Stage indentCtx)
-                    }
+                }
                 builder.Invoke [] |> Seq.iter (fun fn -> fn newCtx |> ignore)
                 false
         )
@@ -569,14 +553,13 @@ type WhenCmdBuilder() =
     member _.Run(build: BuildCmdInfo) =
         BuildStageIsActive(fun ctx ->
             let cmdInfo =
-                build.Invoke
-                    {
-                        // We should carefully procees the empty string in this build type
-                        Name = CmdName.ShortName ""
-                        Description = None
-                        Values = []
-                        IsOptional = false
-                    }
+                build.Invoke {
+                    // We should carefully procees the empty string in this build type
+                    Name = CmdName.ShortName ""
+                    Description = None
+                    Values = []
+                    IsOptional = false
+                }
             ctx.WhenCmdArg(cmdInfo)
         )
 
@@ -588,11 +571,10 @@ type WhenCmdBuilder() =
     /// Short name, long name
     [<CustomOperation "fullName">]
     member inline _.fullName([<InlineIfLambda>] build: BuildCmdInfo, shortName: string, longName: string) =
-        BuildCmdInfo(fun info ->
-            { build.Invoke(info) with
+        BuildCmdInfo(fun info -> {
+            build.Invoke(info) with
                 Name = CmdName.FullName(shortName, longName)
-            }
-        )
+        })
 
     /// It is the same as shortName
     [<CustomOperation "name">]
@@ -607,12 +589,13 @@ type WhenCmdBuilder() =
     member _.shortName(build: BuildCmdInfo, x: string) =
         BuildCmdInfo(fun info ->
             let info = build.Invoke(info)
-            { info with
-                Name =
-                    match info.Name with
-                    | CmdName.FullName(_, longName)
-                    | CmdName.LongName longName when not (String.IsNullOrEmpty longName) -> CmdName.FullName(x, longName)
-                    | _ -> CmdName.ShortName x
+            {
+                info with
+                    Name =
+                        match info.Name with
+                        | CmdName.FullName(_, longName)
+                        | CmdName.LongName longName when not (String.IsNullOrEmpty longName) -> CmdName.FullName(x, longName)
+                        | _ -> CmdName.ShortName x
             }
         )
 
@@ -620,12 +603,13 @@ type WhenCmdBuilder() =
     member _.longName(build: BuildCmdInfo, x: string) =
         BuildCmdInfo(fun info ->
             let info = build.Invoke(info)
-            { info with
-                Name =
-                    match info.Name with
-                    | CmdName.FullName(shortName, _)
-                    | CmdName.ShortName shortName when not (String.IsNullOrEmpty shortName) -> CmdName.FullName(shortName, x)
-                    | _ -> CmdName.LongName x
+            {
+                info with
+                    Name =
+                        match info.Name with
+                        | CmdName.FullName(shortName, _)
+                        | CmdName.ShortName shortName when not (String.IsNullOrEmpty shortName) -> CmdName.FullName(shortName, x)
+                        | _ -> CmdName.LongName x
             }
         )
 
@@ -650,14 +634,13 @@ type WhenEnvBuilder() =
     member _.Run(build: BuildEnvInfo) =
         BuildStageIsActive(fun ctx ->
             let arg =
-                build.Invoke
-                    {
-                        // We should carefully procees the empty string in this build type
-                        Name = ""
-                        Description = None
-                        Values = []
-                        IsOptional = false
-                    }
+                build.Invoke {
+                    // We should carefully procees the empty string in this build type
+                    Name = ""
+                    Description = None
+                    Values = []
+                    IsOptional = false
+                }
             ctx.WhenEnvArg(arg)
         )
 

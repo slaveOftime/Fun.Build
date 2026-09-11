@@ -50,25 +50,25 @@ type StageBuilder(name: string) =
     member inline _.Yield([<InlineIfLambda>] builder: BuildStep) = builder
 
     member inline _.Delay([<InlineIfLambda>] fn: unit -> BuildStep) =
-        BuildStage(fun ctx ->
-            { ctx with
+        BuildStage(fun ctx -> {
+            ctx with
                 Steps = ctx.Steps @ [ Step.StepFn(fn().Invoke) ]
-            }
-        )
+        })
 
     member inline _.Combine([<InlineIfLambda>] builder: BuildStep, [<InlineIfLambda>] build: BuildStage) =
         BuildStage(fun ctx ->
-            build.Invoke
-                { ctx with
+            build.Invoke {
+                ctx with
                     Steps = ctx.Steps @ [ Step.StepFn builder.Invoke ]
-                }
+            }
         )
 
     member inline _.For([<InlineIfLambda>] build: BuildStage, [<InlineIfLambda>] fn: unit -> BuildStep) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with
-                Steps = ctx.Steps @ [ Step.StepFn(fn().Invoke) ]
+            {
+                ctx with
+                    Steps = ctx.Steps @ [ Step.StepFn(fn().Invoke) ]
             }
         )
 
@@ -94,8 +94,9 @@ type StageBuilder(name: string) =
     member inline _.envVars([<InlineIfLambda>] build: BuildStage, kvs: seq<string * string>) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with
-                EnvVars = kvs |> Seq.fold (fun state (k, v) -> Map.add k v state) ctx.EnvVars
+            {
+                ctx with
+                    EnvVars = kvs |> Seq.fold (fun state (k, v) -> Map.add k v state) ctx.EnvVars
             }
         )
 
@@ -158,9 +159,10 @@ type StageBuilder(name: string) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
             let shouldContinue = defaultArg flag true
-            { ctx with
-                ContinueStepsOnFailure = shouldContinue
-                ContinueStageOnFailure = shouldContinue
+            {
+                ctx with
+                    ContinueStepsOnFailure = shouldContinue
+                    ContinueStageOnFailure = shouldContinue
             }
         )
 
@@ -171,8 +173,9 @@ type StageBuilder(name: string) =
     member inline _.timeout([<InlineIfLambda>] build: BuildStage, seconds: int) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with
-                Timeout = ValueSome(TimeSpan.FromSeconds seconds)
+            {
+                ctx with
+                    Timeout = ValueSome(TimeSpan.FromSeconds seconds)
             }
         )
 
@@ -189,8 +192,9 @@ type StageBuilder(name: string) =
     member inline _.timeoutForStep([<InlineIfLambda>] build: BuildStage, seconds: int) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with
-                TimeoutForStep = ValueSome(TimeSpan.FromSeconds seconds)
+            {
+                ctx with
+                    TimeoutForStep = ValueSome(TimeSpan.FromSeconds seconds)
             }
         )
 
@@ -218,11 +222,10 @@ type StageBuilder(name: string) =
     /// Set if the steps in current stage should run in concurrent. Alias of paralle.
     [<CustomOperation("concurrent")>]
     member inline _.concurrent([<InlineIfLambda>] build: BuildStage, ?value: bool) =
-        BuildStage(fun ctx ->
-            { build.Invoke ctx with
+        BuildStage(fun ctx -> {
+            build.Invoke ctx with
                 IsParallel = fun _ -> defaultArg value true
-            }
-        )
+        })
 
 
     /// Set workding dir for all steps under the stage.
@@ -266,15 +269,16 @@ type StageBuilder(name: string) =
     member _.run(build: BuildStage, buildStep: StageContext -> BuildStep) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with
-                Steps =
-                    ctx.Steps
-                    @ [
-                        Step.StepFn(fun (ctx, i) -> async {
-                            let builder = buildStep ctx
-                            return! builder.Invoke(ctx, i)
-                        })
-                    ]
+            {
+                ctx with
+                    Steps =
+                        ctx.Steps
+                        @ [
+                            Step.StepFn(fun (ctx, i) -> async {
+                                let builder = buildStep ctx
+                                return! builder.Invoke(ctx, i)
+                            })
+                        ]
             }
         )
 
@@ -335,14 +339,15 @@ type StageBuilder(name: string) =
     member inline _.runSensitive([<InlineIfLambda>] build: BuildStage, command: FormattableString, ?cancellationToken: CancellationToken) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with
-                Steps =
-                    ctx.Steps
-                    @ [
-                        Step.StepFn(fun (ctx, step) ->
-                            ctx.RunSensitiveCommand(command, step, cancellationToken = defaultArg cancellationToken CancellationToken.None)
-                        )
-                    ]
+            {
+                ctx with
+                    Steps =
+                        ctx.Steps
+                        @ [
+                            Step.StepFn(fun (ctx, step) ->
+                                ctx.RunSensitiveCommand(command, step, cancellationToken = defaultArg cancellationToken CancellationToken.None)
+                            )
+                        ]
             }
         )
 
@@ -352,15 +357,16 @@ type StageBuilder(name: string) =
     member _.run(build: BuildStage, step: Async<unit>) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with
-                Steps =
-                    ctx.Steps
-                    @ [
-                        Step.StepFn(fun _ -> async {
-                            do! step
-                            return Ok()
-                        })
-                    ]
+            {
+                ctx with
+                    Steps =
+                        ctx.Steps
+                        @ [
+                            Step.StepFn(fun _ -> async {
+                                do! step
+                                return Ok()
+                            })
+                        ]
             }
         )
 
@@ -369,15 +375,16 @@ type StageBuilder(name: string) =
     member _.run(build: BuildStage, step: Async<int>) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with
-                Steps =
-                    ctx.Steps
-                    @ [
-                        Step.StepFn(fun (ctx, _) -> async {
-                            let! exitCode = step
-                            return ctx.MapExitCodeToResult exitCode
-                        })
-                    ]
+            {
+                ctx with
+                    Steps =
+                        ctx.Steps
+                        @ [
+                            Step.StepFn(fun (ctx, _) -> async {
+                                let! exitCode = step
+                                return ctx.MapExitCodeToResult exitCode
+                            })
+                        ]
             }
         )
 
@@ -387,15 +394,16 @@ type StageBuilder(name: string) =
     member _.run(build: BuildStage, step: StageContext -> unit) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with
-                Steps =
-                    ctx.Steps
-                    @ [
-                        Step.StepFn(fun (ctx, _) -> async {
-                            step ctx
-                            return Ok()
-                        })
-                    ]
+            {
+                ctx with
+                    Steps =
+                        ctx.Steps
+                        @ [
+                            Step.StepFn(fun (ctx, _) -> async {
+                                step ctx
+                                return Ok()
+                            })
+                        ]
             }
         )
 
@@ -404,8 +412,9 @@ type StageBuilder(name: string) =
     member _.run(build: BuildStage, step: StageContext -> int) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with
-                Steps = ctx.Steps @ [ Step.StepFn(fun (ctx, _) -> async { return ctx.MapExitCodeToResult(step ctx) }) ]
+            {
+                ctx with
+                    Steps = ctx.Steps @ [ Step.StepFn(fun (ctx, _) -> async { return ctx.MapExitCodeToResult(step ctx) }) ]
             }
         )
 
@@ -415,15 +424,16 @@ type StageBuilder(name: string) =
     member _.run(build: BuildStage, step: StageContext -> Async<unit>) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with
-                Steps =
-                    ctx.Steps
-                    @ [
-                        Step.StepFn(fun (ctx, _) -> async {
-                            do! step ctx
-                            return Ok()
-                        })
-                    ]
+            {
+                ctx with
+                    Steps =
+                        ctx.Steps
+                        @ [
+                            Step.StepFn(fun (ctx, _) -> async {
+                                do! step ctx
+                                return Ok()
+                            })
+                        ]
             }
         )
 
@@ -432,15 +442,16 @@ type StageBuilder(name: string) =
     member _.run(build: BuildStage, step: StageContext -> Async<int>) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with
-                Steps =
-                    ctx.Steps
-                    @ [
-                        Step.StepFn(fun (ctx, _) -> async {
-                            let! exitCode = step ctx
-                            return ctx.MapExitCodeToResult exitCode
-                        })
-                    ]
+            {
+                ctx with
+                    Steps =
+                        ctx.Steps
+                        @ [
+                            Step.StepFn(fun (ctx, _) -> async {
+                                let! exitCode = step ctx
+                                return ctx.MapExitCodeToResult exitCode
+                            })
+                        ]
             }
         )
 
@@ -450,8 +461,9 @@ type StageBuilder(name: string) =
     member _.run(build: BuildStage, step: StageContext -> Async<Result<unit, string>>) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with
-                Steps = ctx.Steps @ [ Step.StepFn(fun (ctx, _) -> step ctx) ]
+            {
+                ctx with
+                    Steps = ctx.Steps @ [ Step.StepFn(fun (ctx, _) -> step ctx) ]
             }
         )
 
@@ -460,8 +472,9 @@ type StageBuilder(name: string) =
     member _.run(build: BuildStage, step: StageContext -> Task<Result<unit, string>>) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with
-                Steps = ctx.Steps @ [ Step.StepFn(fun (ctx, _) -> step ctx |> Async.AwaitTask) ]
+            {
+                ctx with
+                    Steps = ctx.Steps @ [ Step.StepFn(fun (ctx, _) -> step ctx |> Async.AwaitTask) ]
             }
         )
 
@@ -470,8 +483,9 @@ type StageBuilder(name: string) =
     member _.run(build: BuildStage, step: StageContext -> Result<unit, string>) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with
-                Steps = ctx.Steps @ [ Step.StepFn(fun (ctx, _) -> async { return step ctx }) ]
+            {
+                ctx with
+                    Steps = ctx.Steps @ [ Step.StepFn(fun (ctx, _) -> async { return step ctx }) ]
             }
         )
 
@@ -481,15 +495,16 @@ type StageBuilder(name: string) =
     member _.run(build: BuildStage, step: StageContext -> Task) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with
-                Steps =
-                    ctx.Steps
-                    @ [
-                        Step.StepFn(fun (ctx, _) -> async {
-                            do! step ctx |> Async.AwaitTask
-                            return Ok()
-                        })
-                    ]
+            {
+                ctx with
+                    Steps =
+                        ctx.Steps
+                        @ [
+                            Step.StepFn(fun (ctx, _) -> async {
+                                do! step ctx |> Async.AwaitTask
+                                return Ok()
+                            })
+                        ]
             }
         )
 
@@ -498,15 +513,16 @@ type StageBuilder(name: string) =
     member _.run(build: BuildStage, step: StageContext -> Task<unit>) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with
-                Steps =
-                    ctx.Steps
-                    @ [
-                        Step.StepFn(fun (ctx, _) -> async {
-                            do! step ctx |> Async.AwaitTask
-                            return Ok()
-                        })
-                    ]
+            {
+                ctx with
+                    Steps =
+                        ctx.Steps
+                        @ [
+                            Step.StepFn(fun (ctx, _) -> async {
+                                do! step ctx |> Async.AwaitTask
+                                return Ok()
+                            })
+                        ]
             }
         )
 
@@ -515,15 +531,16 @@ type StageBuilder(name: string) =
     member _.run(build: BuildStage, step: StageContext -> Task<int>) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with
-                Steps =
-                    ctx.Steps
-                    @ [
-                        Step.StepFn(fun (ctx, _) -> async {
-                            let! exitCode = step ctx |> Async.AwaitTask
-                            return ctx.MapExitCodeToResult exitCode
-                        })
-                    ]
+            {
+                ctx with
+                    Steps =
+                        ctx.Steps
+                        @ [
+                            Step.StepFn(fun (ctx, _) -> async {
+                                let! exitCode = step ctx |> Async.AwaitTask
+                                return ctx.MapExitCodeToResult exitCode
+                            })
+                        ]
             }
         )
 
@@ -533,18 +550,19 @@ type StageBuilder(name: string) =
     member _.runHttpHealthCheck(build: BuildStage, url: string, ?configRequest, ?cancellationToken) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with
-                Steps =
-                    ctx.Steps
-                    @ [
-                        Step.StepFn(fun (ctx, _) ->
-                            ctx.RunHttpHealthCheck(
-                                url,
-                                configRequest = defaultArg configRequest ignore,
-                                cancellationToken = defaultArg cancellationToken CancellationToken.None
+            {
+                ctx with
+                    Steps =
+                        ctx.Steps
+                        @ [
+                            Step.StepFn(fun (ctx, _) ->
+                                ctx.RunHttpHealthCheck(
+                                    url,
+                                    configRequest = defaultArg configRequest ignore,
+                                    cancellationToken = defaultArg cancellationToken CancellationToken.None
+                                )
                             )
-                        )
-                    ]
+                        ]
             }
         )
 
@@ -554,18 +572,19 @@ type StageBuilder(name: string) =
     member inline _.echo([<InlineIfLambda>] build: BuildStage, msg: StageContext -> string) =
         BuildStage(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with
-                Steps =
-                    ctx.Steps
-                    @ [
-                        Step.StepFn(fun (ctx, i) -> async {
-                            if ctx.GetNoPrefixForStep() then
-                                printfn "%s" (msg ctx)
-                            else
-                                printfn "%s %s" (ctx.BuildStepPrefix i) (msg ctx)
-                            return Ok()
-                        })
-                    ]
+            {
+                ctx with
+                    Steps =
+                        ctx.Steps
+                        @ [
+                            Step.StepFn(fun (ctx, i) -> async {
+                                if ctx.GetNoPrefixForStep() then
+                                    printfn "%s" (msg ctx)
+                                else
+                                    printfn "%s %s" (ctx.BuildStepPrefix i) (msg ctx)
+                                return Ok()
+                            })
+                        ]
             }
         )
 

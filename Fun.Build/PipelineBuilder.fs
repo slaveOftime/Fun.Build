@@ -21,21 +21,20 @@ type PipelineBuilder(name: string) =
 
     member _.Run(build: BuildPipeline) =
         let ctx = build.Invoke(PipelineContext.Create name)
-        { ctx with
-            Stages =
-                ctx.Stages
-                |> List.map (fun x ->
-                    { x with
-                        ParentContext = ValueSome(StageParent.Pipeline ctx)
-                    }
-                )
-            PostStages =
-                ctx.PostStages
-                |> List.map (fun x ->
-                    { x with
-                        ParentContext = ValueSome(StageParent.Pipeline ctx)
-                    }
-                )
+        {
+            ctx with
+                Stages =
+                    ctx.Stages
+                    |> List.map (fun x -> {
+                        x with
+                            ParentContext = ValueSome(StageParent.Pipeline ctx)
+                    })
+                PostStages =
+                    ctx.PostStages
+                    |> List.map (fun x -> {
+                        x with
+                            ParentContext = ValueSome(StageParent.Pipeline ctx)
+                    })
         }
 
 
@@ -70,11 +69,10 @@ type PipelineBuilder(name: string) =
     member inline _.Yield([<InlineIfLambda>] condition: BuildStageIsActive) = condition
 
     member inline _.Delay([<InlineIfLambda>] fn: unit -> BuildStageIsActive) =
-        BuildPipeline(fun ctx ->
-            { ctx with
+        BuildPipeline(fun ctx -> {
+            ctx with
                 Verify = fun ctx -> fn().Invoke(ctx.MakeVerificationStage())
-            }
-        )
+        })
 
     member inline _.Combine([<InlineIfLambda>] condition: BuildStageIsActive, [<InlineIfLambda>] build: BuildPipeline) =
         buildPipelineVerification build condition.Invoke
@@ -104,8 +102,9 @@ type PipelineBuilder(name: string) =
     member inline _.timeout([<InlineIfLambda>] build: BuildPipeline, seconds: int) =
         BuildPipeline(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with
-                Timeout = ValueSome(TimeSpan.FromSeconds seconds)
+            {
+                ctx with
+                    Timeout = ValueSome(TimeSpan.FromSeconds seconds)
             }
         )
 
@@ -123,8 +122,9 @@ type PipelineBuilder(name: string) =
     member inline _.timeoutForStage([<InlineIfLambda>] build: BuildPipeline, seconds: int) =
         BuildPipeline(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with
-                TimeoutForStage = ValueSome(TimeSpan.FromSeconds seconds)
+            {
+                ctx with
+                    TimeoutForStage = ValueSome(TimeSpan.FromSeconds seconds)
             }
         )
 
@@ -142,8 +142,9 @@ type PipelineBuilder(name: string) =
     member inline _.timeoutForStep([<InlineIfLambda>] build: BuildPipeline, seconds: int) =
         BuildPipeline(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with
-                TimeoutForStep = ValueSome(TimeSpan.FromSeconds seconds)
+            {
+                ctx with
+                    TimeoutForStep = ValueSome(TimeSpan.FromSeconds seconds)
             }
         )
 
@@ -161,8 +162,9 @@ type PipelineBuilder(name: string) =
     member inline _.envVars([<InlineIfLambda>] build: BuildPipeline, kvs: seq<string * string>) =
         BuildPipeline(fun ctx ->
             let ctx = build.Invoke ctx
-            { ctx with
-                EnvVars = kvs |> Seq.fold (fun state (k, v) -> Map.add k v state) ctx.EnvVars
+            {
+                ctx with
+                    EnvVars = kvs |> Seq.fold (fun state (k, v) -> Map.add k v state) ctx.EnvVars
             }
         )
 
@@ -183,9 +185,10 @@ type PipelineBuilder(name: string) =
 
             let argsInfo = resolveCmdArgsAndRemainings args
 
-            { ctx with
-                CmdArgs = argsInfo.CmdArgs
-                RemainingCmdArgs = argsInfo.RemainingArgs
+            {
+                ctx with
+                    CmdArgs = argsInfo.CmdArgs
+                    RemainingCmdArgs = argsInfo.RemainingArgs
             }
         )
 
@@ -278,11 +281,11 @@ type PipelineBuilder(name: string) =
                             else
                                 args[index .. pipelineIndexes[i + 1] - 1]
                         let argInfo = resolveCmdArgsAndRemainings args
-                        let ctx =
-                            { ctx with
+                        let ctx = {
+                            ctx with
                                 CmdArgs = argInfo.CmdArgs
                                 RemainingCmdArgs = argInfo.RemainingArgs
-                            }
+                        }
                         if isHelp then ctx.RunCommandHelp(verbose) else ctx.Run()
         with
         | :? PipelineFailedException

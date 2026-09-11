@@ -18,10 +18,10 @@ let stage_checkEnv = stage "Check environment" { run "dotnet tool restore" }
 
 let stage_lint =
     stage "Lint" {
-        stage "Format" { run "dotnet fantomas . -r" }
+        stage "Format" { run "dotnet fantomas" }
         stage "Check" {
             whenGithubAction
-            run "dotnet fantomas . -r --check"
+            run "dotnet fantomas check"
         }
     }
 

@@ -101,14 +101,7 @@ type Process with
 
 
     static member StartAsync
-        (
-            startInfo: ProcessStartInfo,
-            commandLogString: string,
-            logPrefix: string,
-            ?printOutput,
-            ?captureOutput,
-            ?cancellationToken: CancellationToken
-        ) =
+        (startInfo: ProcessStartInfo, commandLogString: string, logPrefix: string, ?printOutput, ?captureOutput, ?cancellationToken: CancellationToken) =
         async {
             let printOutput = defaultArg printOutput true
             let captureOutput = defaultArg captureOutput false
@@ -163,10 +156,10 @@ type Process with
                         Native.kill result
                     )
                     :> IDisposable
-                | _ ->
-                    { new IDisposable with
+                | _ -> {
+                    new IDisposable with
                         member _.Dispose() = ()
-                    }
+                  }
 
             if shouldRedirectOutput then
                 result.BeginOutputReadLine()
