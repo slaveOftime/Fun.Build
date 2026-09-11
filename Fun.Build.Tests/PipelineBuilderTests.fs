@@ -209,7 +209,11 @@ let ``parallel should work`` () =
         }
         runImmediate
     }
-    Assert.InRange(sw.ElapsedMilliseconds, 1000, 2000)
+    // Upper bounds are deliberately loose: these are wall-clock assertions and CI runners
+    // are shared and slow. What each bound encodes:
+    //   parallel   - must stay well under the 3000ms the sequential version needs
+    //   sequential - must be at least 2500ms, which is what proves it did not run in parallel
+    Assert.InRange(sw.ElapsedMilliseconds, 1000, 2400)
 
     sw.Restart()
     pipeline "" {
@@ -221,7 +225,7 @@ let ``parallel should work`` () =
         runImmediate
     }
     let elapsed = sw.ElapsedMilliseconds
-    Assert.InRange(elapsed, 2500, 4000)
+    Assert.InRange(elapsed, 2500, 10000)
 
 
 [<Fact>]
