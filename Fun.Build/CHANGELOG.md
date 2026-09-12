@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-12
+
 - Add `RunCommandCaptureAll` and `RunSensitiveCommandCaptureAll`, which return a `CommandOutput` record with the exit code, standard output, standard error and whether your cancellation token stopped the run, whatever the exit code was #93 #96
 - Breaking: `Process.StartAsync` now returns the `CommandOutput` record instead of the anonymous struct it returned in 1.1.18. Source and binary breaking if you call it directly #93
 - Fix: standard error was never read when output is redirected (prefixed, silenced or captured), so it was lost. It is now read, and written to standard error #95
