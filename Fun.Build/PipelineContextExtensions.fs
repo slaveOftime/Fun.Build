@@ -56,10 +56,10 @@ module PipelineContextExtensionsInternal =
                 | _ -> ValueNone
 
 
-        member this.MakeVerificationStage() =
-            { StageContext.Create("") with
+        member this.MakeVerificationStage() = {
+            StageContext.Create("") with
                 ParentContext = ValueSome(StageParent.Pipeline this)
-            }
+        }
 
 
         member this.PrintError(msg: string) =
@@ -75,11 +75,10 @@ module PipelineContextExtensionsInternal =
 
             let stages =
                 stages
-                |> Seq.map (fun x ->
-                    { x with
+                |> Seq.map (fun x -> {
+                    x with
                         ParentContext = ValueSome(StageParent.Pipeline this)
-                    }
-                )
+                })
                 |> Seq.toList
 
             let mutable i = 0
@@ -239,25 +238,25 @@ module PipelineContextExtensionsInternal =
                     match step with
                     | Step.StepFn _ -> ()
                     | Step.StepOfStage s ->
-                        run
-                            { s with
+                        run {
+                            s with
                                 ParentContext = ValueSome(StageParent.Stage stage)
-                            }
+                        }
 
             pipeline.Stages
             |> List.iter (fun stage ->
-                run
-                    { stage with
+                run {
+                    stage with
                         ParentContext = ValueSome(StageParent.Pipeline pipeline)
-                    }
+                }
             )
 
             pipeline.PostStages
             |> List.iter (fun stage ->
-                run
-                    { stage with
+                run {
+                    stage with
                         ParentContext = ValueSome(StageParent.Pipeline pipeline)
-                    }
+                }
             )
 
             if not verbose then
@@ -299,15 +298,16 @@ module PipelineContextExtensionsInternal =
     let inline buildPipelineVerification ([<InlineIfLambda>] build: BuildPipeline) ([<InlineIfLambda>] conditionFn) =
         BuildPipeline(fun ctx ->
             let newCtx = build.Invoke ctx
-            { newCtx with
-                Verify =
-                    fun ctx ->
-                        match ctx.Mode with
-                        | Mode.Execution -> newCtx.Verify ctx && conditionFn (ctx.MakeVerificationStage())
-                        | Mode.Verification
-                        | Mode.CommandHelp _ ->
-                            newCtx.Verify ctx |> ignore
-                            conditionFn (ctx.MakeVerificationStage()) |> ignore
-                            false
+            {
+                newCtx with
+                    Verify =
+                        fun ctx ->
+                            match ctx.Mode with
+                            | Mode.Execution -> newCtx.Verify ctx && conditionFn (ctx.MakeVerificationStage())
+                            | Mode.Verification
+                            | Mode.CommandHelp _ ->
+                                newCtx.Verify ctx |> ignore
+                                conditionFn (ctx.MakeVerificationStage()) |> ignore
+                                false
             }
         )

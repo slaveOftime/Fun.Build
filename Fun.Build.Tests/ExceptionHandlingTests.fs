@@ -9,18 +9,16 @@ let ``exception handling should work for sync steps`` () =
     let mutable exn = ValueNone
 
     try
-        shouldNotBeCalled (fun call ->
-            pipeline "" {
-                stage "" {
-                    run (fun _ ->
-                        failwith "test"
-                        ()
-                    )
-                    run call
-                }
-                runImmediate
+        shouldNotBeCalled (fun call -> pipeline "" {
+            stage "" {
+                run (fun _ ->
+                    failwith "test"
+                    ()
+                )
+                run call
             }
-        )
+            runImmediate
+        })
     with :? PipelineFailedException as ex ->
         exn <- ValueSome ex
 
@@ -33,25 +31,23 @@ let ``exception handling should work for parallel steps`` () =
     let mutable exn = ValueNone
 
     try
-        shouldNotBeCalled (fun call ->
-            pipeline "" {
+        shouldNotBeCalled (fun call -> pipeline "" {
+            stage "" {
+                paralle
+                run (fun _ -> async {
+                    do! Async.Sleep 10
+                    failwith "test"
+                    ()
+                })
                 stage "" {
-                    paralle
                     run (fun _ -> async {
-                        do! Async.Sleep 10
-                        failwith "test"
-                        ()
+                        do! Async.Sleep 100
+                        call ()
                     })
-                    stage "" {
-                        run (fun _ -> async {
-                            do! Async.Sleep 100
-                            call ()
-                        })
-                    }
                 }
-                runImmediate
             }
-        )
+            runImmediate
+        })
 
     with :? PipelineFailedException as ex ->
         exn <- ValueSome ex
@@ -64,19 +60,17 @@ let ``PipelineFailedException should fail fast`` () =
     let mutable exn = ValueNone
 
     try
-        shouldNotBeCalled (fun call ->
-            pipeline "" {
-                stage "" {
-                    continueOnStepFailure
-                    run (fun _ ->
-                        raise (PipelineFailedException("demo"))
-                        ()
-                    )
-                }
-                post [ stage "" { run call } ]
-                runImmediate
+        shouldNotBeCalled (fun call -> pipeline "" {
+            stage "" {
+                continueOnStepFailure
+                run (fun _ ->
+                    raise (PipelineFailedException("demo"))
+                    ()
+                )
             }
-        )
+            post [ stage "" { run call } ]
+            runImmediate
+        })
 
     with :? PipelineFailedException as ex ->
         exn <- ValueSome ex
@@ -89,19 +83,17 @@ let ``PipelineCancelledException should fail fast`` () =
     let mutable exn = ValueNone
 
     try
-        shouldNotBeCalled (fun call ->
-            pipeline "" {
-                stage "" {
-                    continueOnStepFailure
-                    run (fun _ ->
-                        raise (PipelineCancelledException("demo"))
-                        ()
-                    )
-                }
-                post [ stage "" { run call } ]
-                runImmediate
+        shouldNotBeCalled (fun call -> pipeline "" {
+            stage "" {
+                continueOnStepFailure
+                run (fun _ ->
+                    raise (PipelineCancelledException("demo"))
+                    ()
+                )
             }
-        )
+            post [ stage "" { run call } ]
+            runImmediate
+        })
 
     with :? PipelineCancelledException as ex ->
         exn <- ValueSome ex

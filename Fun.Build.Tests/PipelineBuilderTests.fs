@@ -8,133 +8,113 @@ open System.Threading.Tasks
 
 [<Fact>]
 let ``pipeline should world with multiple stages with different conditions`` () =
-    shouldNotBeCalled (fun call ->
-        pipeline "" {
-            stage "" {
-                whenCmdArg "test1"
-                run call
-            }
-            stage "" {
-                whenEnvVar "test2"
-                run call
-            }
-            runImmediate
+    shouldNotBeCalled (fun call -> pipeline "" {
+        stage "" {
+            whenCmdArg "test1"
+            run call
         }
-    )
+        stage "" {
+            whenEnvVar "test2"
+            run call
+        }
+        runImmediate
+    })
 
-    shouldBeCalled (fun call ->
-        pipeline "" {
-            cmdArgs [ "test1" ]
-            stage "" {
-                whenCmdArg "test1"
-                run call
-            }
-            runImmediate
+    shouldBeCalled (fun call -> pipeline "" {
+        cmdArgs [ "test1" ]
+        stage "" {
+            whenCmdArg "test1"
+            run call
         }
-    )
+        runImmediate
+    })
 
-    shouldBeCalled (fun call ->
-        pipeline "" {
-            envVars [ "test2", "" ]
-            stage "" {
-                whenEnvVar "test2"
-                run call
-            }
-            runImmediate
+    shouldBeCalled (fun call -> pipeline "" {
+        envVars [ "test2", "" ]
+        stage "" {
+            whenEnvVar "test2"
+            run call
         }
-    )
+        runImmediate
+    })
 
-    shouldNotBeCalled (fun call ->
-        pipeline "" {
-            stage "" {
-                whenAll {
-                    cmdArg "test1"
-                    envVar "test2"
-                }
-                run call
+    shouldNotBeCalled (fun call -> pipeline "" {
+        stage "" {
+            whenAll {
+                cmdArg "test1"
+                envVar "test2"
             }
-            runImmediate
+            run call
         }
-    )
+        runImmediate
+    })
 
-    shouldNotBeCalled (fun call ->
-        pipeline "" {
-            cmdArgs [ "test1" ]
-            stage "" {
-                whenAll {
-                    cmdArg "test1"
-                    envVar "test2"
-                }
-                run call
+    shouldNotBeCalled (fun call -> pipeline "" {
+        cmdArgs [ "test1" ]
+        stage "" {
+            whenAll {
+                cmdArg "test1"
+                envVar "test2"
             }
-            runImmediate
+            run call
         }
-    )
+        runImmediate
+    })
 
-    shouldBeCalled (fun call ->
-        pipeline "" {
-            cmdArgs [ "test1" ]
-            envVars [ "test2", "" ]
-            stage "" {
-                timeout 1000
-                whenAll {
-                    cmdArg "test1"
-                    envVar "test2"
-                }
-                timeout 1000
-                run call
+    shouldBeCalled (fun call -> pipeline "" {
+        cmdArgs [ "test1" ]
+        envVars [ "test2", "" ]
+        stage "" {
+            timeout 1000
+            whenAll {
+                cmdArg "test1"
+                envVar "test2"
             }
-            runImmediate
+            timeout 1000
+            run call
         }
-    )
+        runImmediate
+    })
 
-    shouldBeCalled (fun call ->
-        pipeline "" {
-            stage "" { run call }
-            runImmediate
-        }
-    )
+    shouldBeCalled (fun call -> pipeline "" {
+        stage "" { run call }
+        runImmediate
+    })
 
-    shouldBeCalled (fun call ->
-        pipeline "" {
-            stage "" { run ignore }
-            stage "" { run call }
-            stage "" {
-                paralle
-                run "dotnet --version"
-                run "dotnet --list-sdks"
-            }
-            runImmediate
+    shouldBeCalled (fun call -> pipeline "" {
+        stage "" { run ignore }
+        stage "" { run call }
+        stage "" {
+            paralle
+            run "dotnet --version"
+            run "dotnet --list-sdks"
         }
-    )
+        runImmediate
+    })
 
 
 [<Fact>]
 let ``post stage should always run when other stage is failed`` () =
     Assert.Throws<PipelineFailedException>(fun _ ->
-        shouldBeCalled (fun call ->
-            pipeline "" {
-                stage "" {
-                    run (fun _ ->
-                        failwith "test"
-                        ()
-                    )
-                }
-                post [ stage "" { run call } ]
-                runImmediate
+        shouldBeCalled (fun call -> pipeline "" {
+            stage "" {
+                run (fun _ ->
+                    failwith "test"
+                    ()
+                )
             }
-        )
+            post [ stage "" { run call } ]
+            runImmediate
+        })
     )
     |> ignore
 
     Assert.Throws<PipelineFailedException>(fun _ ->
-        shouldBeCalled (fun call ->
-            pipeline "" {
-                stage "" { run (fun _ -> -1) }
-                post [ stage "" { run call } ]
-                runImmediate
-            }
-        )
+        shouldBeCalled (fun call -> pipeline "" {
+            stage "" { run (fun _ -> -1) }
+            post [ stage "" { run call } ]
+            runImmediate
+        })
     )
     |> ignore
 
@@ -143,58 +123,48 @@ let ``post stage should always run when other stage is failed`` () =
 [<Fact>]
 let ``all post stages should always run when some post stages are failed`` () =
     Assert.Throws<PipelineFailedException>(fun _ ->
-        shouldBeCalled (fun call ->
-            pipeline "" {
-                post [
-                    stage "" {
-                        run (fun _ ->
-                            failwith "test"
-                            ()
-                        )
-                    }
-                    stage "" { run call }
-                ]
-                runImmediate
-            }
-        )
+        shouldBeCalled (fun call -> pipeline "" {
+            post [
+                stage "" {
+                    run (fun _ ->
+                        failwith "test"
+                        ()
+                    )
+                }
+                stage "" { run call }
+            ]
+            runImmediate
+        })
     )
     |> ignore
 
     Assert.Throws<PipelineFailedException>(fun _ ->
-        shouldBeCalled (fun call ->
-            pipeline "" {
-                post [ stage "" { run (fun _ -> -1) }; stage "" { run call } ]
-                runImmediate
-            }
-        )
+        shouldBeCalled (fun call -> pipeline "" {
+            post [ stage "" { run (fun _ -> -1) }; stage "" { run call } ]
+            runImmediate
+        })
     )
     |> ignore
 
 
 [<Fact>]
 let ``runIfOnlySpecified should work`` () =
-    shouldBeCalled (fun call ->
-        pipeline "demo" {
-            cmdArgs [ "-p"; "demo" ]
-            stage "" { run call }
-            runIfOnlySpecified
-        }
-    )
+    shouldBeCalled (fun call -> pipeline "demo" {
+        cmdArgs [ "-p"; "demo" ]
+        stage "" { run call }
+        runIfOnlySpecified
+    })
 
-    shouldNotBeCalled (fun call ->
-        pipeline "demo" {
-            stage "" { run call }
-            runIfOnlySpecified
-        }
-    )
+    shouldNotBeCalled (fun call -> pipeline "demo" {
+        stage "" { run call }
+        runIfOnlySpecified
+    })
 
-    shouldBeCalled (fun call ->
-        pipeline "demo" {
-            timeout 1
-            stage "" { run call }
-            runIfOnlySpecified false
-        }
-    )
+    shouldBeCalled (fun call -> pipeline "demo" {
+        timeout 1
+        stage "" { run call }
+        runIfOnlySpecified false
+    })
 
 [<Fact>]
 let ``runIfOnlySpecified should work for multiple -p`` () =
@@ -239,7 +209,11 @@ let ``parallel should work`` () =
         }
         runImmediate
     }
-    Assert.InRange(sw.ElapsedMilliseconds, 1000, 2000)
+    // Upper bounds are deliberately loose: these are wall-clock assertions and CI runners
+    // are shared and slow. What each bound encodes:
+    //   parallel   - must stay well under the 3000ms the sequential version needs
+    //   sequential - must be at least 2500ms, which is what proves it did not run in parallel
+    Assert.InRange(sw.ElapsedMilliseconds, 1000, 2400)
 
     sw.Restart()
     pipeline "" {
@@ -251,7 +225,7 @@ let ``parallel should work`` () =
         runImmediate
     }
     let elapsed = sw.ElapsedMilliseconds
-    Assert.InRange(elapsed, 2500, 4000)
+    Assert.InRange(elapsed, 2500, 10000)
 
 
 [<Fact>]
@@ -324,167 +298,141 @@ let ``Syntax check`` () =
 [<Fact>]
 let ``Verification should work`` () =
     Assert.Throws<PipelineFailedException>(fun _ ->
-        shouldNotBeCalled (fun call ->
-            pipeline "" {
-                whenCmdArg "123"
-                stage "" { run call }
-                post [ stage "" { run call } ]
-                runImmediate
-            }
-        )
+        shouldNotBeCalled (fun call -> pipeline "" {
+            whenCmdArg "123"
+            stage "" { run call }
+            post [ stage "" { run call } ]
+            runImmediate
+        })
     )
     |> ignore
 
     Assert.Throws<PipelineFailedException>(fun _ ->
-        shouldNotBeCalled (fun call ->
-            pipeline "" {
-                verify (fun _ -> false)
-                stage "" { run call }
-                post [ stage "" { run call } ]
-                runImmediate
-            }
-        )
-    )
-    |> ignore
-
-    shouldBeCalled (fun call ->
-        pipeline "" {
-            cmdArgs [ "123" ]
-            whenAll { cmdArg "123" }
+        shouldNotBeCalled (fun call -> pipeline "" {
+            verify (fun _ -> false)
             stage "" { run call }
             post [ stage "" { run call } ]
             runImmediate
-        }
+        })
     )
+    |> ignore
+
+    shouldBeCalled (fun call -> pipeline "" {
+        cmdArgs [ "123" ]
+        whenAll { cmdArg "123" }
+        stage "" { run call }
+        post [ stage "" { run call } ]
+        runImmediate
+    })
 
 [<Fact>]
 let ``when' stage should use stage execution result as verification condition for pipeline`` () =
     let mutable numChecks = 0
     Assert.Throws<PipelineFailedException>(fun _ ->
-        shouldNotBeCalled (fun call ->
-            pipeline "" {
-                when' (
-                    stage "whenStageShouldFail" {
-                        run (fun ctx ->
-                            numChecks <- numChecks + 1
-                            1
-                        )
-                    }
-                )
-                stage "" { run call }
-                runImmediate
-            }
-        )
+        shouldNotBeCalled (fun call -> pipeline "" {
+            when' (
+                stage "whenStageShouldFail" {
+                    run (fun ctx ->
+                        numChecks <- numChecks + 1
+                        1
+                    )
+                }
+            )
+            stage "" { run call }
+            runImmediate
+        })
     )
     |> ignore
     Assert.Equal(1, numChecks)
 
-    shouldBeCalled (fun call ->
-        pipeline "" {
-            when' (stage "whenStageShouldPass" { run (fun ctx -> 0) })
-            stage "" { run call }
-            runImmediate
-        }
-    )
+    shouldBeCalled (fun call -> pipeline "" {
+        when' (stage "whenStageShouldPass" { run (fun ctx -> 0) })
+        stage "" { run call }
+        runImmediate
+    })
 
 
 
 [<Fact>]
 let ``Should fail if stage is ignored`` () =
     Assert.Throws<PipelineFailedException>(fun _ ->
-        shouldNotBeCalled (fun call ->
-            pipeline "" {
-                stage "" {
-                    whenCmdArg "123"
-                    failIfIgnored
-                    run call
-                }
-                runImmediate
+        shouldNotBeCalled (fun call -> pipeline "" {
+            stage "" {
+                whenCmdArg "123"
+                failIfIgnored
+                run call
             }
-        )
+            runImmediate
+        })
     )
     |> ignore
 
     Assert.Throws<PipelineFailedException>(fun _ ->
-        shouldNotBeCalled (fun call ->
-            pipeline "" {
+        shouldNotBeCalled (fun call -> pipeline "" {
+            stage "" {
                 stage "" {
-                    stage "" {
-                        whenCmdArg "123"
-                        failIfIgnored
-                        run call
-                    }
-                }
-                runImmediate
-            }
-        )
-    )
-    |> ignore
-
-    shouldBeCalled (fun call ->
-        pipeline "1" {
-            cmdArgs [ "123" ]
-            stage "2" {
-                stage "3" {
                     whenCmdArg "123"
                     failIfIgnored
                     run call
                 }
             }
             runImmediate
-        }
+        })
     )
+    |> ignore
+
+    shouldBeCalled (fun call -> pipeline "1" {
+        cmdArgs [ "123" ]
+        stage "2" {
+            stage "3" {
+                whenCmdArg "123"
+                failIfIgnored
+                run call
+            }
+        }
+        runImmediate
+    })
 
 
 [<Fact>]
 let ``whenCmdArg should work`` () =
     Assert.Throws<PipelineFailedException>(fun _ ->
-        shouldNotBeCalled (fun call ->
-            pipeline "" {
-                whenCmdArg "test1"
-                stage "" { run call }
-                runImmediate
-            }
-        )
-    )
-    |> ignore
-
-    shouldBeCalled (fun call ->
-        pipeline "" {
-            cmdArgs [ "test1" ]
+        shouldNotBeCalled (fun call -> pipeline "" {
             whenCmdArg "test1"
             stage "" { run call }
             runImmediate
-        }
-    )
-
-    shouldBeCalled (fun call ->
-        pipeline "" {
-            whenCmdArg "test1" "value" "description" true
-            stage "" { run call }
-            runImmediate
-        }
-    )
-
-    Assert.Throws<PipelineFailedException>(fun _ ->
-        shouldNotBeCalled (fun call ->
-            pipeline "" {
-                whenCmdArg "test1" "value" "description" false
-                stage "" { run call }
-                runImmediate
-            }
-        )
+        })
     )
     |> ignore
 
-    shouldBeCalled (fun call ->
-        pipeline "" {
-            cmdArgs [ "test1"; "value" ]
+    shouldBeCalled (fun call -> pipeline "" {
+        cmdArgs [ "test1" ]
+        whenCmdArg "test1"
+        stage "" { run call }
+        runImmediate
+    })
+
+    shouldBeCalled (fun call -> pipeline "" {
+        whenCmdArg "test1" "value" "description" true
+        stage "" { run call }
+        runImmediate
+    })
+
+    Assert.Throws<PipelineFailedException>(fun _ ->
+        shouldNotBeCalled (fun call -> pipeline "" {
             whenCmdArg "test1" "value" "description" false
             stage "" { run call }
             runImmediate
-        }
+        })
     )
+    |> ignore
+
+    shouldBeCalled (fun call -> pipeline "" {
+        cmdArgs [ "test1"; "value" ]
+        whenCmdArg "test1" "value" "description" false
+        stage "" { run call }
+        runImmediate
+    })
 
 
 

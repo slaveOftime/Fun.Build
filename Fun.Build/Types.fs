@@ -34,13 +34,12 @@ type CmdName =
         | LongName x -> [ x ]
         | FullName(s, l) -> [ s; l ]
 
-type CmdArg =
-    {
-        Name: CmdName
-        Values: string list
-        Description: string option
-        IsOptional: bool
-    }
+type CmdArg = {
+    Name: CmdName
+    Values: string list
+    Description: string option
+    IsOptional: bool
+} with
 
     static member Create(?shortName: string, ?longName: string, ?description: string, ?values, ?isOptional: bool) = {
         Name =
@@ -60,13 +59,12 @@ type CmdArg =
     member this.WithOptional x = { this with IsOptional = x }
 
 
-type EnvArg =
-    {
-        Name: string
-        Values: string list
-        Description: string option
-        IsOptional: bool
-    }
+type EnvArg = {
+    Name: string
+    Values: string list
+    Description: string option
+    IsOptional: bool
+} with
 
     static member Create(name: string, ?description: string, ?values, ?isOptional: bool) = {
         Name = name
