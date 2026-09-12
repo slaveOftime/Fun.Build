@@ -12,6 +12,27 @@ open Fun.Build.StageContextExtensionsInternal
 
 module BuiltinCmdsInternal =
 
+    /// The interpolated argument values, so they can be replaced in the child's own output too.
+    /// Masking the logged command alone leaves the log looking safe while the child echoes the
+    /// secret straight back on stdout or stderr.
+    let maskedCommandValues (commandStr: FormattableString) =
+        commandStr.GetArguments() |> Array.map string |> Array.filter (String.IsNullOrEmpty >> not)
+
+    /// The command as it should be logged: every interpolated argument replaced by a *.
+    let maskedCommandString (commandStr: FormattableString) =
+        let args: obj[] = Array.create commandStr.ArgumentCount "*"
+        String.Format(commandStr.Format, args)
+
+    /// Turn a finished command into the result the CaptureOutput members hand back. A cancelled
+    /// command counts as successful: StageBuilder documents the token as a way to stop a command and
+    /// still mark it as success.
+    let toCapturedOutputResult (ctx: StageContext) (ct: CancellationToken) (result: CommandOutput) =
+        if ct.IsCancellationRequested || ctx.IsAcceptableExitCode result.ExitCode then
+            Ok result.StandardOutput
+        else
+            Error "Exit code is not indicating as successful."
+
+
     type StageContext with
 
         /// Build a ProcessStartInfo object for a command string. If your command is a file path with white space, you should quote it with ' or ".
@@ -49,10 +70,13 @@ module BuiltinCmdsInternal =
                 ?workingDir: string,
                 ?disablePrintOutput: bool,
                 ?disablePrintCommand: bool,
-                ?cancellationToken: CancellationToken
+                ?cancellationToken: CancellationToken,
+                ?maskedValues: string seq,
+                ?captureOutput: bool
             ) : Async<CommandOutput> = async {
             let disablePrintOutput = defaultArg disablePrintOutput false
             let disablePrintCommand = defaultArg disablePrintCommand false
+            let captureOutput = defaultArg captureOutput true
             let command = ctx.BuildCommand(commandStr, ?workingDir = workingDir)
             let noPrefixForStep = ctx.GetNoPrefixForStep()
             let prefix =
@@ -74,8 +98,9 @@ module BuiltinCmdsInternal =
                     commandLogString,
                     prefix,
                     printOutput = (not disablePrintOutput && not (ctx.GetNoStdRedirectForStep())),
-                    captureOutput = true,
-                    cancellationToken = ct
+                    captureOutput = captureOutput,
+                    cancellationToken = ct,
+                    ?maskedValues = maskedValues
                 )
         }
 
@@ -102,7 +127,12 @@ module BuiltinCmds =
 
     type StageContext with
 
-        /// Run a command string with current context
+        /// <summary>
+        /// Run a command string with current context.
+        /// </summary>
+        /// <param name="commandStr">Command to run</param>
+        /// <param name="step">Current step rank</param>
+        /// <param name="workingDir">Working directory for command</param>
         member ctx.RunCommand
             (
                 commandStr: string,
@@ -111,31 +141,22 @@ module BuiltinCmds =
                 ?disablePrintOutput: bool,
                 ?disablePrintCommand: bool,
                 ?cancellationToken: CancellationToken
-            ) = async {
-            let disablePrintOutput = defaultArg disablePrintOutput false
-            let disablePrintCommand = defaultArg disablePrintCommand false
-            let command = ctx.BuildCommand(commandStr, ?workingDir = workingDir)
-            let noPrefixForStep = ctx.GetNoPrefixForStep()
-            let prefix =
-                if noPrefixForStep then
-                    ""
-                else
-                    match step with
-                    | Some i -> ctx.BuildStepPrefix i
-                    | None -> ctx.GetNamePath()
-
-            if not noPrefixForStep then AnsiConsole.Markup $"[green]{prefix}[/] "
-            if not disablePrintCommand then AnsiConsole.WriteLine commandStr
-
+            ) : Async<Result<unit, string>> = async {
             let ct = defaultArg cancellationToken CancellationToken.None
 
+            // Nothing is captured here, and that is deliberate: StartAsync only redirects when it has
+            // to, and redirecting loses the child's colours. Capturing would quietly turn every plain
+            // `run "..."` monochrome.
             let! result =
-                Process.StartAsync(
-                    command,
+                ctx.RunCommandCaptureAllInternal(
                     commandStr,
-                    prefix,
-                    printOutput = (not disablePrintOutput && not (ctx.GetNoStdRedirectForStep())),
-                    cancellationToken = ct
+                    commandStr,
+                    ?step = step,
+                    ?workingDir = workingDir,
+                    ?disablePrintOutput = disablePrintOutput,
+                    ?disablePrintCommand = disablePrintCommand,
+                    cancellationToken = ct,
+                    captureOutput = false
                 )
 
             return
@@ -159,44 +180,27 @@ module BuiltinCmds =
                 ?disablePrintOutput: bool,
                 ?disablePrintCommand: bool,
                 ?cancellationToken: CancellationToken
-            ) = async {
-            let disablePrintOutput = defaultArg disablePrintOutput false
-            let disablePrintCommand = defaultArg disablePrintCommand false
-            let command = ctx.BuildCommand(commandStr, ?workingDir = workingDir)
-            let noPrefixForStep = ctx.GetNoPrefixForStep()
-            let prefix =
-                if noPrefixForStep then
-                    ""
-                else
-                    match step with
-                    | Some i -> ctx.BuildStepPrefix i
-                    | None -> ctx.GetNamePath()
-
-            if not noPrefixForStep then AnsiConsole.Markup $"[green]{prefix}[/] "
-            if not disablePrintCommand then AnsiConsole.WriteLine commandStr
-
+            ) : Async<Result<string, string>> = async {
             let ct = defaultArg cancellationToken CancellationToken.None
 
             let! result =
-                Process.StartAsync(
-                    command,
+                ctx.RunCommandCaptureAllInternal(
                     commandStr,
-                    prefix,
-                    printOutput = (not disablePrintOutput && not (ctx.GetNoStdRedirectForStep())),
-                    captureOutput = true,
+                    commandStr,
+                    ?step = step,
+                    ?workingDir = workingDir,
+                    ?disablePrintOutput = disablePrintOutput,
+                    ?disablePrintCommand = disablePrintCommand,
                     cancellationToken = ct
                 )
 
-            if ct.IsCancellationRequested then
-                return Ok result.StandardOutput
-            else if ctx.IsAcceptableExitCode result.ExitCode then
-                return Ok result.StandardOutput
-            else
-                return Error "Exit code is not indicating as successful."
+            return toCapturedOutputResult ctx ct result
         }
 
 
         /// Run a command string with current context, and encrypt the string for logging
+        /// The interpolated arguments are also replaced with * in the child's own standard output and standard error.
+        /// This is a plain substring replacement, so a short value is replaced wherever it appears in that output.
         member ctx.RunSensitiveCommandCaptureOutput
             (
                 commandStr: FormattableString,
@@ -206,43 +210,23 @@ module BuiltinCmds =
                 ?disablePrintCommand: bool,
                 ?cancellationToken: CancellationToken
             ) : Async<Result<string, string>> = async {
-            let disablePrintOutput = defaultArg disablePrintOutput false
-            let disablePrintCommand = defaultArg disablePrintCommand false
-            let command = ctx.BuildCommand(commandStr.ToString(), ?workingDir = workingDir)
-            let noPrefixForStep = ctx.GetNoPrefixForStep()
-            let args: obj[] = Array.create commandStr.ArgumentCount "*"
-            let encryptiedStr = String.Format(commandStr.Format, args)
-
-            let prefix =
-                if noPrefixForStep then
-                    ""
-                else
-                    match step with
-                    | Some i -> ctx.BuildStepPrefix i
-                    | None -> ctx.GetNamePath()
-
-            if not noPrefixForStep then AnsiConsole.Markup $"[green]{prefix}[/] "
-            if not disablePrintCommand then AnsiConsole.WriteLine encryptiedStr
-
             let ct = defaultArg cancellationToken CancellationToken.None
 
             let! result =
-                Process.StartAsync(
-                    command,
-                    encryptiedStr,
-                    prefix,
-                    printOutput = (not disablePrintOutput && not (ctx.GetNoStdRedirectForStep())),
-                    captureOutput = true,
-                    cancellationToken = ct
+                ctx.RunCommandCaptureAllInternal(
+                    commandStr.ToString(),
+                    maskedCommandString commandStr,
+                    ?step = step,
+                    ?workingDir = workingDir,
+                    ?disablePrintOutput = disablePrintOutput,
+                    ?disablePrintCommand = disablePrintCommand,
+                    cancellationToken = ct,
+                    maskedValues = maskedCommandValues commandStr
                 )
 
-            if ct.IsCancellationRequested then
-                return Ok result.StandardOutput
-            else if ctx.IsAcceptableExitCode result.ExitCode then
-                return Ok result.StandardOutput
-            else
-                return Error "Exit code is not indicating as successful."
+            return toCapturedOutputResult ctx ct result
         }
+
 
         /// <summary>
         /// Run a command string with current context, and return the exit code, standard output and standard error
@@ -272,6 +256,8 @@ module BuiltinCmds =
 
 
         /// Same as RunCommandCaptureAll, but encrypt the string for logging
+        /// The interpolated arguments are also replaced with * in the child's own standard output and standard error.
+        /// This is a plain substring replacement, so a short value is replaced wherever it appears in that output.
         member ctx.RunSensitiveCommandCaptureAll
             (
                 commandStr: FormattableString,
@@ -281,20 +267,21 @@ module BuiltinCmds =
                 ?disablePrintCommand: bool,
                 ?cancellationToken: CancellationToken
             ) : Async<CommandOutput> =
-            let args: obj[] = Array.create commandStr.ArgumentCount "*"
-            let encryptiedStr = String.Format(commandStr.Format, args)
             ctx.RunCommandCaptureAllInternal(
                 commandStr.ToString(),
-                encryptiedStr,
+                maskedCommandString commandStr,
                 ?step = step,
                 ?workingDir = workingDir,
                 ?disablePrintOutput = disablePrintOutput,
                 ?disablePrintCommand = disablePrintCommand,
-                ?cancellationToken = cancellationToken
+                ?cancellationToken = cancellationToken,
+                maskedValues = maskedCommandValues commandStr
             )
 
 
         /// Run a command string with current context, and encrypt the string for logging
+        /// The interpolated arguments are also replaced with * in the child's own standard output and standard error.
+        /// This is a plain substring replacement, so a short value is replaced wherever it appears in that output.
         member ctx.RunSensitiveCommand
             (
                 commandStr: FormattableString,
