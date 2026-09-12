@@ -13,6 +13,3 @@ fsharp_multiline_bracket_style=stroustrup
 fsharp_newline_before_multiline_computation_expression=false
 fsharp_multi_line_lambda_closing_newline=true
 fsharp_blank_lines_around_nested_multiline_expressions=false
-
-[*.fsx]
-fsharp_newline_before_multiline_computation_expression=true

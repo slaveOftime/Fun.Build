@@ -8,44 +8,39 @@ open Fun.Build.Github
 
 
 // You can create a stage and reuse it in any pipeline or nested stages
-let demo1 =
-    stage "Ways to run something" {
-        timeout 30 // You can set default timeout for the stage
-        timeoutForStep 30 // You can set default timeout for step under the stage
-        envVars [ "envKey", "envValue" ] // You can add or override environment variables
-        // Use cmd, so we can encrypt sensitive argument for formatable string
-        runSensitive ($"""dotnet {"--version"}""")
-        run (fun ctx -> ctx.RunSensitiveCommand $"""dotnet {"--version"}""")
-        // You can run command directly with a string
-        run "dotnet --version"
-        run (fun ctx -> "dotnet --version")
-        run (fun ctx -> async { return "dotnet --version" })
-        // You use use the RunCommand to run multiple command according to your logics
-        run (fun ctx ->
-            asyncResult {
-                do! ctx.RunCommand "dotnet --version"
-                do! ctx.RunCommand "dotnet --version"
-            }
-        )
-        // You can also capture the exit code, standard output and standard error and decide yourself what to do with them
-        // Note an async { } block returning unit always reports success, so return a Result if the exit code should decide
-        run (fun ctx ->
-            async {
-                let! output = ctx.RunCommandCaptureAll "dotnet --version"
-                printfn "exit code %d, stdout %s, stderr %s" output.ExitCode output.StandardOutput output.StandardError
-                return ctx.MapExitCodeToResult output.ExitCode
-            }
-        )
-        // You can run async functions
-        run (Async.Sleep 1000)
-        run (fun _ -> Async.Sleep 1000)
-        run (fun _ -> async { return 0 }) // return an exit code to indicate if it successful
-        // You can also run sync functions
-        run (fun ctx -> ())
-        run (fun ctx -> 0) // return an exit code to indicate if it successful
-        // You can also use the low level api
-        step (fun ctx _ -> async { return Ok() })
-    }
+let stage_demo1 = stage "Ways to run something" {
+    timeout 30 // You can set default timeout for the stage
+    timeoutForStep 30 // You can set default timeout for step under the stage
+    envVars [ "envKey", "envValue" ] // You can add or override environment variables
+    // Use cmd, so we can encrypt sensitive argument for formatable string
+    runSensitive ($"""dotnet {"--version"}""")
+    run (fun ctx -> ctx.RunSensitiveCommand $"""dotnet {"--version"}""")
+    // You can run command directly with a string
+    run "dotnet --version"
+    run (fun ctx -> "dotnet --version")
+    run (fun ctx -> async { return "dotnet --version" })
+    // You use use the RunCommand to run multiple command according to your logics
+    run (fun ctx -> asyncResult {
+        do! ctx.RunCommand "dotnet --version"
+        do! ctx.RunCommand "dotnet --version"
+    })
+    // You can also capture the exit code, standard output and standard error and decide yourself what to do with them
+    // Note an async { } block returning unit always reports success, so return a Result if the exit code should decide
+    run (fun ctx -> async {
+        let! output = ctx.RunCommandCaptureAll "dotnet --version"
+        printfn "exit code %d, stdout %s, stderr %s" output.ExitCode output.StandardOutput output.StandardError
+        return ctx.MapExitCodeToResult output.ExitCode
+    })
+    // You can run async functions
+    run (Async.Sleep 1000)
+    run (fun _ -> Async.Sleep 1000)
+    run (fun _ -> async { return 0 }) // return an exit code to indicate if it successful
+    // You can also run sync functions
+    run (fun ctx -> ())
+    run (fun ctx -> 0) // return an exit code to indicate if it successful
+    // You can also use the low level api
+    step (fun ctx _ -> async { return Ok() })
+}
 
 
 pipeline "Fun.Build" {
@@ -64,7 +59,7 @@ pipeline "Fun.Build" {
     noPrefixForStep false
     // Below is a custom extended operation
     collapseGithubActionLogs
-    demo1
+    stage_demo1
     stage "Demo2" {
         // whenAny, whenNot, whenAll. They can also be composed.
         whenBranch "master" // Check current branch is master
@@ -117,11 +112,9 @@ pipeline "Fun.Build" {
         stage "Post stage" {
             echo "You are finished 😂"
             echo (fun ctx -> sprintf "You are finished here: %A" (ctx.GetWorkingDir()))
-            run (fun _ ->
-                async {
-                    return 0 // do something
-                }
-            )
+            run (fun _ -> async {
+                return 0 // do something
+            })
         }
     ]
     // You can have multiple pipelines, sometimes you only want to run it only if the command specified the pipeline name.

@@ -16,35 +16,33 @@ let options = {|
 
 let stage_checkEnv = stage "Check environment" { run "dotnet tool restore" }
 
-let stage_lint =
-    stage "Lint" {
-        stage "Format" { run "dotnet fantomas" }
-        stage "Check" {
-            whenGithubAction
-            run "dotnet fantomas check"
-        }
+let stage_lint = stage "Lint" {
+    stage "Format" { run "dotnet fantomas" }
+    stage "Check" {
+        whenGithubAction
+        run "dotnet fantomas check"
     }
+}
 
 let stage_test = stage "Run unit tests" { run "dotnet test -v m" }
 
-let stage_buildVersion =
-    stage "generate Directory.build.props for version control" {
-        run (fun _ ->
-            Directory.GetDirectories(__SOURCE_DIRECTORY__)
-            |> Seq.filter (fun x -> File.Exists(x </> "CHANGELOG.md"))
-            |> Seq.iter (fun dir ->
-                let version = Changelog.GetLastVersion dir |> Option.defaultWith (fun _ -> failwith "No version available")
-                let content =
-                    $"""<!-- auto generated -->
+let stage_buildVersion = stage "generate Directory.build.props for version control" {
+    run (fun _ ->
+        Directory.GetDirectories(__SOURCE_DIRECTORY__)
+        |> Seq.filter (fun x -> File.Exists(x </> "CHANGELOG.md"))
+        |> Seq.iter (fun dir ->
+            let version = Changelog.GetLastVersion dir |> Option.defaultWith (fun _ -> failwith "No version available")
+            let content =
+                $"""<!-- auto generated -->
 <Project>
     <PropertyGroup>
         <Version>{version.Version}</Version>
     </PropertyGroup>
 </Project>"""
-                File.WriteAllText(dir </> "Directory.Build.props", content)
-            )
+            File.WriteAllText(dir </> "Directory.Build.props", content)
         )
-    }
+    )
+}
 
 
 pipeline "packages" {
