@@ -15,6 +15,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v7
+    
+    - name: NuGet login (OIDC -> short-lived API key)
+      id: nuget-login
+      uses: NuGet/login@v1
+      with:
+        # nuget.org profile name (the owner of the trusted publishing policy)
+        user: slaveoftime
 
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v6
@@ -25,5 +32,5 @@ jobs:
 
     - name: Use build.fsx
       env:
-        NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
       run: dotnet fsi ./build.fsx -- -p packages
